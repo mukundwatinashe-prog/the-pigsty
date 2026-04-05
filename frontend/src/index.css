@@ -1,39 +1,50 @@
 @import "tailwindcss";
 
 @theme {
-  /* Coolors: #baa7b0 · #b2abbf · #b1b5c8 · #bfd5e2 — dusty mauve & periwinkle */
-  --color-primary-50: #f4f3f7;
-  --color-primary-100: #e8e6ef;
-  --color-primary-200: #d5d1e0;
-  --color-primary-300: #bbb5cd;
-  --color-primary-400: #a099b5;
-  --color-primary-500: #857c9e;
-  --color-primary-600: #5c546e;
-  --color-primary-700: #4a4359;
-  --color-primary-800: #3a3445;
-  --color-primary-900: #2a2633;
+  /* Coolors: #d8a47f · #ef8354 · #565554 · #5bc0eb — sand, coral, charcoal, sky */
+  --color-primary-50: #fff8f5;
+  --color-primary-100: #ffefe8;
+  --color-primary-200: #ffdbc8;
+  --color-primary-300: #ffc19e;
+  --color-primary-400: #f7a578;
+  --color-primary-500: #ef8354;
+  --color-primary-600: #d4693d;
+  --color-primary-700: #b25530;
+  --color-primary-800: #8c4428;
+  --color-primary-900: #5c2e1a;
 
-  --color-accent-50: #f5f5f8;
-  --color-accent-100: #ebebf2;
-  --color-accent-200: #d8d9e5;
-  --color-accent-300: #c0c2d4;
-  --color-accent-400: #a3a5ba;
-  --color-accent-500: #86889f;
-  --color-accent-600: #6b6d82;
-  --color-accent-700: #545666;
-  --color-accent-800: #3f404d;
-  --color-accent-900: #2c2d35;
+  --color-accent-50: #f7f7f6;
+  --color-accent-100: #eaeae9;
+  --color-accent-200: #d5d5d3;
+  --color-accent-300: #b8b7b5;
+  --color-accent-400: #8f8e8c;
+  --color-accent-500: #706f6d;
+  --color-accent-600: #565554;
+  --color-accent-700: #464543;
+  --color-accent-800: #363534;
+  --color-accent-900: #232221;
 
-  --color-farm-50: #f6f3f5;
-  --color-farm-100: #eae4e8;
-  --color-farm-200: #d9ced5;
-  --color-farm-300: #c7b8c1;
-  --color-farm-400: #baa7b0;
-  --color-farm-500: #9d8893;
-  --color-farm-600: #806e78;
-  --color-farm-700: #665860;
-  --color-farm-800: #4d4349;
-  --color-farm-900: #362f33;
+  --color-farm-50: #faf7f2;
+  --color-farm-100: #f2ebe1;
+  --color-farm-200: #e8d9c4;
+  --color-farm-300: #d8a47f;
+  --color-farm-400: #c49163;
+  --color-farm-500: #a6784e;
+  --color-farm-600: #87603f;
+  --color-farm-700: #6d4e34;
+  --color-farm-800: #563f2a;
+  --color-farm-900: #3b2b1d;
+
+  --color-sky-50: #edf9fd;
+  --color-sky-100: #d6f0fa;
+  --color-sky-200: #ade4f5;
+  --color-sky-300: #7ad4ef;
+  --color-sky-400: #5bc0eb;
+  --color-sky-500: #47b3e6;
+  --color-sky-600: #3aa8d4;
+  --color-sky-700: #2d87ad;
+  --color-sky-800: #286c8c;
+  --color-sky-900: #255a73;
 }
 
 @layer utilities {

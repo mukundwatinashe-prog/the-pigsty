@@ -3,13 +3,11 @@ import { Link, Navigate } from 'react-router-dom';
 import {
   PiggyBank,
   Scale,
-  FileText,
   Users,
   Shield,
   Upload,
   CheckCircle2,
   Loader2,
-  Smartphone,
   Download,
   MessageCircle,
   HeartHandshake,
@@ -26,42 +24,32 @@ const benefits = [
   {
     icon: PiggyBank,
     title: 'Know every pig',
-    text: 'Tag numbers, breed, stage, and health in one place — no more guessing from memory or loose notebooks.',
-  },
-  {
-    icon: Smartphone,
-    title: 'Works on your phone',
-    text: 'Use The Pigsty in the browser on Android or iPhone. Add it to your home screen for quick access in the pen.',
+    text: 'Tags, breed, stage, and health in one place — no scattered notebooks.',
   },
   {
     icon: Upload,
-    title: 'Start from Excel',
-    text: 'Download our free import template, fill it offline, then upload when you have signal. Up to thousands of rows.',
+    title: 'Import from Excel',
+    text: 'Use our free template, fill it offline, then upload when you are ready.',
   },
   {
     icon: Scale,
-    title: 'Weights that matter',
-    text: 'Log weights, see growth, and make better feeding and sale decisions with simple charts and reports.',
-  },
-  {
-    icon: FileText,
-    title: 'PDF & Excel for buyers & banks',
-    text: 'Herd lists and summaries you can show to buyers, vets, or lenders — with clear tables and your farm name.',
+    title: 'Track growth',
+    text: 'Log weights and see progress so feeding and sales decisions are clearer.',
   },
   {
     icon: Users,
-    title: 'Family & workers',
-    text: 'Invite people you trust with roles, so everyone sees what they need without changing each other’s settings.',
+    title: 'Team roles',
+    text: 'Invite people you trust; everyone sees what they need.',
   },
   {
     icon: Globe,
-    title: 'Comfort for the diaspora',
-    text: 'If you live abroad but still run or support a farm back home, see the herd, weights, sales, and who did what — in one place — so you can manage with confidence and account for everything without relying on scattered calls and messages.',
+    title: 'Home or abroad',
+    text: 'Run or support a farm back home with the same records your team uses on the ground.',
   },
   {
     icon: Shield,
-    title: 'Your records, your export',
-    text: 'We’re building for farmers who want control: export reports anytime. No credit card to try the free tier.',
+    title: 'Start free',
+    text: 'No credit card to try the free tier. Upgrade when your herd outgrows it.',
   },
 ];
 
@@ -70,11 +58,10 @@ const tiers = [
     name: 'Free',
     price: '$0',
     period: 'per farm',
-    desc: 'Ideal for smallholders and backyard-to-market growers getting organised.',
+    desc: 'For smallholders getting organised.',
     features: [
       'Up to 100 pigs per farm',
       'Pens, weights, import from Excel',
-      'PDF & Excel reports',
       '2 team members',
       'No credit card required',
     ],
@@ -101,7 +88,7 @@ const tiers = [
     name: 'Groups & co-ops',
     price: 'Let’s talk',
     period: 'custom',
-    desc: 'Extension programmes, co-ops, or aggregators rolling out to many farms.',
+    desc: 'Programmes or co-ops rolling out to many farms.',
     features: ['Training & onboarding', 'Reporting for supervisors', 'Custom arrangements'],
     cta: siteConfig.supportEmail ? 'Email us' : 'Get updates below',
     href: siteConfig.supportEmail
@@ -265,49 +252,29 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="mx-auto max-w-6xl px-safe py-12 sm:py-20">
+        <section className="mx-auto max-w-6xl px-safe py-12 sm:py-16">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-semibold uppercase tracking-wide text-primary-700">
               Pig records for smallholders
             </p>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
-              Clear herd records — from a few pigs to a growing herd.
+              Herd records that stay clear as you grow.
             </h1>
             <p className="mt-5 text-lg text-gray-600 sm:text-xl">
-              The Pigsty is built for <strong className="font-semibold text-gray-800">smallholder and family pig keepers</strong> across
-              Africa and beyond. We’re starting strong in <strong className="font-semibold text-gray-800">Zimbabwe</strong> and welcome
-              farmers everywhere who want simple, honest software — not complexity you’ll never use.
+              Simple software for <strong className="font-semibold text-gray-800">smallholder and family pig farms</strong> — starting in{' '}
+              <strong className="font-semibold text-gray-800">Zimbabwe</strong>, open to farmers anywhere who want honest tools, not bloat.
             </p>
-            <p className="mt-4 text-base text-gray-600 sm:text-lg">
-              <strong className="font-semibold text-gray-800">In the diaspora?</strong> Stay close to your operation: check inventory,
-              weights, sales, and team activity from anywhere, with reports you can trust — so you support those on the ground and keep a
-              clear account of the whole farm.
-            </p>
-            <ul className="mx-auto mt-6 flex max-w-xl flex-col gap-2 text-left text-sm text-gray-600 sm:text-base">
+            <ul className="mx-auto mt-6 flex max-w-lg flex-col gap-2 text-left text-sm text-gray-600 sm:text-base">
               <li className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
                 <span>
-                  <strong className="text-gray-800">Free for smaller herds</strong> — organise up to 100 pigs per farm without paying.
+                  <strong className="text-gray-800">Free up to 100 pigs</strong> per farm — no card required.
                 </span>
               </li>
               <li className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
                 <span>
-                  <strong className="text-gray-800">Works on your phone</strong> — use it in the yard; add to home screen like an app.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
-                <span>
-                  <strong className="text-gray-800">Your data</strong> — export PDF and Excel reports; upgrade only when you need more
-                  pigs.
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
-                <span>
-                  <strong className="text-gray-800">Diaspora-friendly</strong> — manage and oversee your home farm remotely with the same
-                  records your family or workers use on-site.
+                  <strong className="text-gray-800">Diaspora-friendly</strong> — same records for you and your team on the ground.
                 </span>
               </li>
             </ul>
@@ -329,37 +296,26 @@ export default function LandingPage() {
                 Download free Excel template
               </a>
             </div>
-            <p className="mt-4 text-sm text-gray-500">
-              No credit card for Free · Same template works after you sign up
-            </p>
-            <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-gray-100 pt-8 text-xs font-medium text-gray-500 sm:text-sm">
-              <span className="inline-flex items-center gap-1.5">
-                <Smartphone className="size-4 text-primary-600" aria-hidden />
-                Phone-friendly
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <FileText className="size-4 text-primary-600" aria-hidden />
-                PDF & Excel exports
-              </span>
+            <p className="mt-4 text-sm text-gray-500">Same template works after you sign up.</p>
+            <div className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-gray-100 pt-8 text-xs font-medium text-gray-500 sm:text-sm">
               <span className="inline-flex items-center gap-1.5">
                 <HeartHandshake className="size-4 text-primary-600" aria-hidden />
-                Made with farmers in mind
+                Built with farmers in mind
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Globe className="size-4 text-primary-600" aria-hidden />
-                Diaspora & on-farm
+                On-farm & abroad
               </span>
             </div>
           </div>
         </section>
 
-        <section id="template" className="border-y border-primary-100 bg-primary-50/50 py-14 scroll-mt-24">
+        <section id="template" className="border-y border-primary-100 bg-primary-50/50 py-12 scroll-mt-24">
           <div className="mx-auto max-w-6xl px-4 sm:flex sm:items-center sm:justify-between sm:gap-8">
             <div className="max-w-xl">
-              <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">Start with a spreadsheet — even before you register</h2>
-              <p className="mt-3 text-gray-600">
-                Download the same import template our app uses. Fill it on your laptop or phone (where Excel or Sheets works offline), then
-                sign up and upload when you’re ready. No account needed to get the file.
+              <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">Start with our import template</h2>
+              <p className="mt-2 text-gray-600">
+                Download the file our app uses, fill it when it suits you, then upload after you register. No account needed to download.
               </p>
             </div>
             <div className="mt-6 flex shrink-0 flex-col gap-3 sm:mt-0">
@@ -377,19 +333,19 @@ export default function LandingPage() {
                 className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-gray-200 bg-white px-6 py-3.5 font-semibold text-gray-800 hover:bg-gray-50"
                 onClick={() => track('cta_register_click', { placement: 'template_section' })}
               >
-                Then create a free account →
+                Create free account →
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="border-y border-gray-100 bg-white py-16">
+        <section className="border-y border-gray-100 bg-white py-12">
           <div className="mx-auto max-w-6xl px-4">
-            <h2 className="text-center text-2xl font-bold text-gray-900 sm:text-3xl">Why smallholders use The Pigsty</h2>
-            <p className="mx-auto mt-2 max-w-2xl text-center text-gray-600">
-              Practical tools — not corporate farm software. Built so you can spend less time on paperwork and more time with your animals.
+            <h2 className="text-center text-2xl font-bold text-gray-900 sm:text-3xl">Why The Pigsty</h2>
+            <p className="mx-auto mt-2 max-w-xl text-center text-gray-600">
+              Practical tools for real farms — less admin, more time with your animals.
             </p>
-            <ul className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {benefits.map(({ icon: Icon, title, text }) => (
                 <li key={title} className="rounded-2xl border border-gray-100 bg-gray-50/50 p-6 shadow-sm">
                   <div className="flex size-11 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
@@ -403,11 +359,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="pricing" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-16 sm:py-20">
-          <h2 className="text-center text-2xl font-bold text-gray-900 sm:text-3xl">Simple, honest pricing</h2>
-          <p className="mx-auto mt-2 max-w-xl text-center text-gray-600">
-            Start free. When your herd grows past 100 pigs, Pro unlocks unlimited animals. If you don’t use cards, we’ll work with you on
-            other ways to pay where we can.
+        <section id="pricing" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-14 sm:py-16">
+          <h2 className="text-center text-2xl font-bold text-gray-900 sm:text-3xl">Pricing</h2>
+          <p className="mx-auto mt-2 max-w-lg text-center text-gray-600">
+            Start free. Pro adds unlimited pigs. No card? We can discuss other payment options where possible.
           </p>
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
             {tiers.map((t) => (
@@ -452,12 +407,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="lead" className="border-t border-gray-100 bg-primary-600 py-16 text-white scroll-mt-24">
+        <section id="lead" className="border-t border-gray-100 bg-primary-600 py-14 text-white scroll-mt-24">
           <div className="mx-auto max-w-xl px-4 text-center">
-            <h2 className="text-2xl font-bold">Questions or not ready yet?</h2>
-            <p className="mt-2 text-primary-100">
-              Leave your email for updates, or tell us your country and herd size. We read every message.
-            </p>
+            <h2 className="text-2xl font-bold">Questions?</h2>
+            <p className="mt-2 text-primary-100">Leave your email for updates, or say where you farm and herd size.</p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               {waUrl && (
                 <a

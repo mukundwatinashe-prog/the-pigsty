@@ -23,37 +23,58 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+let refreshInFlight: Promise<void> | null = null;
+
+function refreshSession(): Promise<void> {
+  if (!refreshInFlight) {
+    refreshInFlight = axios
+      .post('/api/auth/refresh', {}, { withCredentials: true })
+      .then(() => undefined)
+      .finally(() => {
+        refreshInFlight = null;
+      });
   }
-  return config;
-});
+  return refreshInFlight;
+}
+
+function shouldSkipRefreshRetry(config: { url?: string; method?: string }): boolean {
+  const u = config.url ?? '';
+  return (
+    u.includes('/auth/login') ||
+    u.includes('/auth/register') ||
+    u.includes('/auth/google') ||
+    u.includes('/auth/forgot-password') ||
+    u.includes('/auth/reset-password') ||
+    u.includes('/auth/refresh')
+  );
+}
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !shouldSkipRefreshRetry(originalRequest)
+    ) {
       originalRequest._retry = true;
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        await refreshSession();
         return api(originalRequest);
       } catch {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        const path = window.location.pathname;
+        const publicAuth = ['/login', '/register', '/forgot-password'].some(
+          (p) => path === p || path.startsWith(`${p}/`),
+        );
+        if (!publicAuth) window.location.href = '/login';
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

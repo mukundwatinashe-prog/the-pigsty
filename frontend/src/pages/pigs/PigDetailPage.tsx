@@ -462,7 +462,7 @@ export default function PigDetailPage() {
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} className="text-gray-600" />
                 <YAxis tick={{ fontSize: 12 }} label={{ value: unit, angle: -90, position: 'insideLeft' }} />
                 <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} formatter={(value) => [`${value ?? '—'} ${unit}`, 'Weight']} />
-                <Line type="monotone" dataKey="weight" stroke="#5c546e" strokeWidth={2} dot={{ fill: '#5c546e', r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="weight" stroke="#5bc0eb" strokeWidth={2} dot={{ fill: '#5bc0eb', r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

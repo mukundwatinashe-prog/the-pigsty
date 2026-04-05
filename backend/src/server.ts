@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { env } from './config/env';
 import prisma from './config/database';
 import authRoutes from './routes/auth.routes';
@@ -23,6 +24,7 @@ app.post(
 );
 
 app.use(helmet());
+app.use(cookieParser());
 
 const corsOriginsFromEnv = env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
 app.use(

@@ -13,7 +13,14 @@ import { apiErrorMessage } from '../../services/api';
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Valid email required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z
+    .string()
+    .min(12, 'Password must be at least 12 characters')
+    .max(128)
+    .regex(/[a-z]/, 'Include a lowercase letter')
+    .regex(/[A-Z]/, 'Include an uppercase letter')
+    .regex(/[0-9]/, 'Include a number')
+    .regex(/[^A-Za-z0-9]/, 'Include a symbol'),
   confirmPassword: z.string(),
 }).refine(d => d.password === d.confirmPassword, {
   message: 'Passwords do not match',
@@ -114,7 +121,7 @@ export default function RegisterPage() {
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition pr-10"
-                  placeholder="Min. 8 characters"
+                  placeholder="12+ chars with upper, lower, number, symbol"
                 />
                 <button
                   type="button"
@@ -124,6 +131,9 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Use at least 12 characters including uppercase, lowercase, a number, and a symbol.
+              </p>
               {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
             </div>
 

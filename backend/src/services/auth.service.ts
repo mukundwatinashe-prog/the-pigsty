@@ -54,6 +54,11 @@ export class AuthService {
     return { user: safeUser, ...tokens };
   }
 
+  static async revokeRefreshToken(token: string | undefined) {
+    if (!token) return;
+    await prisma.refreshToken.deleteMany({ where: { token } });
+  }
+
   static async refreshToken(token: string) {
     const stored = await prisma.refreshToken.findUnique({
       where: { token },
@@ -85,7 +90,10 @@ export class AuthService {
     return user;
   }
 
-  static async updateProfile(userId: string, data: { name?: string; phone?: string; photo?: string }) {
+  static async updateProfile(
+    userId: string,
+    data: { name?: string; phone?: string | null; photo?: string | null },
+  ) {
     const user = await prisma.user.update({
       where: { id: userId },
       data,
@@ -109,8 +117,7 @@ export class AuthService {
       },
     });
 
-    // In production, send email with reset link containing resetToken
-    console.log(`Password reset token for ${email}: ${resetToken}`);
+    // In production, send email with reset link containing resetToken (never log the token).
     return resetToken;
   }
 
@@ -140,7 +147,7 @@ export class AuthService {
       data: { passwordHash },
     });
 
-    await prisma.refreshToken.delete({ where: { id: matchedRecord.id } });
+    await prisma.refreshToken.deleteMany({ where: { userId: matchedRecord.userId } });
   }
 
   private static async generateTokens(userId: string) {

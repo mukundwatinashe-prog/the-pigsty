@@ -15,7 +15,7 @@ import { pigService } from '../../services/pig.service';
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: '#22c55e',
-  SOLD: '#5c546e',
+  SOLD: '#5bc0eb',
   DECEASED: '#6b7280',
   QUARANTINE: '#ef4444',
 };

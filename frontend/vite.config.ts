@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/** Backend port for dev proxy (set by root `npm run dev` via scripts/dev.cjs). */
+const apiPort = process.env.API_PORT || '4000';
+const apiTarget = `http://127.0.0.1:${apiPort}`;
+
 export default defineConfig({
   plugins: [
     react(),
@@ -16,8 +20,8 @@ export default defineConfig({
         name: 'The Pigsty',
         short_name: 'Pigsty',
         description: 'Smart Farm Management Platform',
-        theme_color: '#5c546e',
-        background_color: '#f5f5f8',
+        theme_color: '#d4693d',
+        background_color: '#f7f7f6',
         display: 'standalone',
         scope: '/',
         start_url: '/',
@@ -44,7 +48,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: apiTarget,
         changeOrigin: true,
       },
     },

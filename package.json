@@ -2,9 +2,10 @@
   "name": "pigtrack-pro",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "sync:open-app": "node scripts/sync-open-app.cjs",
+    "dev": "node scripts/dev.cjs",
     "dev:backend": "npm run dev --prefix backend",
-    "dev:frontend": "npm run dev --prefix frontend"
+    "dev:frontend": "node scripts/sync-open-app.cjs && npm run dev --prefix frontend"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
