@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  FARM_MANAGER
+  WORKER
+}
+
+enum PigBreed {
+  LARGE_WHITE
+  LANDRACE
+  DUROC
+  PIETRAIN
+  BERKSHIRE
+  HAMPSHIRE
+  CHESTER_WHITE
+  YORKSHIRE
+  TAMWORTH
+  MUKOTA
+  KOLBROEK
+  WINDSNYER
+  SA_LANDRACE
+  INDIGENOUS
+  CROSSBREED
+  OTHER
+}
+
+enum PigStage {
+  BOAR
+  SOW
+  GILT
+  WEANER
+  PIGLET
+  PORKER
+}
+
+enum PigStatus {
+  ACTIVE
+  SOLD
+  DECEASED
+  QUARANTINE
+}
+
+enum HealthStatus {
+  HEALTHY
+  SICK
+  UNDER_TREATMENT
+  RECOVERED
+}
+
+enum PenType {
+  FARROWING
+  GROWER
+  FINISHER
+  BOAR
+  QUARANTINE
+  NURSERY
+}
+
+enum FarmPlan {
+  FREE
+  PRO
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String?
+  name         String
+  phone        String?
+  photo        String?
+  mfaEnabled   Boolean  @default(false)
+  googleId     String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  farmMemberships FarmMember[]
+  weightLogs      WeightLog[]
+  auditLogs       AuditLog[]
+  refreshTokens   RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+model Farm {
+  id                   String    @id @default(uuid())
+  name                 String
+  logoUrl              String?
+  location             String
+  country              String
+  currency             String    @default("USD")
+  timezone             String    @default("UTC")
+  weightUnit           String    @default("kg")
+  pricePerKg           Decimal   @default(3.3) @db.Decimal(10, 2)
+  fiscalYearStart      Int       @default(1)
+  plan                 FarmPlan  @default(FREE)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  isDeleted            Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  members    FarmMember[]
+  pigs       Pig[]
+  pens       Pen[]
+  auditLogs  AuditLog[]
+  importLogs ImportLog[]
+  saleRecords SaleRecord[]
+
+  @@map("farms")
+}
+
+model FarmMember {
+  id     String @id @default(uuid())
+  userId String
+  farmId String
+  role   Role
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, farmId])
+  @@map("farm_members")
+}
+
+model Pen {
+  id       String  @id @default(uuid())
+  farmId   String
+  name     String
+  type     PenType
+  capacity Int
+
+  farm Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  pigs Pig[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([farmId, name])
+  @@map("pens")
+}
+
+model Pig {
+  id              String       @id @default(uuid())
+  farmId          String
+  tagNumber       String
+  name            String?
+  breed           PigBreed
+  stage           PigStage
+  dateOfBirth     DateTime?
+  acquisitionDate DateTime
+  entryWeight     Decimal      @db.Decimal(10, 2)
+  currentWeight   Decimal      @db.Decimal(10, 2)
+  status          PigStatus    @default(ACTIVE)
+  healthStatus    HealthStatus @default(HEALTHY)
+  serviced        Boolean      @default(false)
+  servicedDate    DateTime?
+  penId           String?
+  damId           String?
+  sireId          String?
+  notes           String?
+  photo           String?
+
+  farm  Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  pen   Pen?  @relation(fields: [penId], references: [id], onDelete: SetNull)
+  dam   Pig?  @relation("DamOffspring", fields: [damId], references: [id], onDelete: SetNull)
+  sire  Pig?  @relation("SireOffspring", fields: [sireId], references: [id], onDelete: SetNull)
+
+  damOffspring  Pig[] @relation("DamOffspring")
+  sireOffspring Pig[] @relation("SireOffspring")
+
+  weightLogs       WeightLog[]
+  vaccinations     Vaccination[]
+  farrowingRecords FarrowingRecord[]
+  saleRecords      SaleRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([farmId, tagNumber])
+  @@map("pigs")
+}
+
+model WeightLog {
+  id     String   @id @default(uuid())
+  pigId  String
+  userId String
+  weight Decimal  @db.Decimal(10, 2)
+  date   DateTime
+  notes  String?
+
+  pig  Pig  @relation(fields: [pigId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("weight_logs")
+}
+
+model Vaccination {
+  id               String    @id @default(uuid())
+  pigId            String
+  name             String
+  batchNumber      String?
+  dateAdministered DateTime
+  nextDueDate      DateTime?
+  administeredBy   String?
+
+  pig Pig @relation(fields: [pigId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("vaccinations")
+}
+
+model FarrowingRecord {
+  id              String    @id @default(uuid())
+  pigId           String
+  farrowingDate   DateTime
+  pigletsBornAlive Int
+  pigletsBornDead  Int      @default(0)
+  pigletsWeaned   Int?
+  weaningDate     DateTime?
+  notes           String?
+
+  pig Pig @relation(fields: [pigId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([pigId, farrowingDate])
+  @@map("farrowing_records")
+}
+
+enum SaleType {
+  LIVE_SALE
+  SLAUGHTER
+}
+
+model SaleRecord {
+  id          String   @id @default(uuid())
+  pigId       String
+  farmId      String
+  saleType    SaleType
+  saleDate    DateTime
+  weightAtSale Decimal @db.Decimal(10, 2)
+  pricePerKg  Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  buyer       String?
+  notes       String?
+
+  pig  Pig  @relation(fields: [pigId], references: [id], onDelete: Cascade)
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([farmId, saleDate])
+  @@map("sale_records")
+}
+
+model AuditLog {
+  id       String @id @default(uuid())
+  userId   String
+  farmId   String
+  action   String
+  entity   String
+  entityId String
+  details  String?
+
+  user User @relation(fields: [userId], references: [id])
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([farmId, createdAt])
+  @@map("audit_logs")
+}
+
+model ImportLog {
+  id           String @id @default(uuid())
+  farmId       String
+  fileName     String
+  totalRows    Int
+  importedRows Int
+  errorRows    Int
+  status       String
+  errors       String?
+
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("import_logs")
+}
+
+model Lead {
+  id        String   @id @default(uuid())
+  email     String
+  source    String   @default("landing")
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@map("leads")
+}

@@ -1,0 +1,10 @@
+{
+  // Typecheck the app the same way CI/build does: `npm run typecheck` or `npx tsc -b`.
+  // Do not rely on `npx tsc --noEmit` from this folder without `-b` — it skips project references
+  // and may miss errors that `tsc -b` (used in `npm run build`) catches.
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

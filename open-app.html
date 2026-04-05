@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Brand mark: keep in sync with frontend/public/favicon.svg when you change the logo -->
+  <link rel="icon" type="image/svg+xml" href="branding-mark.svg">
+  <link rel="apple-touch-icon" href="branding-mark.svg">
+  <meta name="theme-color" content="#5c546e">
+  <title>The Pigsty — Smart pig farm management</title>
+  <meta
+    name="description"
+    content="Track pigs, pens, weights, imports, and team access. Free tier for smaller herds; Pro for unlimited pigs. PDF and Excel reports with your farm branding."
+  >
+  <meta property="og:title" content="The Pigsty — Smart pig farm management">
+  <meta
+    property="og:description"
+    content="Herd inventory, bulk import, weights, reports, and roles — built for commercial and serious smallholder pig farms."
+  >
+  <meta property="og:type" content="website">
+  <!-- For social previews when hosted, use an absolute URL, e.g. https://yourdomain.com/branding-mark.svg -->
+  <meta property="og:image" content="branding-mark.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="The Pigsty — Smart pig farm management">
+  <meta
+    name="twitter:description"
+    content="Herd inventory, bulk import, weights, reports, and roles — built for commercial and serious smallholder pig farms."
+  >
+  <meta name="twitter:image" content="branding-mark.svg">
+  <!-- Optional GA4: load gtag in the Vite app when VITE_GA_MEASUREMENT_ID is set (see frontend/.env.example) -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f4f3f7 0%, #ffffff 45%, #ebebf2 100%);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1);
+      border: 1px solid #f3f4f6;
+      padding: 40px 36px;
+      max-width: 520px;
+      width: 100%;
+    }
+    .logo {
+      width: 72px; height: 72px;
+      margin: 0 auto 20px;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(92, 84, 110, 0.2);
+      border: 1px solid rgba(92, 84, 110, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    h1 { font-size: 26px; color: #111827; margin-bottom: 8px; text-align: center; }
+    .lead { color: #6b7280; font-size: 15px; margin-bottom: 24px; line-height: 1.55; text-align: center; }
+    .btn {
+      display: block;
+      text-align: center;
+      background: #5c546e;
+      color: white;
+      text-decoration: none;
+      padding: 14px 28px;
+      min-height: 48px;
+      line-height: 1.25;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(92, 84, 110, 0.28);
+    }
+    .btn:hover {
+      background: #4a4359;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(92, 84, 110, 0.35);
+    }
+    .tips {
+      margin-top: 24px;
+      padding: 16px 18px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 1px solid #fcd34d;
+      text-align: left;
+    }
+    .tips h2 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #92400e;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 10px;
+    }
+    .tips ul { font-size: 13px; color: #78350f; line-height: 1.55; padding-left: 1.15rem; }
+    .tips li { margin-bottom: 6px; }
+    .tips strong { color: #451a03; }
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      justify-content: center;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #f3f4f6;
+    }
+    .links a {
+      font-size: 13px;
+      font-weight: 600;
+      color: #2563eb;
+      text-decoration: none;
+    }
+    .links a:hover { text-decoration: underline; }
+    .info {
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid #f3f4f6;
+      font-size: 12px;
+      color: #9ca3af;
+      text-align: center;
+    }
+    .info strong { color: #6b7280; }
+    .status { display: flex; gap: 16px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+    .status-item {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.green { background: #22c55e; }
+    .dot.blue { background: #3b82f6; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <img src="branding-mark.svg" alt="The Pigsty" width="52" height="50" decoding="async">
+    </div>
+    <h1>The Pigsty</h1>
+    <p class="lead">Redirecting to the app…</p>
+    <p class="info" style="margin-top: 10px;">
+      If you are not redirected automatically, open
+      <a href="http://localhost:5173" style="color: #2563eb; font-weight: 700; text-decoration: underline;">http://localhost:5173</a>.
+    </p>
+  </div>
+
+  <script>
+    // Remove the extra “launcher” click step: open the Vite app directly.
+    window.location.replace('http://localhost:5173/');
+  </script>
+</body>
+</html>
