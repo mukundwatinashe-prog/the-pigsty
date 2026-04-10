@@ -174,15 +174,11 @@ export default function BillingPage() {
                   <span>
                     No card or Stripe in your country? Contact us for{' '}
                     <strong className="font-medium text-gray-800">bank transfer, mobile money, or group billing</strong>
-                    {siteConfig.supportEmail ? (
-                      <>
-                        {' '}
-                        at{' '}
-                        <a href={`mailto:${siteConfig.supportEmail}`} className="font-medium text-primary-700 hover:underline">
-                          {siteConfig.supportEmail}
-                        </a>
-                      </>
-                    ) : null}
+                    {' '}
+                    at{' '}
+                    <a href={`mailto:${siteConfig.supportEmail}`} className="font-medium text-primary-700 hover:underline">
+                      {siteConfig.supportEmail}
+                    </a>
                     {whatsappHelpUrl() ? (
                       <>
                         {' '}

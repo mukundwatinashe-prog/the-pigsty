@@ -4,6 +4,7 @@ import prisma from '../config/database';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
+import { syncPigGrowthStageIfNeeded } from '../services/pigStageSync.service';
 
 const weightSchema = z.object({
   pigId: z.string().uuid(),
@@ -45,6 +46,9 @@ export class WeightController {
         data: { currentWeight: data.weight },
       });
 
+      const refreshed = await prisma.pig.findUnique({ where: { id: data.pigId } });
+      if (refreshed) await syncPigGrowthStageIfNeeded(refreshed);
+
       await AuditService.log({
         userId: req.userId!, farmId: req.farmId!,
         action: 'CREATE', entity: 'WeightLog', entityId: log.id,
@@ -73,6 +77,7 @@ export class WeightController {
       if (validEntries.length === 0) return next(new AppError('No valid pig weights provided', 400));
 
       const logs = [];
+      const syncedPigIds = new Set<string>();
       for (const entry of validEntries) {
         const log = await prisma.weightLog.create({
           data: {
@@ -87,8 +92,16 @@ export class WeightController {
           where: { id: entry.pigId },
           data: { currentWeight: entry.weight },
         });
+        syncedPigIds.add(entry.pigId);
         logs.push(log);
       }
+
+      await Promise.all(
+        [...syncedPigIds].map(async (id) => {
+          const p = await prisma.pig.findUnique({ where: { id } });
+          if (p) await syncPigGrowthStageIfNeeded(p);
+        }),
+      );
 
       const totalWeight = validEntries.reduce((s, e) => s + e.weight, 0);
       const avgWeight = totalWeight / validEntries.length;

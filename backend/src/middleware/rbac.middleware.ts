@@ -8,7 +8,8 @@ type Permission = 'pigs:read' | 'pigs:write' | 'pigs:delete' |
   'weights:read' | 'weights:write' |
   'reports:read' | 'reports:export' |
   'users:manage' | 'farm:settings' | 'farm:delete' |
-  'audit:read' | 'import:write';
+  'audit:read' | 'import:write' |
+  'feed:read' | 'feed:write';
 
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   OWNER: [
@@ -18,6 +19,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'reports:read', 'reports:export',
     'users:manage', 'farm:settings', 'farm:delete',
     'audit:read', 'import:write',
+    'feed:read', 'feed:write',
   ],
   FARM_MANAGER: [
     'pigs:read', 'pigs:write', 'pigs:delete',
@@ -26,6 +28,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'reports:read', 'reports:export',
     'users:manage', 'farm:settings',
     'audit:read', 'import:write',
+    'feed:read', 'feed:write',
   ],
   WORKER: [
     'pigs:read', 'pigs:write',
@@ -33,6 +36,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'weights:read', 'weights:write',
     'reports:read', 'reports:export',
     'audit:read', 'import:write',
+    'feed:read', 'feed:write',
   ],
 };
 

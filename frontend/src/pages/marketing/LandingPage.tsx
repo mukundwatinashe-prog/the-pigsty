@@ -8,17 +8,18 @@ import {
   Upload,
   CheckCircle2,
   Loader2,
-  Download,
   MessageCircle,
   HeartHandshake,
   Globe,
   Menu,
   X,
+  Heart,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { BrandLogo } from '../../components/BrandLogo';
 import { track } from '../../lib/analytics';
 import { mailtoSupport, siteConfig, whatsappHelpUrl } from '../../lib/siteConfig';
+import { ContactForm } from '../../components/ContactForm';
 
 const benefits = [
   {
@@ -29,7 +30,7 @@ const benefits = [
   {
     icon: Upload,
     title: 'Import from Excel',
-    text: 'Use our free template, fill it offline, then upload when you are ready.',
+    text: 'Bring pigs in from a spreadsheet when you are ready — straight from the app.',
   },
   {
     icon: Scale,
@@ -60,7 +61,7 @@ const tiers = [
     period: 'per farm',
     desc: 'For smallholders getting organised.',
     features: [
-      'Up to 100 pigs per farm',
+      'Up to 50 pigs per farm',
       'Pens, weights, import from Excel',
       '2 team members',
       'No credit card required',
@@ -90,20 +91,15 @@ const tiers = [
     period: 'custom',
     desc: 'Programmes or co-ops rolling out to many farms.',
     features: ['Training & onboarding', 'Reporting for supervisors', 'Custom arrangements'],
-    cta: siteConfig.supportEmail ? 'Email us' : 'Get updates below',
-    href: siteConfig.supportEmail
-      ? `mailto:${encodeURIComponent(siteConfig.supportEmail)}?subject=${encodeURIComponent('The Pigsty — groups / co-ops')}`
-      : '#lead',
+    cta: 'Contact us',
+    href: '#contact',
     highlight: false,
-    external: true,
+    external: false,
   },
 ];
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
-  const [leadEmail, setLeadEmail] = useState('');
-  const [leadMsg, setLeadMsg] = useState('');
-  const [leadStatus, setLeadStatus] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const waUrl = whatsappHelpUrl();
 
@@ -122,38 +118,14 @@ export default function LandingPage() {
     return <Navigate to="/farms" replace />;
   }
 
-  const submitLead = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!leadEmail.trim()) return;
-    setLeadStatus('sending');
-    try {
-      const res = await fetch('/api/public/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: leadEmail.trim(), message: leadMsg.trim() || undefined, source: 'landing' }),
-      });
-      if (!res.ok) throw new Error('failed');
-      setLeadStatus('ok');
-      track('lead_captured', { source: 'landing' });
-      setLeadEmail('');
-      setLeadMsg('');
-    } catch {
-      setLeadStatus('err');
-    }
-  };
-
-  const onDownloadTemplate = () => {
-    track('template_download', { source: 'landing' });
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50/80 via-white to-accent-50/40 pb-safe text-gray-900">
       <header className="sticky top-0 z-20 border-b border-gray-200/80 bg-white/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm">
         <div className="relative mx-auto max-w-6xl px-safe">
           <div className="flex items-center justify-between gap-3 py-3 sm:py-4">
-            <Link to="/" className="flex min-w-0 items-center gap-2 font-bold text-gray-900">
-              <BrandLogo size="md" />
-              <span className="truncate">The Pigsty</span>
+            <Link to="/" className="flex min-w-0 items-center gap-0 font-bold text-gray-900">
+              <BrandLogo size="md" className="-mr-3 shrink-0 sm:-mr-4" />
+              <span className="truncate leading-none">The Pigsty</span>
             </Link>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <button
@@ -166,11 +138,14 @@ export default function LandingPage() {
                 {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
               </button>
               <nav className="hidden items-center gap-2 text-sm font-medium sm:flex sm:gap-3">
-                <a href="#template" className="text-gray-600 hover:text-primary-700">
-                  Free template
+                <a href="#about" className="text-gray-600 hover:text-primary-700">
+                  About
                 </a>
                 <a href="#pricing" className="text-gray-600 hover:text-primary-700">
                   Pricing
+                </a>
+                <a href="#contact" className="text-gray-600 hover:text-primary-700">
+                  Contact
                 </a>
                 {waUrl && (
                   <a
@@ -218,11 +193,11 @@ export default function LandingPage() {
               aria-label="Page sections"
             >
               <a
-                href="#template"
+                href="#about"
                 className="min-h-[44px] rounded-lg px-3 py-3 text-sm font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-800"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Free template
+                About
               </a>
               <a
                 href="#pricing"
@@ -230,6 +205,13 @@ export default function LandingPage() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Pricing
+              </a>
+              <a
+                href="#contact"
+                className="min-h-[44px] rounded-lg px-3 py-3 text-sm font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-800"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Contact
               </a>
               {waUrl && (
                 <a
@@ -268,7 +250,7 @@ export default function LandingPage() {
               <li className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
                 <span>
-                  <strong className="text-gray-800">Free up to 100 pigs</strong> per farm — no card required.
+                  <strong className="text-gray-800">Free up to 50 pigs</strong> per farm — no card required.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -286,17 +268,7 @@ export default function LandingPage() {
               >
                 Create your free account
               </Link>
-              <a
-                href="/api/public/import-template"
-                download
-                onClick={onDownloadTemplate}
-                className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-8 py-3.5 text-base font-semibold text-gray-800 hover:border-primary-200 sm:w-auto"
-              >
-                <Download className="size-5 shrink-0" aria-hidden />
-                Download free Excel template
-              </a>
             </div>
-            <p className="mt-4 text-sm text-gray-500">Same template works after you sign up.</p>
             <div className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-gray-100 pt-8 text-xs font-medium text-gray-500 sm:text-sm">
               <span className="inline-flex items-center gap-1.5">
                 <HeartHandshake className="size-4 text-primary-600" aria-hidden />
@@ -306,35 +278,6 @@ export default function LandingPage() {
                 <Globe className="size-4 text-primary-600" aria-hidden />
                 On-farm & abroad
               </span>
-            </div>
-          </div>
-        </section>
-
-        <section id="template" className="border-y border-primary-100 bg-primary-50/50 py-12 scroll-mt-24">
-          <div className="mx-auto max-w-6xl px-4 sm:flex sm:items-center sm:justify-between sm:gap-8">
-            <div className="max-w-xl">
-              <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">Start with our import template</h2>
-              <p className="mt-2 text-gray-600">
-                Download the file our app uses, fill it when it suits you, then upload after you register. No account needed to download.
-              </p>
-            </div>
-            <div className="mt-6 flex shrink-0 flex-col gap-3 sm:mt-0">
-              <a
-                href="/api/public/import-template"
-                download
-                onClick={onDownloadTemplate}
-                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-primary-600 px-6 py-3.5 font-semibold text-white shadow-md hover:bg-primary-700"
-              >
-                <Download className="size-5" aria-hidden />
-                Get the template (.xlsx)
-              </a>
-              <Link
-                to="/register"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-gray-200 bg-white px-6 py-3.5 font-semibold text-gray-800 hover:bg-gray-50"
-                onClick={() => track('cta_register_click', { placement: 'template_section' })}
-              >
-                Create free account →
-              </Link>
             </div>
           </div>
         </section>
@@ -356,6 +299,39 @@ export default function LandingPage() {
                 </li>
               ))}
             </ul>
+          </div>
+        </section>
+
+        <section
+          id="about"
+          className="scroll-mt-24 border-y border-primary-100/80 bg-gradient-to-b from-primary-50/50 via-white to-primary-50/30 py-14 sm:py-18"
+          aria-labelledby="about-heading"
+        >
+          <div className="mx-auto max-w-3xl px-safe">
+            <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
+              <span className="inline-flex items-center gap-2 rounded-full bg-primary-100/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-800">
+                <Heart className="size-3.5" aria-hidden />
+                Why we built this
+              </span>
+              <h2 id="about-heading" className="mt-4 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+                About The Pigsty
+              </h2>
+            </div>
+            <div className="mt-8 space-y-6 text-base leading-relaxed text-gray-700 sm:text-lg">
+              <p>
+                Starting this pig farming app wasn&apos;t just a business decision — it was born out of love, necessity, and the quiet ache of
+                distance. Being in the diaspora means carrying your roots in your chest while your hands are tied by miles and time zones,
+                always wondering if things back home are running smoothly without you there to see it yourself. I built this because I refused
+                to let distance mean disconnection. I needed a way to stay close to what matters, to keep my finger on the pulse of the farm
+                even from afar — to know that the animals are fed, the records are kept, and nothing falls through the cracks just because
+                I&apos;m not physically there. This app is my bridge between two worlds, a testament to the fact that you can hold onto home
+                with both hands, no matter how far away you are.
+              </p>
+              <p className="border-t border-gray-200/80 pt-6 text-gray-800">
+                I want to thank you for deciding to join the growing members. Whether it is for a free or paid. Each one of you is very
+                important to us at The Pigsty.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -391,6 +367,14 @@ export default function LandingPage() {
                   >
                     {t.cta}
                   </a>
+                ) : t.href.startsWith('#') ? (
+                  <a
+                    href={t.href}
+                    className="mt-6 block w-full min-h-[44px] rounded-xl border-2 border-gray-200 py-3 text-center text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                    onClick={() => track('cta_contact_click', { placement: `pricing_${t.name}` })}
+                  >
+                    {t.cta}
+                  </a>
                 ) : (
                   <Link
                     to={t.href}
@@ -407,60 +391,42 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="lead" className="border-t border-gray-100 bg-primary-600 py-14 text-white scroll-mt-24">
-          <div className="mx-auto max-w-xl px-4 text-center">
-            <h2 className="text-2xl font-bold">Questions?</h2>
-            <p className="mt-2 text-primary-100">Leave your email for updates, or say where you farm and herd size.</p>
-            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <section
+          id="contact"
+          className="scroll-mt-24 border-t border-gray-100 bg-primary-600 py-14 text-white"
+          aria-labelledby="contact-heading"
+        >
+          <div className="mx-auto max-w-xl px-4">
+            <h2 id="contact-heading" className="text-center text-2xl font-bold">
+              Contact us
+            </h2>
+            <p className="mt-2 text-center text-primary-100">
+              First name, last name, and email are required. Everything else is optional. Messages go to our team at{' '}
+              <span className="font-medium text-white">{siteConfig.supportEmail}</span>.
+            </p>
+            <div className="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
               {waUrl && (
                 <a
                   href={waUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 font-semibold text-emerald-700 hover:bg-emerald-50 sm:w-auto"
-                  onClick={() => track('whatsapp_click', { placement: 'lead_section' })}
+                  onClick={() => track('whatsapp_click', { placement: 'contact_section' })}
                 >
                   <MessageCircle className="size-5" aria-hidden />
                   Chat on WhatsApp
                 </a>
               )}
-              {siteConfig.supportEmail && (
-                <a
-                  href={mailtoSupport('The Pigsty — question from website', '') ?? '#'}
-                  className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl border border-white/40 px-6 py-3 font-semibold text-white hover:bg-white/10 sm:w-auto"
-                >
-                  Email {siteConfig.supportEmail}
-                </a>
-              )}
-            </div>
-            <form onSubmit={submitLead} className="mt-8 space-y-3 text-left">
-              <input
-                type="email"
-                required
-                value={leadEmail}
-                onChange={(e) => setLeadEmail(e.target.value)}
-                placeholder="your.email@example.com"
-                className="w-full rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-white placeholder:text-primary-200 outline-none focus:ring-2 focus:ring-white"
-              />
-              <textarea
-                value={leadMsg}
-                onChange={(e) => setLeadMsg(e.target.value)}
-                placeholder="Optional: country, herd size, or how you keep pigs today"
-                rows={3}
-                className="w-full rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-white placeholder:text-primary-200 outline-none focus:ring-2 focus:ring-white"
-              />
-              <button
-                type="submit"
-                disabled={leadStatus === 'sending'}
-                className="w-full min-h-[48px] rounded-xl bg-white py-3 font-semibold text-primary-700 hover:bg-primary-50 disabled:opacity-60"
+              <a
+                href={mailtoSupport('The Pigsty — question from website', '')}
+                className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl border border-white/40 px-6 py-3 font-semibold text-white hover:bg-white/10 sm:w-auto"
               >
-                {leadStatus === 'sending' ? 'Sending…' : 'Send'}
-              </button>
-              {leadStatus === 'ok' && <p className="text-center text-sm text-primary-100">Thank you — we’ll be in touch.</p>}
-              {leadStatus === 'err' && (
-                <p className="text-center text-sm text-amber-200">Something went wrong. Try again or use WhatsApp / email above.</p>
-              )}
-            </form>
+                Open email
+              </a>
+            </div>
+            <div className="mt-8">
+              <ContactForm variant="landing" onSubmitted={() => track('contact_submit', { source: 'landing' })} />
+            </div>
           </div>
         </section>
       </main>
@@ -477,6 +443,9 @@ export default function LandingPage() {
             </Link>
             <Link to="/login" className="hover:text-primary-700">
               Sign in
+            </Link>
+            <Link to="/#contact" className="hover:text-primary-700">
+              Contact
             </Link>
             {waUrl && (
               <a href={waUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary-700">

@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "overrides": {
+    "serialize-javascript": "7.0.5"
+  },
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc -b",

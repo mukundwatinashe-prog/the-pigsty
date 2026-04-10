@@ -6,6 +6,7 @@ import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { FarmPlan } from '@prisma/client';
 import { FREE_TIER_MAX_PIGS, pigLimitForPlan } from '../config/planLimits';
+import { onHandPigsWhere } from '../lib/pigStock';
 
 function stripeClient(): Stripe | null {
   if (!env.STRIPE_SECRET_KEY) return null;
@@ -17,11 +18,10 @@ export class BillingController {
     try {
       const farm = await prisma.farm.findUnique({
         where: { id: req.farmId! },
-        include: { _count: { select: { pigs: true } } },
       });
       if (!farm || farm.isDeleted) return next(new AppError('Farm not found', 404));
 
-      const pigCount = farm._count.pigs;
+      const pigCount = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
       const limit = pigLimitForPlan(farm.plan);
 
       res.json({

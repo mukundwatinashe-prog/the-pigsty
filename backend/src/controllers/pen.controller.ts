@@ -4,6 +4,7 @@ import prisma from '../config/database';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
+import { pigOnStockOnlyWhere } from '../lib/pigStock';
 
 const penSchema = z.object({
   name: z.string().min(1).max(100),
@@ -12,11 +13,53 @@ const penSchema = z.object({
 });
 
 export class PenController {
+  static async getById(req: FarmRequest, res: Response, next: NextFunction) {
+    try {
+      const penId = req.params.penId as string;
+      const pen = await prisma.pen.findFirst({
+        where: { id: penId, farmId: req.farmId! },
+        include: {
+          _count: {
+            select: {
+              pigs: { where: pigOnStockOnlyWhere },
+            },
+          },
+          pigs: {
+            where: pigOnStockOnlyWhere,
+            orderBy: { tagNumber: 'asc' },
+            select: {
+              id: true,
+              tagNumber: true,
+              name: true,
+              breed: true,
+              stage: true,
+              currentWeight: true,
+              status: true,
+              healthStatus: true,
+              acquisitionDate: true,
+              dateOfBirth: true,
+            },
+          },
+        },
+      });
+      if (!pen) return next(new AppError('Pen not found', 404));
+      res.json(pen);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async list(req: FarmRequest, res: Response, next: NextFunction) {
     try {
       const pens = await prisma.pen.findMany({
         where: { farmId: req.farmId! },
-        include: { _count: { select: { pigs: true } } },
+        include: {
+          _count: {
+            select: {
+              pigs: { where: pigOnStockOnlyWhere },
+            },
+          },
+        },
         orderBy: { name: 'asc' },
       });
       res.json(pens);
@@ -30,7 +73,13 @@ export class PenController {
       const data = penSchema.parse(req.body);
       const pen = await prisma.pen.create({
         data: { ...data, farmId: req.farmId! },
-        include: { _count: { select: { pigs: true } } },
+        include: {
+          _count: {
+            select: {
+              pigs: { where: pigOnStockOnlyWhere },
+            },
+          },
+        },
       });
       await AuditService.log({
         userId: req.userId!, farmId: req.farmId!,
@@ -51,7 +100,13 @@ export class PenController {
       const pen = await prisma.pen.update({
         where: { id: penId },
         data,
-        include: { _count: { select: { pigs: true } } },
+        include: {
+          _count: {
+            select: {
+              pigs: { where: pigOnStockOnlyWhere },
+            },
+          },
+        },
       });
       await AuditService.log({
         userId: req.userId!, farmId: req.farmId!,

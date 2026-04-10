@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { FeedLowStockNotifier } from '../FeedLowStockNotifier';
 import Sidebar from './Sidebar';
 
 export default function AppLayout() {
   const { user, loading } = useAuth();
+  const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
@@ -33,8 +35,12 @@ export default function AppLayout() {
 
   if (!user) return <Navigate to="/login" replace />;
 
+  const needsPhone = !user.phone?.trim() && location.pathname !== '/complete-profile';
+  if (needsPhone) return <Navigate to="/complete-profile" replace />;
+
   return (
     <div className="min-h-screen bg-accent-50">
+      <FeedLowStockNotifier />
       <button
         type="button"
         className="fixed left-[max(0.75rem,env(safe-area-inset-left))] top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex h-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm md:hidden"

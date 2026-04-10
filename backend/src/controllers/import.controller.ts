@@ -6,9 +6,10 @@ import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
 import { FREE_TIER_MAX_PIGS, wouldExceedFreeTier } from '../config/planLimits';
+import { onHandPigsWhere } from '../lib/pigStock';
 
 const BREEDS = ['LARGE_WHITE', 'LANDRACE', 'DUROC', 'PIETRAIN', 'BERKSHIRE', 'HAMPSHIRE', 'CHESTER_WHITE', 'YORKSHIRE', 'TAMWORTH', 'MUKOTA', 'KOLBROEK', 'WINDSNYER', 'SA_LANDRACE', 'INDIGENOUS', 'CROSSBREED', 'OTHER'];
-const STAGES = ['BOAR', 'SOW', 'GILT', 'WEANER', 'PIGLET', 'PORKER'];
+const STAGES = ['BOAR', 'SOW', 'GILT', 'WEANER', 'PIGLET', 'PORKER', 'GROWER', 'FINISHER'];
 const STATUSES = ['ACTIVE', 'SOLD', 'DECEASED', 'QUARANTINE'];
 const HEALTH = ['HEALTHY', 'SICK', 'UNDER_TREATMENT', 'RECOVERED'];
 
@@ -31,8 +32,14 @@ const BREED_MAP: Record<string, string> = {
 };
 
 const STAGE_MAP: Record<string, string> = {
-  'boar': 'BOAR', 'sow': 'SOW', 'gilt': 'GILT',
-  'weaner': 'WEANER', 'piglet': 'PIGLET', 'porker': 'PORKER',
+  boar: 'BOAR',
+  sow: 'SOW',
+  gilt: 'GILT',
+  weaner: 'WEANER',
+  piglet: 'PIGLET',
+  porker: 'PORKER',
+  grower: 'GROWER',
+  finisher: 'FINISHER',
 };
 
 function normalizeEnum(value: string, allowed: string[], map?: Record<string, string>): string | null {
@@ -169,6 +176,7 @@ export async function createPigImportTemplateBuffer(): Promise<Buffer> {
         [`Allowed Status: ${statusValues.join(', ')}`],
         [`Allowed Health Status: ${healthValues.join(', ')}`],
         ['Serviced: Yes or No (for sows that have been mated)'],
+        ['Weaned Date: optional — for weaners/gilts, to track return-to-heat window'],
         [''],
         ['Maximum 5,000 records per file'],
       ];
@@ -183,7 +191,7 @@ export async function createPigImportTemplateBuffer(): Promise<Buffer> {
         'Tag Number', 'Breed / Type', 'Stage',
         'Date of Birth', 'Acquisition Date', 'Entry Weight (kg)',
         'Pen / Location', 'Status', 'Health Status',
-        'Serviced', 'Serviced Date',
+        'Serviced', 'Serviced Date', 'Weaned Date',
         'Mother Tag (Dam)', 'Father Tag (Sire)',
         'Vaccination 1 Name', 'Vaccination 1 Date',
         'Vaccination 2 Name', 'Vaccination 2 Date', 'Notes',
@@ -201,7 +209,7 @@ export async function createPigImportTemplateBuffer(): Promise<Buffer> {
         'PIG-001', 'Large White', 'Sow',
         '15/01/2025', '20/01/2025', 25.5,
         'Pen A', 'Active', 'Healthy',
-        'Yes', '01/02/2025',
+        'Yes', '01/02/2025', '',
         '', '', 'PRRS', '25/01/2025', '', '', 'Healthy sow',
       ]);
       exampleRow.font = { italic: true, color: { argb: 'FF888888' } };
@@ -229,7 +237,7 @@ export async function createPigImportTemplateBuffer(): Promise<Buffer> {
       exampleRow.eachCell(cell => { cell.protection = { locked: true }; });
 
       // Column widths
-      const widths = [14, 18, 12, 14, 16, 16, 16, 12, 16, 10, 14, 16, 16, 20, 16, 20, 16, 30];
+      const widths = [14, 18, 12, 14, 16, 16, 16, 12, 16, 10, 14, 14, 16, 16, 20, 16, 20, 16, 30];
       widths.forEach((w, i) => { dataSheet.getColumn(i + 1).width = w; });
 
       // Data validation dropdowns (rows 3–5001, user data starts at row 3)
@@ -403,6 +411,10 @@ export class ImportController {
         const servicedRaw = String(row['Serviced'] || '').trim().toLowerCase();
         const serviced = servicedRaw === 'yes' || servicedRaw === 'true' || servicedRaw === '1';
         const servicedDate = parseDate(row['Serviced Date']);
+        const weanedDate = parseDate(row['Weaned Date']);
+        if (row['Weaned Date'] && !weanedDate) {
+          errors.push({ row: rowNum, field: 'Weaned Date', message: 'Invalid date' });
+        }
 
         if (penName && !isValidPenName(penName)) {
           errors.push({
@@ -426,6 +438,7 @@ export class ImportController {
             healthStatus: health || healthRaw,
             serviced,
             servicedDate: servicedDate?.toISOString() || null,
+            weanedDate: weanedDate?.toISOString() || null,
             damTag: row['Mother Tag (Dam)'] || null,
             sireTag: row['Father Tag (Sire)'] || null,
             vax1Name: row['Vaccination 1 Name'] || null,
@@ -466,7 +479,7 @@ export class ImportController {
         select: { plan: true },
       });
       if (!farmRec) return next(new AppError('Farm not found', 404));
-      const currentPigs = await prisma.pig.count({ where: { farmId: req.farmId! } });
+      const currentPigs = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
       if (wouldExceedFreeTier(currentPigs, validRows.length, farmRec.plan)) {
         return next(
           new AppError(
@@ -551,6 +564,7 @@ export class ImportController {
               healthStatus: d.healthStatus,
               serviced: d.serviced || false,
               servicedDate: d.servicedDate ? new Date(d.servicedDate) : null,
+              weanedDate: d.weanedDate ? new Date(d.weanedDate) : null,
               penId: penKey ? penMap.get(penKey) ?? null : null,
               damId: d.damTag ? tagMap.get(String(d.damTag).trim()) || null : null,
               sireId: d.sireTag ? tagMap.get(String(d.sireTag).trim()) || null : null,

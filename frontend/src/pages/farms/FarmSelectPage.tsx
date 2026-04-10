@@ -135,6 +135,10 @@ export default function FarmSelectPage() {
     return <Navigate to="/login" replace />;
   }
 
+  if (!user.phone?.trim()) {
+    return <Navigate to="/complete-profile" replace />;
+  }
+
   const list: FarmWithRole[] = farms ?? [];
 
   return (
@@ -142,9 +146,9 @@ export default function FarmSelectPage() {
       <div className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
         <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-3 flex items-center gap-3">
-              <BrandLogo size="lg" />
-              <div>
+            <div className="mb-3 flex items-center gap-0">
+              <BrandLogo size="lg" className="-mr-3 shrink-0 sm:-mr-4" />
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-primary-700">The Pigsty</p>
                 <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Your farms</h1>
               </div>

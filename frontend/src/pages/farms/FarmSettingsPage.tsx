@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,12 +18,48 @@ import {
   UserPlus,
   Users,
   X,
+  Wheat,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFarm } from '../../context/FarmContext';
 import { FARM_CURRENCY_OPTIONS, isFarmCurrency, type FarmCurrencyCode } from '../../constants/farmCurrencies';
 import { farmService } from '../../services/farm.service';
-import type { Farm, FarmMember, Role } from '../../types';
+import type { Farm, FarmMember, FeedType, Role } from '../../types';
+import { FEED_TYPE_LABELS } from '../../lib/feedUnits';
+
+function parseDefaultBucketsFromFarm(farm: Farm | undefined) {
+  const d = farm?.feedDefaultDailyBuckets;
+  const n = (k: FeedType) => {
+    const v = d?.[k];
+    if (typeof v === 'number' && !Number.isNaN(v)) return v;
+    return 0;
+  };
+  return {
+    defaultMaizeBuckets: n('MAIZE_CRECHE'),
+    defaultSoyaBuckets: n('SOYA'),
+    defaultPremixBuckets: n('PREMIX'),
+    defaultConcentrateBuckets: n('CONCENTRATE'),
+    defaultLactatingBuckets: n('LACTATING'),
+    defaultWeanerBuckets: n('WEANER'),
+  };
+}
+
+function parseFeedPurchasePricesFromFarm(farm: Farm | undefined) {
+  const d = farm?.feedPurchasePrices;
+  const n = (k: FeedType) => {
+    const v = d?.[k];
+    if (typeof v === 'number' && !Number.isNaN(v)) return v;
+    return 0;
+  };
+  return {
+    feedPriceMaize: n('MAIZE_CRECHE'),
+    feedPriceSoya: n('SOYA'),
+    feedPricePremix: n('PREMIX'),
+    feedPriceConcentrate: n('CONCENTRATE'),
+    feedPriceLactating: n('LACTATING'),
+    feedPriceWeaner: n('WEANER'),
+  };
+}
 
 const INVITE_ROLES: Role[] = ['FARM_MANAGER', 'WORKER'];
 
@@ -37,6 +73,21 @@ const settingsSchema = z.object({
   timezone: z.string().min(1),
   weightUnit: z.enum(['kg', 'lb']),
   pricePerKg: z.number().min(0, 'Must be 0 or more'),
+  /** Alert when any feed type stock (kg) falls at or below this level */
+  feedLowStockThresholdKg: z.number().min(0, 'Must be 0 or more'),
+  defaultMaizeBuckets: z.number().min(0, 'Must be 0 or more'),
+  defaultSoyaBuckets: z.number().min(0, 'Must be 0 or more'),
+  defaultPremixBuckets: z.number().min(0, 'Must be 0 or more'),
+  defaultConcentrateBuckets: z.number().min(0, 'Must be 0 or more'),
+  defaultLactatingBuckets: z.number().min(0, 'Must be 0 or more'),
+  defaultWeanerBuckets: z.number().min(0, 'Must be 0 or more'),
+  feedPurchasePriceUnit: z.enum(['KG', 'TONNE']),
+  feedPriceMaize: z.number().min(0, 'Must be 0 or more'),
+  feedPriceSoya: z.number().min(0, 'Must be 0 or more'),
+  feedPricePremix: z.number().min(0, 'Must be 0 or more'),
+  feedPriceConcentrate: z.number().min(0, 'Must be 0 or more'),
+  feedPriceLactating: z.number().min(0, 'Must be 0 or more'),
+  feedPriceWeaner: z.number().min(0, 'Must be 0 or more'),
 });
 
 type SettingsForm = z.infer<typeof settingsSchema>;
@@ -109,12 +160,31 @@ export default function FarmSettingsPage() {
       timezone: 'UTC',
       weightUnit: 'kg',
       pricePerKg: 3.3,
+      feedLowStockThresholdKg: 50,
+      defaultMaizeBuckets: 0,
+      defaultSoyaBuckets: 0,
+      defaultPremixBuckets: 0,
+      defaultConcentrateBuckets: 0,
+      defaultLactatingBuckets: 0,
+      defaultWeanerBuckets: 0,
+      feedPurchasePriceUnit: 'KG',
+      feedPriceMaize: 0,
+      feedPriceSoya: 0,
+      feedPricePremix: 0,
+      feedPriceConcentrate: 0,
+      feedPriceLactating: 0,
+      feedPriceWeaner: 0,
     },
   });
-  const { reset: resetSettings } = settingsForm;
+  const { reset: resetSettings, control: settingsControl } = settingsForm;
+  const weightUnitWatch = useWatch({ control: settingsControl, name: 'weightUnit' });
+  const currencyWatch = useWatch({ control: settingsControl, name: 'currency' });
+  const feedPurchaseUnitWatch = useWatch({ control: settingsControl, name: 'feedPurchasePriceUnit' });
 
+  /* Reset editor state when the farm query result updates (e.g. after save or refetch). */
   useEffect(() => {
     if (!farm) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync from server record
     setLogoDataUrl(farm.logoUrl ?? null);
     resetSettings({
       name: farm.name,
@@ -124,6 +194,13 @@ export default function FarmSettingsPage() {
       timezone: farm.timezone,
       weightUnit: farm.weightUnit as SettingsForm['weightUnit'],
       pricePerKg: Number(farm.pricePerKg) || 3.3,
+      feedLowStockThresholdKg:
+        farm.feedLowStockThresholdKg != null && !Number.isNaN(Number(farm.feedLowStockThresholdKg))
+          ? Number(farm.feedLowStockThresholdKg)
+          : 50,
+      ...parseDefaultBucketsFromFarm(farm),
+      feedPurchasePriceUnit: farm.feedPurchasePriceUnit === 'TONNE' ? 'TONNE' : 'KG',
+      ...parseFeedPurchasePricesFromFarm(farm),
     });
   }, [farm, resetSettings]);
 
@@ -133,18 +210,70 @@ export default function FarmSettingsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: SettingsForm) => farmService.update(farmId!, { ...data, logoUrl: logoDataUrl }),
+    mutationFn: (data: SettingsForm) => {
+      const {
+        defaultMaizeBuckets,
+        defaultSoyaBuckets,
+        defaultPremixBuckets,
+        defaultConcentrateBuckets,
+        defaultLactatingBuckets,
+        defaultWeanerBuckets,
+        feedPriceMaize,
+        feedPriceSoya,
+        feedPricePremix,
+        feedPriceConcentrate,
+        feedPriceLactating,
+        feedPriceWeaner,
+        ...rest
+      } = data;
+      return farmService.update(farmId!, {
+        ...rest,
+        feedDefaultDailyBuckets: {
+          MAIZE_CRECHE: defaultMaizeBuckets,
+          SOYA: defaultSoyaBuckets,
+          PREMIX: defaultPremixBuckets,
+          CONCENTRATE: defaultConcentrateBuckets,
+          LACTATING: defaultLactatingBuckets,
+          WEANER: defaultWeanerBuckets,
+        },
+        feedPurchasePrices: {
+          MAIZE_CRECHE: feedPriceMaize,
+          SOYA: feedPriceSoya,
+          PREMIX: feedPricePremix,
+          CONCENTRATE: feedPriceConcentrate,
+          LACTATING: feedPriceLactating,
+          WEANER: feedPriceWeaner,
+        },
+        logoUrl: logoDataUrl,
+      });
+    },
     onSuccess: updated => {
       queryClient.invalidateQueries({ queryKey: ['farm', farmId] });
       queryClient.invalidateQueries({ queryKey: ['farm-dashboard', farmId] });
       queryClient.invalidateQueries({ queryKey: ['farm-billing', farmId] });
       queryClient.invalidateQueries({ queryKey: ['farms'] });
+      queryClient.invalidateQueries({ queryKey: ['feed-summary', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['feed-daily', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['farm-financials', farmId] });
       setCurrentFarm((prev: Farm | null) => {
         if (!prev || prev.id !== updated.id) return prev;
         return {
           ...prev,
           ...updated,
           pricePerKg: Number(updated.pricePerKg),
+          feedLowStockThresholdKg:
+            updated.feedLowStockThresholdKg != null && !Number.isNaN(Number(updated.feedLowStockThresholdKg))
+              ? Number(updated.feedLowStockThresholdKg)
+              : undefined,
+          feedDefaultDailyBuckets:
+            updated.feedDefaultDailyBuckets != null && typeof updated.feedDefaultDailyBuckets === 'object'
+              ? (updated.feedDefaultDailyBuckets as Farm['feedDefaultDailyBuckets'])
+              : undefined,
+          feedPurchasePriceUnit: updated.feedPurchasePriceUnit === 'TONNE' ? 'TONNE' : 'KG',
+          feedPurchasePrices:
+            updated.feedPurchasePrices != null && typeof updated.feedPurchasePrices === 'object'
+              ? (updated.feedPurchasePrices as Farm['feedPurchasePrices'])
+              : undefined,
         };
       });
       toast.success('Farm settings saved');
@@ -457,11 +586,11 @@ export default function FarmSettingsPage() {
           </div>
           <div>
             <label htmlFor="settings-ppkg" className="block text-sm font-medium text-gray-700">
-              Sale price per {settingsForm.watch('weightUnit') || 'kg'}
+              Sale price per {weightUnitWatch || 'kg'}
             </label>
             <div className="relative mt-1.5">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500 tabular-nums">
-                {settingsForm.watch('currency') || 'USD'}
+                {currencyWatch || 'USD'}
               </span>
               <input
                 id="settings-ppkg"
@@ -476,6 +605,141 @@ export default function FarmSettingsPage() {
               <p className="mt-1 text-xs text-red-600">{settingsForm.formState.errors.pricePerKg.message}</p>
             )}
             <p className="mt-1 text-xs text-gray-400">Used to auto-calculate sale prices</p>
+          </div>
+          <div className="sm:col-span-2 rounded-xl border border-amber-200/80 bg-amber-50/90 p-4">
+            <div className="flex flex-wrap items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+                <Wheat className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <label htmlFor="settings-feed-low" className="block text-sm font-medium text-gray-900">
+                  Low feed stock threshold (kg)
+                </label>
+                <p className="mt-0.5 text-xs text-gray-600">
+                  When any feed type&apos;s on-hand stock falls to or below this amount, you&apos;ll see an in-app alert (once per browser session per farm).
+                </p>
+                <input
+                  id="settings-feed-low"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  {...settingsForm.register('feedLowStockThresholdKg', { valueAsNumber: true })}
+                  className="mt-2 w-full max-w-xs rounded-lg border border-amber-200/80 bg-white px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                />
+                {settingsForm.formState.errors.feedLowStockThresholdKg && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {settingsForm.formState.errors.feedLowStockThresholdKg.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="sm:col-span-2 rounded-xl border border-sky-200/80 bg-sky-50/80 p-4">
+            <div className="mb-3 flex flex-wrap items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-800">
+                <Wheat className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-gray-900">Feed purchase prices</h3>
+                <p className="mt-0.5 text-xs text-gray-600">
+                  When someone logs a feed purchase, the app multiplies <strong className="font-medium text-gray-800">quantity (kg)</strong> by these
+                  rates to set the cost (same figures flow into Financials). This is separate from the pig <strong>sale</strong> price per kg above.
+                </p>
+                <fieldset className="mt-3 space-y-2">
+                  <legend className="sr-only">Price unit</legend>
+                  <p className="text-xs font-medium text-gray-700">Your prices are entered as:</p>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-800">
+                      <input
+                        type="radio"
+                        value="KG"
+                        {...settingsForm.register('feedPurchasePriceUnit')}
+                        className="text-primary-600 focus:ring-primary-500"
+                      />
+                      Per kg
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-800">
+                      <input
+                        type="radio"
+                        value="TONNE"
+                        {...settingsForm.register('feedPurchasePriceUnit')}
+                        className="text-primary-600 focus:ring-primary-500"
+                      />
+                      Per metric tonne (1000 kg)
+                    </label>
+                  </div>
+                </fieldset>
+                <p className="mt-2 text-xs text-gray-500">
+                  All amounts below are in <span className="font-medium text-gray-700">{currencyWatch || 'USD'}</span>,{' '}
+                  {feedPurchaseUnitWatch === 'TONNE' ? 'per tonne' : 'per kilogram'}.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(
+                    [
+                      ['feedPriceMaize', 'MAIZE_CRECHE'],
+                      ['feedPriceSoya', 'SOYA'],
+                      ['feedPricePremix', 'PREMIX'],
+                      ['feedPriceConcentrate', 'CONCENTRATE'],
+                      ['feedPriceLactating', 'LACTATING'],
+                      ['feedPriceWeaner', 'WEANER'],
+                    ] as const
+                  ).map(([field, ft]) => (
+                    <div key={field}>
+                      <label className="block text-xs font-medium text-gray-700">{FEED_TYPE_LABELS[ft]}</label>
+                      <div className="relative mt-1">
+                        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-gray-500">
+                          {currencyWatch || 'USD'}
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          {...settingsForm.register(field, { valueAsNumber: true })}
+                          className="w-full rounded-lg border border-sky-200/80 bg-white py-2 pl-12 pr-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                        />
+                      </div>
+                      {settingsForm.formState.errors[field] && (
+                        <p className="mt-0.5 text-xs text-red-600">
+                          {(settingsForm.formState.errors[field] as { message?: string })?.message}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="sm:col-span-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-gray-900">Default daily feed usage (buckets)</h3>
+              <p className="mt-0.5 text-xs text-gray-600">
+                50 kg = 3 buckets. These values pre-fill <strong className="font-medium text-gray-800">Feed → Log daily feed</strong> when there is
+                no entry yet for that date.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {(
+                [
+                  ['defaultMaizeBuckets', 'MAIZE_CRECHE'],
+                  ['defaultSoyaBuckets', 'SOYA'],
+                  ['defaultPremixBuckets', 'PREMIX'],
+                  ['defaultConcentrateBuckets', 'CONCENTRATE'],
+                  ['defaultLactatingBuckets', 'LACTATING'],
+                  ['defaultWeanerBuckets', 'WEANER'],
+                ] as const
+              ).map(([field, ft]) => (
+                <div key={field}>
+                  <label className="block text-xs font-medium text-gray-700">{FEED_TYPE_LABELS[ft]}</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    {...settingsForm.register(field, { valueAsNumber: true })}
+                    className="mt-1 w-full rounded-lg border border-emerald-200/80 bg-white px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="settings-tz" className="block text-sm font-medium text-gray-700">

@@ -16,24 +16,11 @@ import {
 } from 'lucide-react';
 import { useFarm } from '../../context/FarmContext';
 import { track } from '../../lib/analytics';
-import { pigService } from '../../services/pig.service';
+import { pigService, type ConfirmImportResponse } from '../../services/pig.service';
 import { farmService } from '../../services/farm.service';
 import type { ImportPreviewRow } from '../../types';
 
 type Step = 1 | 2 | 3;
-
-interface ValidateImportResponse {
-  total: number;
-  valid: number;
-  errors: number;
-  preview: ImportPreviewRow[];
-}
-
-interface ConfirmImportResponse {
-  imported: number;
-  total: number;
-  errors: number;
-}
 
 function StepIndicator({ current }: { current: Step }) {
   const steps = [
@@ -108,7 +95,7 @@ export default function PigImportPage() {
   });
 
   const { mutate: runValidate, isPending: isValidating } = useMutation({
-    mutationFn: (file: File) => pigService.validateImport(farmId!, file) as Promise<ValidateImportResponse>,
+    mutationFn: (file: File) => pigService.validateImport(farmId!, file),
     onSuccess: (data) => {
       setPreviewRows(data.preview ?? []);
       setValidateMeta({ total: data.total, valid: data.valid, errors: data.errors });
@@ -121,7 +108,7 @@ export default function PigImportPage() {
   });
 
   const confirmMutation = useMutation({
-    mutationFn: () => pigService.confirmImport(farmId!, previewRows) as Promise<ConfirmImportResponse>,
+    mutationFn: () => pigService.confirmImport(farmId!, previewRows),
     onSuccess: (data) => {
       setImportSummary(data);
       if (data.imported > 0) track('import_completed', { imported: data.imported });

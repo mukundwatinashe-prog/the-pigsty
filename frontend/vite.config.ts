@@ -15,13 +15,13 @@ export default defineConfig({
       registerType: 'autoUpdate',
       /** Do not register a service worker during `vite dev` (avoids confusing stale caches). */
       devOptions: { enabled: false },
-      includeAssets: ['favicon.ico'],
+      includeAssets: ['logo.png', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'The Pigsty',
         short_name: 'Pigsty',
         description: 'Smart Farm Management Platform',
-        theme_color: '#d4693d',
-        background_color: '#f7f7f6',
+        theme_color: '#143109',
+        background_color: '#f7f7f7',
         display: 'standalone',
         scope: '/',
         start_url: '/',
@@ -46,6 +46,13 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    /** Keeps dev URL stable so repo-root `open-app.html` matches; free 5173 or stop the other process. */
+    strictPort: true,
+    /**
+     * Bind IPv4 loopback explicitly so http://127.0.0.1:5173 matches the dev server (avoids ::1-only listen).
+     * Avoid `host: true` here: it enumerates all interfaces and can throw ERR_SYSTEM_ERROR in some environments.
+     */
+    host: '127.0.0.1',
     proxy: {
       '/api': {
         target: apiTarget,

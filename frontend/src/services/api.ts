@@ -67,7 +67,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch {
         const path = window.location.pathname;
-        const publicAuth = ['/login', '/register', '/forgot-password'].some(
+        const publicAuth = ['/login', '/register', '/forgot-password', '/reset-password'].some(
           (p) => path === p || path.startsWith(`${p}/`),
         );
         if (!publicAuth) window.location.href = '/login';

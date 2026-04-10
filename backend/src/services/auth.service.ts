@@ -4,24 +4,49 @@ import crypto from 'crypto';
 import prisma from '../config/database';
 import { env } from '../config/env';
 import { AppError } from '../middleware/error.middleware';
+import { normalizePhone } from '../lib/phone';
+import { notifyNewUserSignup } from './signupNotify.service';
+import { sendPasswordResetCodeEmail, sendPasswordResetCodeSms } from './passwordResetDelivery.service';
 
 export class AuthService {
-  static async register(name: string, email: string, password: string) {
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) throw new AppError('Email already registered', 400);
+  static async register(name: string, email: string, password: string, phone: string) {
+    const emailNorm = email.trim().toLowerCase();
+    const phoneNormalized = normalizePhone(phone);
+    if (!phoneNormalized) {
+      throw new AppError('Enter a valid phone number (8–15 digits, include country code if needed)', 400);
+    }
+
+    const existingEmail = await prisma.user.findUnique({ where: { email: emailNorm } });
+    if (existingEmail) throw new AppError('Email already registered', 400);
+
+    const existingPhone = await prisma.user.findUnique({ where: { phoneNormalized } });
+    if (existingPhone) throw new AppError('Phone number already registered', 400);
 
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
-      data: { name, email, passwordHash },
+      data: {
+        name,
+        email: emailNorm,
+        passwordHash,
+        phone: phone.trim(),
+        phoneNormalized,
+      },
       select: { id: true, email: true, name: true, phone: true, photo: true, createdAt: true },
     });
+
+    void notifyNewUserSignup({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      method: 'password',
+    }).catch((err) => console.error('[signup] notify failed:', err));
 
     const tokens = await this.generateTokens(user.id);
     return { user, ...tokens };
   }
 
   static async login(email: string, password: string) {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
     if (!user || !user.passwordHash) throw new AppError('Invalid email or password', 401);
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -33,10 +58,12 @@ export class AuthService {
   }
 
   static async googleAuth(googleId: string, email: string, name: string, photo?: string) {
+    const emailNorm = email.trim().toLowerCase();
     let user = await prisma.user.findUnique({ where: { googleId } });
+    let createdNewUser = false;
 
     if (!user) {
-      user = await prisma.user.findUnique({ where: { email } });
+      user = await prisma.user.findUnique({ where: { email: emailNorm } });
       if (user) {
         user = await prisma.user.update({
           where: { id: user.id },
@@ -44,9 +71,19 @@ export class AuthService {
         });
       } else {
         user = await prisma.user.create({
-          data: { email, name, googleId, photo },
+          data: { email: emailNorm, name, googleId, photo },
         });
+        createdNewUser = true;
       }
+    }
+
+    if (createdNewUser) {
+      void notifyNewUserSignup({
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        method: 'google',
+      }).catch((err) => console.error('[signup] notify failed:', err));
     }
 
     const tokens = await this.generateTokens(user.id);
@@ -70,6 +107,11 @@ export class AuthService {
       throw new AppError('Invalid or expired refresh token', 401);
     }
 
+    if (stored.token.startsWith('pwdotp_') || stored.token.startsWith('reset_')) {
+      await prisma.refreshToken.delete({ where: { id: stored.id } });
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
+
     await prisma.refreshToken.delete({ where: { id: stored.id } });
     const tokens = await this.generateTokens(stored.userId);
     return tokens;
@@ -79,8 +121,13 @@ export class AuthService {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true, email: true, name: true, phone: true, photo: true,
-        mfaEnabled: true, createdAt: true,
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        photo: true,
+        mfaEnabled: true,
+        createdAt: true,
         farmMemberships: {
           include: { farm: { select: { id: true, name: true, country: true } } },
         },
@@ -94,60 +141,144 @@ export class AuthService {
     userId: string,
     data: { name?: string; phone?: string | null; photo?: string | null },
   ) {
+    const updateData: {
+      name?: string;
+      phone?: string | null;
+      phoneNormalized?: string | null;
+      photo?: string | null;
+    } = {};
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.photo !== undefined) updateData.photo = data.photo;
+
+    if (data.phone !== undefined) {
+      if (data.phone === null || data.phone.trim() === '') {
+        updateData.phone = null;
+        updateData.phoneNormalized = null;
+      } else {
+        const phoneNormalized = normalizePhone(data.phone);
+        if (!phoneNormalized) {
+          throw new AppError('Enter a valid phone number (8–15 digits)', 400);
+        }
+        const clash = await prisma.user.findFirst({
+          where: { phoneNormalized, id: { not: userId } },
+        });
+        if (clash) throw new AppError('Phone number already in use', 400);
+        updateData.phone = data.phone.trim();
+        updateData.phoneNormalized = phoneNormalized;
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
-      data,
+      data: updateData,
       select: { id: true, email: true, name: true, phone: true, photo: true, createdAt: true },
     });
     return user;
   }
 
-  static async forgotPassword(email: string) {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return; // Don't reveal whether email exists
+  /** Request 6-digit code via email or SMS (never reveals whether account exists). */
+  static async forgotPassword(params: { email?: string; phone?: string }) {
+    let user: { id: string; email: string; phone: string | null; passwordHash: string | null } | null = null;
+    let smsDigits: string | null = null;
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetHash = await bcrypt.hash(resetToken, 10);
+    if (params.email) {
+      user = await prisma.user.findUnique({
+        where: { email: params.email.trim().toLowerCase() },
+        select: { id: true, email: true, phone: true, passwordHash: true },
+      });
+    } else if (params.phone) {
+      const pn = normalizePhone(params.phone);
+      if (!pn) return;
+      smsDigits = pn;
+      user = await prisma.user.findUnique({
+        where: { phoneNormalized: pn },
+        select: { id: true, email: true, phone: true, passwordHash: true },
+      });
+    }
 
-    await prisma.refreshToken.create({
-      data: {
-        token: `reset_${resetHash}`,
+    if (!user?.passwordHash) return;
+
+    await prisma.refreshToken.deleteMany({
+      where: {
         userId: user.id,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+        OR: [{ token: { startsWith: 'pwdotp_' } }, { token: { startsWith: 'reset_' } }],
       },
     });
 
-    // In production, send email with reset link containing resetToken (never log the token).
-    return resetToken;
+    const code = String(crypto.randomInt(100000, 1000000));
+    const otpHash = await bcrypt.hash(code, 10);
+
+    await prisma.refreshToken.create({
+      data: {
+        token: `pwdotp_${otpHash}`,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      },
+    });
+
+    if (params.email) {
+      void sendPasswordResetCodeEmail(user.email, code).catch((e) => console.error('[forgot-password] email:', e));
+    } else if (smsDigits) {
+      void sendPasswordResetCodeSms(smsDigits, code).catch((e) => console.error('[forgot-password] sms:', e));
+    }
   }
 
-  static async resetPassword(token: string, newPassword: string) {
+  static async resetPassword(params: {
+    code: string;
+    password: string;
+    email?: string;
+    phone?: string;
+  }) {
+    const digits = params.code.replace(/\D/g, '');
+    if (digits.length !== 6) throw new AppError('Enter the 6-digit code', 400);
+
+    let user: { id: string } | null = null;
+    if (params.email) {
+      user = await prisma.user.findUnique({
+        where: { email: params.email.trim().toLowerCase() },
+        select: { id: true },
+      });
+    } else if (params.phone) {
+      const phoneNormalized = normalizePhone(params.phone);
+      if (!phoneNormalized) throw new AppError('Invalid phone', 400);
+      user = await prisma.user.findUnique({
+        where: { phoneNormalized },
+        select: { id: true },
+      });
+    } else {
+      throw new AppError('Provide email or phone used when requesting the code', 400);
+    }
+
+    if (!user) throw new AppError('Invalid or expired code', 400);
+
     const records = await prisma.refreshToken.findMany({
       where: {
-        token: { startsWith: 'reset_' },
+        userId: user.id,
+        token: { startsWith: 'pwdotp_' },
         expiresAt: { gt: new Date() },
       },
     });
 
-    let matchedRecord = null;
+    let matchedRecord: (typeof records)[0] | null = null;
     for (const record of records) {
-      const hash = record.token.replace('reset_', '');
-      const valid = await bcrypt.compare(token, hash);
+      const hash = record.token.replace('pwdotp_', '');
+      const valid = await bcrypt.compare(digits, hash);
       if (valid) {
         matchedRecord = record;
         break;
       }
     }
 
-    if (!matchedRecord) throw new AppError('Invalid or expired reset token', 400);
+    if (!matchedRecord) throw new AppError('Invalid or expired code', 400);
 
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await bcrypt.hash(params.password, 12);
     await prisma.user.update({
-      where: { id: matchedRecord.userId },
+      where: { id: user.id },
       data: { passwordHash },
     });
 
-    await prisma.refreshToken.deleteMany({ where: { userId: matchedRecord.userId } });
+    await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
   }
 
   private static async generateTokens(userId: string) {

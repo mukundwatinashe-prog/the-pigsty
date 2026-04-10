@@ -13,10 +13,12 @@ import {
   Download,
   FileText,
   Calendar,
+  Wheat,
 } from 'lucide-react';
 import { useFarm } from '../../context/FarmContext';
 import { farmService } from '../../services/farm.service';
 import { reportService } from '../../services/report.service';
+import { FeedPurchaseForm } from '../../components/FeedPurchaseForm';
 
 function formatMoney(amount: number, currency: string): string {
   try {
@@ -153,7 +155,8 @@ export default function FinancialsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Financials</h1>
           <p className="mt-1 text-sm text-gray-600">
             Herd value from <strong className="font-medium text-gray-800">current live weights</strong> × your farm’s{' '}
-            <strong className="font-medium text-gray-800">price per weight unit</strong>, plus recorded sales.
+            <strong className="font-medium text-gray-800">price per weight unit</strong>, recorded sales, and{' '}
+            <strong className="font-medium text-gray-800">feed purchase costs</strong> (same date range as sales below).
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
@@ -249,20 +252,26 @@ export default function FinancialsPage() {
           {(error as Error)?.message || 'Could not load financials.'}
         </div>
       ) : (
-        <FinancialsBody data={data} periodDescription={periodLabel(data.period)} />
+        <FinancialsBody data={data} periodDescription={periodLabel(data.period)} farmId={currentFarm.id} />
       )}
     </div>
   );
 }
 
+function feedTypeLabel(t: string) {
+  return t.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function FinancialsBody({
   data,
   periodDescription,
+  farmId,
 }: {
   data: NonNullable<Awaited<ReturnType<typeof farmService.getFinancials>>>;
   periodDescription: string;
+  farmId: string;
 }) {
-  const { farm, herd, breakdownByStage, breakdownByPen, salesInPeriod, recentSales } = data;
+  const { farm, herd, breakdownByStage, breakdownByPen, salesInPeriod, recentSales, feedPurchasesInPeriod } = data;
   const cur = farm.currency;
 
   return (
@@ -275,7 +284,8 @@ function FinancialsBody({
         <p>
           <strong className="font-semibold">Herd value:</strong> each pig still on the farm (Active or Quarantine) uses its{' '}
           <strong>current weight</strong>. Value = weight × {formatMoney(farm.pricePerKg, cur)} per {farm.weightUnit}.{' '}
-          <strong className="font-semibold">Sales</strong> below use the period you selected above. Change display currency in{' '}
+          <strong className="font-semibold">Sales and feed purchases</strong> below use the period you selected above. Feed spend is the same data as{' '}
+          <strong className="font-semibold">Feed → Log purchase</strong> (purchase date must fall in the period). Change display currency in{' '}
           <Link to="/settings" className="font-medium underline">
             settings
           </Link>
@@ -427,6 +437,78 @@ function FinancialsBody({
               {salesInPeriod.totalWeightSold.toLocaleString(undefined, { maximumFractionDigits: 0 })} {farm.weightUnit}
             </p>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div className="border-b border-gray-100 bg-gray-50/80 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-gray-900">Feed purchases (selected period)</h2>
+            <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
+              <Link to="/feed/purchases" className="text-primary-700 hover:underline">
+                Purchase history
+              </Link>
+              <Link to="/feed" className="inline-flex items-center gap-1 text-primary-700 hover:underline">
+                <Wheat className="size-3.5" aria-hidden />
+                Feed home
+              </Link>
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 mt-0.5">
+            {periodDescription}. Totals match <strong className="font-medium text-gray-700">Feed → Purchase history</strong> for the same dates.
+          </p>
+        </div>
+        <div className="grid gap-4 p-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total feed spend</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-gray-900">{formatMoney(feedPurchasesInPeriod.totalSpend, cur)}</p>
+            <p className="mt-1 text-xs text-gray-500">From recorded purchases (receipt dates)</p>
+          </div>
+        </div>
+        <div className="overflow-x-auto border-t border-gray-100">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-2">Feed type</th>
+                <th className="px-4 py-2 text-right">Spend</th>
+                <th className="px-4 py-2 text-right">Kg purchased</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {feedPurchasesInPeriod.byType.every((r) => r.spend === 0 && r.kgPurchased === 0) ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                    No feed purchases in this period.{' '}
+                    <Link to="/feed/purchase" className="font-medium text-primary-600 hover:underline">
+                      Log a purchase
+                    </Link>
+                  </td>
+                </tr>
+              ) : (
+                feedPurchasesInPeriod.byType.map((row) => (
+                  <tr key={row.feedType} className="hover:bg-gray-50/80">
+                    <td className="px-4 py-2.5 font-medium text-gray-900">{feedTypeLabel(row.feedType)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{formatMoney(row.spend, cur)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{row.kgPurchased.toFixed(3)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-gray-100 p-4">
+          <details className="group">
+            <summary className="cursor-pointer list-none text-sm font-medium text-primary-800 hover:underline [&::-webkit-details-marker]:hidden">
+              Record a feed purchase here (same as Feed → Log purchase)
+            </summary>
+            <p className="mt-2 text-xs text-gray-600">
+              Cost is calculated from <strong className="font-medium text-gray-800">Farm settings → Feed purchase prices</strong> (quantity × your rate per kg or per
+              tonne). Saved purchases appear in purchase history and in this table when the purchase date is inside the period above.
+            </p>
+            <div className="mt-4 max-w-xl">
+              <FeedPurchaseForm farmId={farmId} currency={cur} variant="embedded" />
+            </div>
+          </details>
         </div>
       </div>
 

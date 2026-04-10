@@ -1,9 +1,12 @@
 import api from './api';
-import type { Pen } from '../types';
+import type { Pen, PenWithPigs } from '../types';
 
 export const penService = {
   list: (farmId: string) =>
     api.get<Pen[]>(`/farms/${farmId}/pens`).then(r => r.data),
+
+  getById: (farmId: string, penId: string) =>
+    api.get<PenWithPigs>(`/farms/${farmId}/pens/${penId}`).then((r) => r.data),
 
   create: (farmId: string, data: { name: string; type: string; capacity: number }) =>
     api.post<Pen>(`/farms/${farmId}/pens`, data).then(r => r.data),

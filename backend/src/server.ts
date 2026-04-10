@@ -11,7 +11,9 @@ import penRoutes from './routes/pen.routes';
 import pigRoutes from './routes/pig.routes';
 import weightRoutes from './routes/weight.routes';
 import reportRoutes from './routes/report.routes';
+import feedRoutes from './routes/feed.routes';
 import publicRoutes from './routes/public.routes';
+import contactRoutes from './routes/contact.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { BillingController } from './controllers/billing.controller';
 
@@ -61,11 +63,13 @@ const limiter = rateLimit({
 app.use('/api/auth', limiter);
 
 app.use('/api/auth', authRoutes);
+app.use('/api/contact', limiter, express.json({ limit: '32kb' }), contactRoutes);
 app.use('/api/farms', farmRoutes);
 app.use('/api/farms', penRoutes);
 app.use('/api/farms', pigRoutes);
 app.use('/api/farms', weightRoutes);
 app.use('/api/farms', reportRoutes);
+app.use('/api/farms', feedRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

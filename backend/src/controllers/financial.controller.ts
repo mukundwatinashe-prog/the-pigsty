@@ -16,7 +16,7 @@ export class FinancialController {
       });
       if (!data) return next(new AppError('Farm not found', 404));
 
-      const { farm, herd, breakdownByStage, breakdownByPen, period, salesInPeriod, recentSales } = data;
+      const { farm, herd, breakdownByStage, breakdownByPen, period, salesInPeriod, recentSales, feedPurchasesInPeriod } = data;
 
       res.json({
         farm: {
@@ -30,6 +30,7 @@ export class FinancialController {
         breakdownByStage,
         breakdownByPen,
         salesInPeriod,
+        feedPurchasesInPeriod,
         recentSales: recentSales.map((s) => ({
           id: s.id,
           tagNumber: s.tagNumber,

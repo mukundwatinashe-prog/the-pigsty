@@ -10,6 +10,7 @@ import { verifyGoogleIdToken } from '../utils/googleVerify';
 const registerSchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
+  phone: z.string().min(8).max(24),
   password: strongPasswordSchema,
 });
 
@@ -30,20 +31,51 @@ const profileUpdateSchema = z
   })
   .strict();
 
-const forgotSchema = z.object({
-  email: z.string().email(),
-});
+const forgotSchema = z
+  .object({
+    email: z.string().email().optional(),
+    phone: z.string().min(8).max(24).optional(),
+  })
+  .superRefine((d, ctx) => {
+    const e = (d.email ?? '').trim();
+    const p = (d.phone ?? '').trim();
+    const hasE = e.length > 0;
+    const hasP = p.length > 0;
+    if (hasE === hasP) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Send either your email or your phone number (not both)',
+        path: ['email'],
+      });
+    }
+  });
 
-const resetSchema = z.object({
-  token: z.string().min(1),
-  password: strongPasswordSchema,
-});
+const resetSchema = z
+  .object({
+    email: z.string().email().optional(),
+    phone: z.string().min(8).max(24).optional(),
+    code: z.string().min(6).max(12),
+    password: strongPasswordSchema,
+  })
+  .superRefine((d, ctx) => {
+    const e = (d.email ?? '').trim();
+    const p = (d.phone ?? '').trim();
+    const hasE = e.length > 0;
+    const hasP = p.length > 0;
+    if (hasE === hasP) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Provide the same email or phone you used to request the code (not both)',
+        path: ['email'],
+      });
+    }
+  });
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const { name, email, password } = registerSchema.parse(req.body);
-      const result = await AuthService.register(name, email, password);
+      const { name, email, phone, password } = registerSchema.parse(req.body);
+      const result = await AuthService.register(name, email, password, phone);
       setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
       res.status(201).json({ user: result.user });
     } catch (error) {
@@ -142,9 +174,14 @@ export class AuthController {
 
   static async forgotPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email } = forgotSchema.parse(req.body);
-      await AuthService.forgotPassword(email);
-      res.json({ message: 'If that email exists, a reset link has been sent' });
+      const parsed = forgotSchema.parse(req.body);
+      const email = parsed.email?.trim() ? parsed.email.trim().toLowerCase() : undefined;
+      const phone = parsed.phone?.trim() ? parsed.phone.trim() : undefined;
+      await AuthService.forgotPassword(email ? { email } : { phone: phone! });
+      res.json({
+        message:
+          'If an account exists with that email or phone, we sent a 6-digit code (email or SMS). It expires in 15 minutes.',
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));
@@ -155,9 +192,16 @@ export class AuthController {
 
   static async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const { token, password } = resetSchema.parse(req.body);
-      await AuthService.resetPassword(token, password);
-      res.json({ message: 'Password reset successfully' });
+      const parsed = resetSchema.parse(req.body);
+      const email = parsed.email?.trim() ? parsed.email.trim().toLowerCase() : undefined;
+      const phone = parsed.phone?.trim() ? parsed.phone.trim() : undefined;
+      await AuthService.resetPassword({
+        code: parsed.code,
+        password: parsed.password,
+        email,
+        phone,
+      });
+      res.json({ message: 'Password reset successfully. You can sign in with your new password.' });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));

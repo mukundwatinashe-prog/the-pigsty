@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -31,7 +31,16 @@ const BREEDS = [
   'OTHER',
 ] as const satisfies readonly PigBreed[];
 
-const STAGES = ['BOAR', 'SOW', 'GILT', 'WEANER', 'PIGLET', 'PORKER'] as const satisfies readonly PigStage[];
+const STAGES = [
+  'BOAR',
+  'SOW',
+  'GILT',
+  'WEANER',
+  'PIGLET',
+  'PORKER',
+  'GROWER',
+  'FINISHER',
+] as const satisfies readonly PigStage[];
 
 const STATUSES = ['ACTIVE', 'SOLD', 'DECEASED', 'QUARANTINE'] as const satisfies readonly PigStatus[];
 
@@ -63,7 +72,11 @@ const STAGE_LABELS: Record<PigStage, string> = {
   WEANER: 'Weaner',
   PIGLET: 'Piglet',
   PORKER: 'Porker',
+  GROWER: 'Grower',
+  FINISHER: 'Finisher',
 };
+
+const WEANED_DATE_STAGES: readonly PigStage[] = ['WEANER', 'PIGLET', 'GILT', 'GROWER', 'FINISHER'];
 
 const STATUS_LABELS: Record<PigStatus, string> = {
   ACTIVE: 'Active',
@@ -99,6 +112,7 @@ const pigFormSchema = z.object({
   healthStatus: z.enum(HEALTH),
   serviced: z.boolean().optional(),
   servicedDate: z.string().optional(),
+  weanedDate: z.string().optional(),
   penId: z.string().optional(),
   notes: z.string().max(2000).optional(),
 });
@@ -116,6 +130,7 @@ const defaultValues: PigFormValues = {
   healthStatus: 'HEALTHY',
   serviced: false,
   servicedDate: '',
+  weanedDate: '',
   penId: '',
   notes: '',
 };
@@ -132,6 +147,7 @@ function toPayload(values: PigFormValues) {
     healthStatus: values.healthStatus,
     serviced: values.serviced || false,
     servicedDate: values.servicedDate?.trim() ? values.servicedDate.trim() : null,
+    weanedDate: values.weanedDate?.trim() ? values.weanedDate.trim() : null,
     penId: values.penId?.trim() ? values.penId.trim() : null,
     notes: values.notes?.trim() ? values.notes.trim() : null,
   };
@@ -154,11 +170,14 @@ export default function PigFormPage() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<PigFormValues>({
     resolver: zodResolver(pigFormSchema),
     defaultValues,
   });
+
+  const watchedStage = useWatch({ control, name: 'stage' });
 
   const { data: pig, isLoading: pigLoading, isError: pigError, error: pigErr } = useQuery({
     queryKey: ['pig', currentFarm?.id, pigId],
@@ -185,6 +204,7 @@ export default function PigFormPage() {
       healthStatus: pig.healthStatus,
       serviced: pig.serviced ?? false,
       servicedDate: formatDateInput(pig.servicedDate),
+      weanedDate: formatDateInput(pig.weanedDate ?? undefined),
       penId: pig.penId ?? '',
       notes: pig.notes ?? '',
     });
@@ -467,6 +487,17 @@ export default function PigFormPage() {
               </label>
               <input id="servicedDate" type="date" {...register('servicedDate')} className={inputClass} />
             </div>
+            {WEANED_DATE_STAGES.includes(watchedStage) && (
+              <div className="sm:col-span-2">
+                <label htmlFor="weanedDate" className={labelClass}>
+                  Weaned date
+                </label>
+                <input id="weanedDate" type="date" {...register('weanedDate')} className={inputClass} />
+                <p className="mt-1 text-xs text-gray-500">
+                  Used to estimate the return-to-heat window (typically ~4–18 days after weaning).
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

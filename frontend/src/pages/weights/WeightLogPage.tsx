@@ -117,19 +117,6 @@ export default function WeightLogPage() {
 
   const penPigs = penPigsResult?.data ?? [];
 
-  // When pen pigs load, initialise the weights map with current weights
-  useEffect(() => {
-    if (penPigs.length > 0) {
-      setPenWeights(prev => {
-        const next: Record<string, string> = {};
-        penPigs.forEach(p => {
-          next[p.id] = prev[p.id] ?? '';
-        });
-        return next;
-      });
-    }
-  }, [penPigs]);
-
   // Compute totals from individual weights
   const filledWeights = useMemo(() => {
     return Object.entries(penWeights)

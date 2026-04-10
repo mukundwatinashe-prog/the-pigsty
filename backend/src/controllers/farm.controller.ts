@@ -5,8 +5,9 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { FarmRequest, ASSIGNABLE_ROLES } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
-import { FarmPlan } from '@prisma/client';
+import { FarmPlan, Prisma } from '@prisma/client';
 import { FREE_TIER_MAX_PIGS, pigLimitForPlan } from '../config/planLimits';
+import { onHandPigsWhere } from '../lib/pigStock';
 import { farmCurrencySchema } from '../config/farmCurrencies';
 
 const createFarmSchema = z.object({
@@ -31,6 +32,30 @@ const updateFarmSchema = z.object({
   timezone: z.string().optional(),
   weightUnit: z.string().optional(),
   pricePerKg: z.coerce.number().min(0).optional(),
+  feedLowStockThresholdKg: z.coerce.number().min(0).nullable().optional(),
+  feedDefaultDailyBuckets: z
+    .object({
+      MAIZE_CRECHE: z.number().min(0).optional(),
+      SOYA: z.number().min(0).optional(),
+      PREMIX: z.number().min(0).optional(),
+      CONCENTRATE: z.number().min(0).optional(),
+      LACTATING: z.number().min(0).optional(),
+      WEANER: z.number().min(0).optional(),
+    })
+    .optional()
+    .nullable(),
+  feedPurchasePriceUnit: z.enum(['KG', 'TONNE']).optional(),
+  feedPurchasePrices: z
+    .object({
+      MAIZE_CRECHE: z.coerce.number().min(0).optional(),
+      SOYA: z.coerce.number().min(0).optional(),
+      PREMIX: z.coerce.number().min(0).optional(),
+      CONCENTRATE: z.coerce.number().min(0).optional(),
+      LACTATING: z.coerce.number().min(0).optional(),
+      WEANER: z.coerce.number().min(0).optional(),
+    })
+    .optional()
+    .nullable(),
   logoUrl: z.union([
     z.string().url(),
     z.string().regex(/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/, 'Invalid image data URL'),
@@ -47,7 +72,15 @@ export class FarmController {
           ...data,
           members: { create: { userId: req.userId!, role: 'OWNER' } },
         },
-        include: { _count: { select: { pigs: true, pens: true, members: true } } },
+        include: {
+          _count: {
+            select: {
+              pigs: { where: { status: { notIn: ['SOLD', 'DECEASED'] } } },
+              pens: true,
+              members: true,
+            },
+          },
+        },
       });
       const { stripeCustomerId: _c, stripeSubscriptionId: _s, ...farmPublic } = farm;
       res.status(201).json(farmPublic);
@@ -63,7 +96,15 @@ export class FarmController {
         where: { userId: req.userId! },
         include: {
           farm: {
-            include: { _count: { select: { pigs: true, pens: true, members: true } } },
+            include: {
+              _count: {
+                select: {
+                  pigs: { where: { status: { notIn: ['SOLD', 'DECEASED'] } } },
+                  pens: true,
+                  members: true,
+                },
+              },
+            },
           },
         },
       });
@@ -84,7 +125,13 @@ export class FarmController {
       const farm = await prisma.farm.findUnique({
         where: { id: req.farmId! },
         include: {
-          _count: { select: { pigs: true, pens: true, members: true } },
+          _count: {
+            select: {
+              pigs: { where: { status: { notIn: ['SOLD', 'DECEASED'] } } },
+              pens: true,
+              members: true,
+            },
+          },
           members: { include: { user: { select: { id: true, name: true, email: true, photo: true } } } },
         },
       });
@@ -108,7 +155,17 @@ export class FarmController {
         take: 10,
       });
 
-      const pigCount = farm._count.pigs;
+      const recentPigObservations = await prisma.pigObservation.findMany({
+        where: { pig: { farmId: req.farmId! } },
+        include: {
+          pig: { select: { id: true, tagNumber: true } },
+          user: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+
+      const pigCount = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
       const { stripeCustomerId: _c, stripeSubscriptionId: _s, ...farmPublic } = farm;
 
       res.json({
@@ -125,6 +182,7 @@ export class FarmController {
           byStatus: stats,
           avgWeight: avgWeight._avg.currentWeight || 0,
           recentActivity,
+          recentPigObservations,
         },
       });
     } catch (error) {
@@ -134,15 +192,30 @@ export class FarmController {
 
   static async update(req: FarmRequest, res: Response, next: NextFunction) {
     try {
-      const data = updateFarmSchema.parse(req.body);
+      const parsed = updateFarmSchema.parse(req.body);
+      const { feedDefaultDailyBuckets, feedPurchasePrices, ...rest } = parsed;
       const farm = await prisma.farm.update({
         where: { id: req.farmId! },
-        data,
+        data: {
+          ...rest,
+          ...(feedDefaultDailyBuckets !== undefined && {
+            feedDefaultDailyBuckets:
+              feedDefaultDailyBuckets === null
+                ? Prisma.JsonNull
+                : (feedDefaultDailyBuckets as Prisma.InputJsonValue),
+          }),
+          ...(feedPurchasePrices !== undefined && {
+            feedPurchasePrices:
+              feedPurchasePrices === null
+                ? Prisma.JsonNull
+                : (feedPurchasePrices as Prisma.InputJsonValue),
+          }),
+        },
       });
       await AuditService.log({
         userId: req.userId!, farmId: req.farmId!,
         action: 'UPDATE', entity: 'Farm', entityId: farm.id,
-        details: JSON.stringify(data),
+        details: JSON.stringify(parsed),
       });
       const { stripeCustomerId: _sc, stripeSubscriptionId: _ss, ...farmPublic } = farm;
       res.json(farmPublic);

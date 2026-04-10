@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -76,19 +76,6 @@ export default function PenListPage() {
     enabled: Boolean(farmId),
   });
 
-  useEffect(() => {
-    if (!formOpen) return;
-    if (formMode === 'edit' && editingPen) {
-      setName(editingPen.name);
-      setType(editingPen.type);
-      setCapacity(editingPen.capacity);
-    } else {
-      setName('');
-      setType('GROWER');
-      setCapacity(10);
-    }
-  }, [formOpen, formMode, editingPen]);
-
   const createMutation = useMutation({
     mutationFn: (data: { name: string; type: PenType; capacity: number }) =>
       penService.create(farmId!, data),
@@ -152,12 +139,18 @@ export default function PenListPage() {
   const openCreate = () => {
     setFormMode('create');
     setEditingPen(null);
+    setName('');
+    setType('GROWER');
+    setCapacity(10);
     setFormOpen(true);
   };
 
   const openEdit = (pen: Pen) => {
     setFormMode('edit');
     setEditingPen(pen);
+    setName(pen.name);
+    setType(pen.type);
+    setCapacity(pen.capacity);
     setFormOpen(true);
   };
 
@@ -274,76 +267,82 @@ export default function PenListPage() {
             const overCap = pen.capacity > 0 && occ > pen.capacity;
             return (
               <li key={pen.id}>
-                <article className="group flex h-full flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:border-primary-200/60 hover:shadow-md">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-lg font-semibold text-gray-900">
-                        {pen.name}
-                      </h3>
-                      <span
-                        className={`mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${TYPE_BADGE[pen.type]}`}
-                      >
-                        {formatPenTypeLabel(pen.type)}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(pen)}
-                        className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-50 hover:text-primary-600"
-                        aria-label={`Edit ${pen.name}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeletePen(pen)}
-                        className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                        aria-label={`Delete ${pen.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:border-primary-200/60 hover:shadow-md">
+                  <div className="absolute right-3 top-3 z-10 flex shrink-0 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(pen)}
+                      className="rounded-lg bg-white/90 p-2 text-gray-400 shadow-sm ring-1 ring-gray-100 transition hover:bg-white hover:text-primary-600"
+                      aria-label={`Edit ${pen.name}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletePen(pen)}
+                      className="rounded-lg bg-white/90 p-2 text-gray-400 shadow-sm ring-1 ring-gray-100 transition hover:bg-white hover:text-red-600"
+                      aria-label={`Delete ${pen.name}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
+                  <Link
+                    to={`/pens/${pen.id}`}
+                    className="flex flex-1 flex-col p-6 pb-6 outline-none transition hover:bg-gray-50/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                  >
+                    <div className="flex items-start justify-between gap-3 pr-14">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-lg font-semibold text-gray-900">
+                          {pen.name}
+                        </h3>
+                        <span
+                          className={`mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${TYPE_BADGE[pen.type]}`}
+                        >
+                          {formatPenTypeLabel(pen.type)}
+                        </span>
+                      </div>
+                    </div>
 
-                  <dl className="mt-5 space-y-3 text-sm">
-                    <div className="flex items-center justify-between text-gray-600">
-                      <dt className="flex items-center gap-1.5">
-                        <span className="text-gray-400">Capacity</span>
-                      </dt>
-                      <dd className="font-medium text-gray-900">{pen.capacity}</dd>
-                    </div>
-                    <div className="flex items-center justify-between text-gray-600">
-                      <dt>Occupancy</dt>
-                      <dd className="font-medium text-gray-900">
-                        {occ} pig{occ === 1 ? '' : 's'}
-                        {overCap && (
-                          <span className="ml-1 text-xs font-semibold text-red-600">
-                            (over capacity)
-                          </span>
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
+                    <dl className="mt-5 space-y-3 text-sm">
+                      <div className="flex items-center justify-between text-gray-600">
+                        <dt className="flex items-center gap-1.5">
+                          <span className="text-gray-400">Capacity</span>
+                        </dt>
+                        <dd className="font-medium text-gray-900">{pen.capacity}</dd>
+                      </div>
+                      <div className="flex items-center justify-between text-gray-600">
+                        <dt>Occupancy</dt>
+                        <dd className="font-medium text-gray-900">
+                          {occ} pig{occ === 1 ? '' : 's'}
+                          {overCap && (
+                            <span className="ml-1 text-xs font-semibold text-red-600">
+                              (over capacity)
+                            </span>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
 
-                  <div className="mt-4">
-                    <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">
-                      <span>Fill level</span>
-                      <span className="font-medium tabular-nums text-gray-700">
-                        {pen.capacity > 0
-                          ? `${Math.round((occ / pen.capacity) * 100)}%`
-                          : '—'}
-                      </span>
+                    <div className="mt-4">
+                      <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">
+                        <span>Fill level</span>
+                        <span className="font-medium tabular-nums text-gray-700">
+                          {pen.capacity > 0
+                            ? `${Math.round((occ / pen.capacity) * 100)}%`
+                            : '—'}
+                        </span>
+                      </div>
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className={`h-full rounded-full transition-all ${barColorClass(pct)} ${overCap ? 'bg-red-600' : ''}`}
+                          style={{
+                            width: `${pen.capacity > 0 ? Math.min(100, (occ / pen.capacity) * 100) : 0}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
-                      <div
-                        className={`h-full rounded-full transition-all ${barColorClass(pct)} ${overCap ? 'bg-red-600' : ''}`}
-                        style={{
-                          width: `${pen.capacity > 0 ? Math.min(100, (occ / pen.capacity) * 100) : 0}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
+                    <p className="mt-4 text-xs font-medium text-primary-600">View pigs in pen →</p>
+                  </Link>
                 </article>
               </li>
             );

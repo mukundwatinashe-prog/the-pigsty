@@ -1,37 +1,34 @@
+import { appLogoUrl } from '../lib/siteConfig';
+
 const sizes = {
-  sm: 'size-8',
-  md: 'size-10',
-  lg: 'size-12',
-  xl: 'size-16',
+  sm: 'size-24',
+  md: 'size-36',
+  lg: 'size-48',
+  xl: 'size-[min(15rem,85vw)]',
 } as const;
 
 type BrandLogoSize = keyof typeof sizes;
 
-/**
- * Product mark: uses `/favicon.svg` (public). White tile so the mark reads on any background.
- */
+/** Product mark from `public/logo.png` — no frame or fill behind the image (PNG with alpha shows as empty around the art). */
 export function BrandLogo({
   size = 'md',
   className = '',
-  withRing = true,
 }: {
   size?: BrandLogoSize;
   className?: string;
-  /** Subtle ring; set false for flush placement (e.g. inside a colored bar). */
-  withRing?: boolean;
 }) {
-  const ring = withRing ? 'shadow-md ring-1 ring-gray-200/90' : '';
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ${ring} ${sizes[size]} ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center bg-transparent [contain:layout] transform-gpu ${sizes[size]} ${className}`}
     >
       <img
-        src="/favicon.svg"
+        src={appLogoUrl}
         alt=""
-        className="size-[82%] object-contain"
-        width={40}
-        height={38}
+        className="block h-full w-full min-h-0 min-w-0 bg-transparent object-contain object-center contrast-[1.06] drop-shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+        width={1024}
+        height={1024}
         decoding="async"
+        fetchPriority="high"
       />
     </span>
   );

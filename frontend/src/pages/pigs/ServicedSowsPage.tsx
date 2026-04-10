@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFarm } from '../../context/FarmContext';
-import { pigService } from '../../services/pig.service';
+import { pigService, type CompleteBirthPayload } from '../../services/pig.service';
 import type { PigBreed, PigStage, HealthStatus, ServicedSow } from '../../types';
 
 const BREED_LABELS: Record<string, string> = {
@@ -81,7 +81,7 @@ export default function ServicedSowsPage() {
   });
 
   const birthMutation = useMutation({
-    mutationFn: (vars: { pigId: string; payload: any }) =>
+    mutationFn: (vars: { pigId: string; payload: CompleteBirthPayload }) =>
       pigService.completeBirth(currentFarm!.id, vars.pigId, vars.payload),
     onSuccess: (_data, vars) => {
       toast.success(`Birth recorded for ${modalSow?.tagNumber ?? vars.pigId}`);
@@ -207,9 +207,11 @@ export default function ServicedSowsPage() {
                   <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Health</th>
                   <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Date of Birth</th>
                   <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Weight</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Parity</th>
                   <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Serviced</th>
                   <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Expected Birth</th>
                   <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Days Left</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Reminders</th>
                   <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-center">Record Birth</th>
                 </tr>
               </thead>
@@ -230,12 +232,30 @@ export default function ServicedSowsPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{formatDate(sow.dateOfBirth)}</td>
                     <td className="px-4 py-3 text-gray-800 tabular-nums">{sow.currentWeight} {unit}</td>
+                    <td className="px-4 py-3 text-gray-800 tabular-nums">{sow.parity ?? 0}</td>
                     <td className="px-4 py-3 text-gray-600">{formatDate(sow.servicedDate)}</td>
                     <td className="px-4 py-3 font-medium text-gray-900">{formatDate(sow.expectedBirthDate)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-semibold ${birthUrgencyClass(sow.daysUntilBirth)}`}>
                         {sow.daysUntilBirth > 0 ? `${sow.daysUntilBirth} days` : sow.daysUntilBirth === 0 ? 'Today' : 'Overdue'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {sow.needsHeatCheck && (
+                          <span className="rounded-md bg-primary-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-800">
+                            Day 21 heat
+                          </span>
+                        )}
+                        {sow.needsPreFarrowPrep && (
+                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                            Day 100 prep
+                          </span>
+                        )}
+                        {!sow.needsHeatCheck && !sow.needsPreFarrowPrep && (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button

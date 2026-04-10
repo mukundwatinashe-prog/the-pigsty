@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -16,12 +16,14 @@ import {
   Loader2,
   DollarSign,
   X,
+  Stethoscope,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFarm } from '../../context/FarmContext';
-import { pigService } from '../../services/pig.service';
+import { pigService, type RecordSalePayload } from '../../services/pig.service';
 import { farmService } from '../../services/farm.service';
-import type { Pig, PigBreed, PigStage, PigStatus, HealthStatus, SaleType } from '../../types';
+import type { Pig, PigBreed, PigObservationCategory, PigStage, PigStatus, HealthStatus, SaleType } from '../../types';
+import { PIG_OBSERVATION_OPTIONS } from '../../lib/pigObservations';
 
 const BREED_OPTIONS: { value: PigBreed; label: string }[] = [
   { value: 'LARGE_WHITE', label: 'Large White' },
@@ -49,6 +51,8 @@ const STAGE_OPTIONS: { value: PigStage; label: string }[] = [
   { value: 'WEANER', label: 'Weaner' },
   { value: 'PIGLET', label: 'Piglet' },
   { value: 'PORKER', label: 'Porker' },
+  { value: 'GROWER', label: 'Grower' },
+  { value: 'FINISHER', label: 'Finisher' },
 ];
 
 const STATUS_OPTIONS: { value: PigStatus; label: string }[] = [
@@ -162,6 +166,7 @@ function SortableTh({
 export default function PigListPage() {
   const { currentFarm } = useFarm();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const weightUnit = currentFarm?.weightUnit ?? 'kg';
 
@@ -169,12 +174,19 @@ export default function PigListPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [breedFilter, setBreedFilter] = useState<string>('');
   const [stageFilter, setStageFilter] = useState<string>('');
+  /** '' = on-hand only (API inStockOnly); '__ALL__' = every status; else specific PigStatus. */
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [healthFilter, setHealthFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<PigSortKey>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Pig | null>(null);
+  const [observationTarget, setObservationTarget] = useState<Pig | null>(null);
+  const [observationForm, setObservationForm] = useState<{
+    category: PigObservationCategory;
+    notes: string;
+  }>({ category: 'GENERAL_WELLBEING', notes: '' });
+
   const [saleTarget, setSaleTarget] = useState<Pig | null>(null);
   const [saleForm, setSaleForm] = useState({
     saleType: 'LIVE_SALE' as SaleType,
@@ -193,6 +205,17 @@ export default function PigListPage() {
   const currency = currentFarm?.currency ?? 'USD';
   const saleWeight = parseFloat(saleForm.weightAtSale) || 0;
   const calculatedPrice = parseFloat((saleWeight * pricePerKg).toFixed(2));
+
+  useEffect(() => {
+    const raw = searchParams.get('status');
+    if (raw && STATUS_OPTIONS.some((o) => o.value === raw)) {
+      setStatusFilter(raw);
+      setPage(1);
+      return;
+    }
+    setStatusFilter('');
+    setPage(1);
+  }, [searchParams]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
@@ -217,7 +240,13 @@ export default function PigListPage() {
     if (debouncedSearch) p.search = debouncedSearch;
     if (breedFilter) p.breed = breedFilter;
     if (stageFilter) p.stage = stageFilter;
-    if (statusFilter) p.status = statusFilter;
+    if (statusFilter === '__ALL__') {
+      /* no status / inStockOnly — full ledger */
+    } else if (statusFilter === '') {
+      p.inStockOnly = '1';
+    } else {
+      p.status = statusFilter;
+    }
     if (healthFilter) p.healthStatus = healthFilter;
     p.sortBy = sortBy;
     p.sortOrder = sortOrder;
@@ -263,8 +292,30 @@ export default function PigListPage() {
     },
   });
 
+  const observationMutation = useMutation({
+    mutationFn: (vars: {
+      farmId: string;
+      pigId: string;
+      payload: { category: PigObservationCategory; notes: string | null };
+    }) => pigService.addObservation(vars.farmId, vars.pigId, vars.payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pigs'] });
+      queryClient.invalidateQueries({ queryKey: ['farm-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['farm'] });
+      toast.success('Observation saved');
+      setObservationTarget(null);
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      toast.error(msg || 'Could not save observation');
+    },
+  });
+
   const saleMutation = useMutation({
-    mutationFn: (vars: { farmId: string; pigId: string; payload: any }) =>
+    mutationFn: (vars: { farmId: string; pigId: string; payload: RecordSalePayload }) =>
       pigService.recordSale(vars.farmId, vars.pigId, vars.payload),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pigs'] });
@@ -281,6 +332,25 @@ export default function PigListPage() {
       toast.error(msg || 'Could not record sale');
     },
   });
+
+  const openObservationModal = (pig: Pig) => {
+    setObservationTarget(pig);
+    setObservationForm({ category: 'GENERAL_WELLBEING', notes: '' });
+  };
+
+  const submitObservation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentFarm || !observationTarget) return;
+    const notesTrim = observationForm.notes.trim();
+    observationMutation.mutate({
+      farmId: currentFarm.id,
+      pigId: observationTarget.id,
+      payload: {
+        category: observationForm.category,
+        notes: notesTrim.length ? notesTrim : null,
+      },
+    });
+  };
 
   const openSaleModal = (pig: Pig) => {
     setSaleTarget(pig);
@@ -352,8 +422,20 @@ export default function PigListPage() {
               </span>
             ) : (
               <>
-                <span className="font-medium text-gray-700">{total.toLocaleString()}</span> pig
-                {total === 1 ? '' : 's'} total
+                <span className="font-medium text-gray-700">{total.toLocaleString()}</span>{' '}
+                {statusFilter === '' ? (
+                  <>pig{total === 1 ? '' : 's'} on hand</>
+                ) : (
+                  <>
+                    pig{total === 1 ? '' : 's'}
+                    {statusFilter === '__ALL__' ? ' (all statuses)' : ' (filtered)'}
+                  </>
+                )}
+                {statusFilter === '' && (
+                  <span className="block text-xs text-gray-400 mt-0.5 max-w-md">
+                    Sold and deceased are hidden here. Open the dashboard <strong>Sold</strong> card or choose &quot;Sold&quot; below to see sold animals.
+                  </span>
+                )}
               </>
             )}
           </p>
@@ -446,12 +528,13 @@ export default function PigListPage() {
             }}
             className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 bg-white"
           >
-            <option value="">All statuses</option>
+            <option value="">On hand (excludes sold &amp; deceased)</option>
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
+            <option value="__ALL__">All statuses (incl. sold &amp; deceased)</option>
           </select>
           <select
             value={healthFilter}
@@ -495,7 +578,17 @@ export default function PigListPage() {
             </div>
             <h3 className="font-semibold text-gray-900">No pigs match your filters</h3>
             <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-              Adjust filters or add a new pig to get started.
+              {statusFilter === '' ? (
+                <>
+                  No pigs on hand right now.{' '}
+                  <Link to="/pigs?status=SOLD" className="text-primary-600 font-medium hover:underline">
+                    View sold pigs
+                  </Link>{' '}
+                  or add a new pig.
+                </>
+              ) : (
+                <>Adjust filters or add a new pig to get started.</>
+              )}
             </p>
             <Link
               to="/pigs/new"
@@ -562,7 +655,7 @@ export default function PigListPage() {
                       sortOrder={sortOrder}
                       onSort={handleColumnSort}
                     />
-                    <th scope="col" className="px-4 py-3 font-semibold text-gray-600 text-right w-28">
+                    <th scope="col" className="px-4 py-3 font-semibold text-gray-600 text-right min-w-[11rem]">
                       Actions
                     </th>
                   </tr>
@@ -597,7 +690,15 @@ export default function PigListPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-600">{pig.pen?.name ?? '—'}</td>
                       <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex gap-1">
+                        <div className="inline-flex flex-wrap justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openObservationModal(pig)}
+                            className="p-2 rounded-lg text-gray-500 hover:bg-primary-50 hover:text-primary-700 transition"
+                            title="Log health observation"
+                          >
+                            <Stethoscope className="w-4 h-4" />
+                          </button>
                           {pig.status === 'ACTIVE' && (
                             <button
                               type="button"
@@ -699,6 +800,111 @@ export default function PigListPage() {
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {observationTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => !observationMutation.isPending && setObservationTarget(null)}
+            aria-hidden
+          />
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-100"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="observation-modal-title"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 id="observation-modal-title" className="text-lg font-bold text-gray-900">
+                  Health observation
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Pig{' '}
+                  <span className="font-mono font-semibold text-primary-700">{observationTarget.tagNumber}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !observationMutation.isPending && setObservationTarget(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <form onSubmit={submitObservation} className="p-6 space-y-5">
+              <div>
+                <label htmlFor="observation-category" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Focus area
+                </label>
+                <select
+                  id="observation-category"
+                  value={observationForm.category}
+                  onChange={(e) =>
+                    setObservationForm((f) => ({
+                      ...f,
+                      category: e.target.value as PigObservationCategory,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
+                >
+                  {PIG_OBSERVATION_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="observation-notes" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Notes <span className="font-normal text-gray-500">(optional)</span>
+                </label>
+                <textarea
+                  id="observation-notes"
+                  rows={4}
+                  placeholder="What did you see? Appetite, behaviour, treatment given, etc."
+                  value={observationForm.notes}
+                  onChange={(e) => setObservationForm((f) => ({ ...f, notes: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-y min-h-[100px]"
+                />
+                <p className="mt-1.5 text-xs text-gray-500">
+                  Add detail especially if you chose &quot;Other&quot; or need a record for your vet.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setObservationTarget(null)}
+                  disabled={observationMutation.isPending}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={observationMutation.isPending}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {observationMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Stethoscope className="w-4 h-4" aria-hidden />
+                      Save observation
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

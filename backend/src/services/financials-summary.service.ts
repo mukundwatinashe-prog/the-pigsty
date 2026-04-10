@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { aggregateFeedPurchaseCosts, FEED_TYPES } from './feed.service';
 
 const INVENTORY_STATUSES = ['ACTIVE', 'QUARANTINE'] as const;
 
@@ -71,6 +72,11 @@ export interface FinancialsSummaryResult {
     totalPrice: number;
     buyer: string | null;
   }[];
+  /** Feed purchase costs in the same date window as sales (purchase receipt dates). */
+  feedPurchasesInPeriod: {
+    totalSpend: number;
+    byType: { feedType: string; spend: number; kgPurchased: number }[];
+  };
 }
 
 export async function fetchFinancialsSummary(
@@ -147,7 +153,9 @@ export async function fetchFinancialsSummary(
     ...(saleDateFilter ? { saleDate: saleDateFilter } : {}),
   };
 
-  const [salesAgg, recentSalesRaw] = await Promise.all([
+  const purchaseDateFilter = parseFinancialsSaleDateFilter(from, to);
+
+  const [salesAgg, recentSalesRaw, feedCosts] = await Promise.all([
     prisma.saleRecord.aggregate({
       where: saleWhere,
       _sum: { totalPrice: true, weightAtSale: true },
@@ -168,6 +176,7 @@ export async function fetchFinancialsSummary(
         pig: { select: { tagNumber: true } },
       },
     }),
+    aggregateFeedPurchaseCosts(farmId, purchaseDateFilter),
   ]);
 
   return {
@@ -207,5 +216,13 @@ export async function fetchFinancialsSummary(
       totalPrice: Number(s.totalPrice),
       buyer: s.buyer,
     })),
+    feedPurchasesInPeriod: {
+      totalSpend: Number(feedCosts.totalSpend.toFixed(2)),
+      byType: FEED_TYPES.map((t) => ({
+        feedType: t,
+        spend: Number(feedCosts.byType[t].spend.toFixed(2)),
+        kgPurchased: Number(feedCosts.byType[t].kg.toFixed(3)),
+      })),
+    },
   };
 }

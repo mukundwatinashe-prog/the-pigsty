@@ -1,17 +1,19 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, PiggyBank, Warehouse, Weight, FileSpreadsheet,
-  FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet,
+  FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet, Wheat,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useFarm } from '../../context/FarmContext';
+import { appLogoUrl } from '../../lib/siteConfig';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/pigs', icon: PiggyBank, label: 'Pig Inventory' },
   { to: '/pens', icon: Warehouse, label: 'Pens' },
   { to: '/weights', icon: Weight, label: 'Weight Logs' },
+  { to: '/feed', icon: Wheat, label: 'Feed' },
   { to: '/import', icon: Upload, label: 'Import Pigs' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/financials', icon: Wallet, label: 'Financials' },
@@ -42,13 +44,17 @@ export default function Sidebar({ mobileNavOpen = false, onNavigate }: SidebarPr
         {showNavText ? (
           <>
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary-600 md:h-8 md:w-8">
-                {currentFarm?.logoUrl ? (
+              {currentFarm?.logoUrl ? (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg md:h-9 md:w-9">
                   <img src={currentFarm.logoUrl} alt={`${currentFarm.name} logo`} className="h-full w-full object-cover" />
-                ) : (
-                  <img src="/favicon.svg" alt="" className="h-full w-full bg-white object-contain p-0.5" />
-                )}
-              </div>
+                </div>
+              ) : (
+                <img
+                  src={appLogoUrl}
+                  alt=""
+                  className="h-14 w-14 shrink-0 bg-transparent object-contain object-center contrast-[1.06] drop-shadow-[0_1px_2px_rgba(0,0,0,0.1)] transform-gpu md:h-12 md:w-12"
+                />
+              )}
               <div className="min-w-0">
                 <h1 className="truncate text-sm font-bold text-gray-900">The Pigsty</h1>
                 {currentFarm && <p className="truncate text-xs text-gray-500">{currentFarm.name}</p>}

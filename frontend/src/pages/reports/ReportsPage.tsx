@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ClipboardList,
@@ -12,10 +13,12 @@ import {
   Loader2,
   CheckCircle2,
   DollarSign,
+  Wheat,
 } from 'lucide-react';
 import { useFarm } from '../../context/FarmContext';
 import { track } from '../../lib/analytics';
 import { reportService } from '../../services/report.service';
+import { feedService } from '../../services/feed.service';
 import type { Pig } from '../../types';
 
 type ReportId = 'herd_inventory' | 'weight_gain' | 'sales' | 'activity_log' | 'daily_summary';
@@ -40,7 +43,8 @@ const REPORTS: {
   {
     id: 'weight_gain',
     title: 'Weight gain',
-    description: 'Per-pig entry vs current weight, total gain, average daily gain, and measurement count.',
+    description:
+      'Per-pig entry vs current weight, ADG vs stage target (green on target, red below), and measurement count.',
     icon: TrendingUp,
     dateFilter: true,
     formats: ['json', 'pdf', 'xlsx'],
@@ -80,8 +84,80 @@ function isHerdInventoryJson(d: unknown): d is { farm: string; total: number; pi
   );
 }
 
-function isWeightGainRowArray(d: unknown): d is Array<Record<string, unknown>> {
-  return Array.isArray(d) && d.length > 0 && typeof d[0] === 'object';
+type WeightGainReportRow = {
+  tagNumber: string;
+  stage: string;
+  entryWeight: number;
+  currentWeight: number;
+  totalGain: number;
+  adg: number;
+  targetAdg: number;
+  vsTarget: 'on_track' | 'below' | 'n_a';
+  measurements: number;
+};
+
+function isWeightGainReportArray(d: unknown): d is WeightGainReportRow[] {
+  if (!Array.isArray(d) || d.length === 0) return false;
+  const r = d[0] as Record<string, unknown>;
+  return typeof r === 'object' && r !== null && 'vsTarget' in r && 'tagNumber' in r;
+}
+
+function WeightGainReportTable({
+  rows,
+  weightUnit,
+}: {
+  rows: WeightGainReportRow[];
+  weightUnit: string;
+}) {
+  return (
+    <table className="w-full min-w-[800px] text-left text-sm">
+      <thead>
+        <tr className="border-b border-gray-200">
+          <th className="px-3 py-2 font-semibold text-gray-700">Tag</th>
+          <th className="px-3 py-2 font-semibold text-gray-700">Stage</th>
+          <th className="px-3 py-2 font-semibold text-gray-700">Entry ({weightUnit})</th>
+          <th className="px-3 py-2 font-semibold text-gray-700">Current ({weightUnit})</th>
+          <th className="px-3 py-2 font-semibold text-gray-700">Gain</th>
+          <th className="px-3 py-2 font-semibold text-gray-700">ADG</th>
+          <th className="px-3 py-2 font-semibold text-gray-700">Target ADG</th>
+          <th className="px-3 py-2 font-semibold text-gray-700">Vs target</th>
+          <th className="px-3 py-2 font-semibold text-gray-700">#</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => {
+          const vs = row.vsTarget;
+          const vsLabel =
+            vs === 'on_track' ? 'On target' : vs === 'below' ? 'Below target' : 'N/A';
+          const rowBg =
+            vs === 'on_track'
+              ? 'bg-emerald-50/70'
+              : vs === 'below'
+                ? 'bg-red-50/70'
+                : '';
+          return (
+            <tr key={`${row.tagNumber}-${i}`} className={`border-b border-gray-100 hover:bg-gray-50/80 ${rowBg}`}>
+              <td className="px-3 py-2 font-medium text-gray-900">{row.tagNumber}</td>
+              <td className="px-3 py-2 text-gray-600">{row.stage}</td>
+              <td className="px-3 py-2 tabular-nums text-gray-800">{row.entryWeight}</td>
+              <td className="px-3 py-2 tabular-nums text-gray-800">{row.currentWeight}</td>
+              <td className="px-3 py-2 tabular-nums text-gray-800">{row.totalGain}</td>
+              <td className="px-3 py-2 tabular-nums text-gray-800">{row.adg}</td>
+              <td className="px-3 py-2 tabular-nums text-gray-600">{row.targetAdg}</td>
+              <td
+                className={`px-3 py-2 font-medium tabular-nums ${
+                  vs === 'on_track' ? 'text-emerald-800' : vs === 'below' ? 'text-red-700' : 'text-gray-500'
+                }`}
+              >
+                {vsLabel}
+              </td>
+              <td className="px-3 py-2 tabular-nums text-gray-600">{row.measurements}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
 }
 
 function isDailySummaryJson(d: unknown): d is {
@@ -124,9 +200,15 @@ function isActivityJson(d: unknown): d is {
   return typeof d === 'object' && d !== null && 'data' in d && Array.isArray((d as { data: unknown }).data);
 }
 
+type FeedExportKey = 'usage-xlsx' | 'usage-pdf' | 'purch-xlsx' | 'purch-pdf';
+
 export default function ReportsPage() {
   const { currentFarm } = useFarm();
   const farmId = currentFarm?.id;
+
+  const [feedExportRange, setFeedExportRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [feedExportAnchor, setFeedExportAnchor] = useState(() => new Date().toISOString().slice(0, 10));
+  const [feedExporting, setFeedExporting] = useState<FeedExportKey | null>(null);
 
   const [selectedId, setSelectedId] = useState<ReportId>('herd_inventory');
   const selected = REPORTS.find((r) => r.id === selectedId)!;
@@ -228,6 +310,25 @@ export default function ReportsPage() {
     },
   });
 
+  const runFeedExport = async (key: FeedExportKey) => {
+    if (!farmId) return;
+    setFeedExporting(key);
+    try {
+      if (key === 'usage-xlsx' || key === 'usage-pdf') {
+        await feedService.exportReports(farmId, key === 'usage-xlsx' ? 'xlsx' : 'pdf', feedExportRange, feedExportAnchor);
+        track('report_export', { report_id: 'feed_usage', format: key === 'usage-xlsx' ? 'xlsx' : 'pdf' });
+      } else {
+        await feedService.exportPurchaseHistory(farmId, key === 'purch-xlsx' ? 'xlsx' : 'pdf');
+        track('report_export', { report_id: 'feed_purchases', format: key === 'purch-xlsx' ? 'xlsx' : 'pdf' });
+      }
+      toast.success(key.endsWith('xlsx') ? 'Excel downloaded' : 'PDF downloaded');
+    } catch {
+      toast.error('Feed export failed');
+    } finally {
+      setFeedExporting(null);
+    }
+  };
+
   if (!farmId) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 text-center">
@@ -238,6 +339,9 @@ export default function ReportsPage() {
     );
   }
 
+  const feedExportBtn =
+    'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm transition disabled:opacity-55';
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-8">
@@ -245,6 +349,94 @@ export default function ReportsPage() {
         <p className="mt-1 text-sm text-gray-600">
           Choose a report, set filters and format, then generate or download · {currentFarm?.name}
         </p>
+      </div>
+
+      <div className="mb-8 rounded-2xl border-2 border-emerald-300 bg-emerald-50/40 p-5 shadow-sm ring-1 ring-emerald-100">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+            <Wheat className="size-5" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-bold text-gray-900">Feed — PDF &amp; Excel</h2>
+            <p className="mt-1 text-sm text-gray-700">
+              <strong className="font-medium text-gray-900">Period report</strong>: one table — usage and purchases merged, one header row, no duplicate columns.{' '}
+              <strong className="font-medium text-gray-900">Purchases</strong> downloads every recorded buy (up to 500) in the same column layout.
+            </p>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div>
+                <label htmlFor="reports-feed-range" className="mb-1 block text-xs font-medium text-gray-600">
+                  Usage period
+                </label>
+                <select
+                  id="reports-feed-range"
+                  value={feedExportRange}
+                  onChange={(e) => setFeedExportRange(e.target.value as typeof feedExportRange)}
+                  className="rounded-xl border border-emerald-200/80 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly (7 days)</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="reports-feed-anchor" className="mb-1 block text-xs font-medium text-gray-600">
+                  Anchor date
+                </label>
+                <input
+                  id="reports-feed-anchor"
+                  type="date"
+                  value={feedExportAnchor}
+                  onChange={(e) => setFeedExportAnchor(e.target.value)}
+                  className="rounded-xl border border-emerald-200/80 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={!!feedExporting}
+                onClick={() => runFeedExport('usage-xlsx')}
+                className={`${feedExportBtn} border border-gray-300 bg-white text-gray-900 hover:bg-gray-50`}
+              >
+                {feedExporting === 'usage-xlsx' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <FileSpreadsheet className="size-4" aria-hidden />}
+                Period · Excel
+              </button>
+              <button
+                type="button"
+                disabled={!!feedExporting}
+                onClick={() => runFeedExport('usage-pdf')}
+                className={`${feedExportBtn} border border-gray-300 bg-white text-gray-900 hover:bg-gray-50`}
+              >
+                {feedExporting === 'usage-pdf' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <FileDown className="size-4" aria-hidden />}
+                Period · PDF
+              </button>
+              <button
+                type="button"
+                disabled={!!feedExporting}
+                onClick={() => runFeedExport('purch-xlsx')}
+                className={`${feedExportBtn} bg-emerald-600 text-white hover:bg-emerald-700`}
+              >
+                {feedExporting === 'purch-xlsx' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <FileSpreadsheet className="size-4" aria-hidden />}
+                Purchases · Excel
+              </button>
+              <button
+                type="button"
+                disabled={!!feedExporting}
+                onClick={() => runFeedExport('purch-pdf')}
+                className={`${feedExportBtn} bg-emerald-600 text-white hover:bg-emerald-700`}
+              >
+                {feedExporting === 'purch-pdf' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <FileDown className="size-4" aria-hidden />}
+                Purchases · PDF
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-gray-600">
+              <Link to="/feed/reports" className="font-medium text-emerald-800 underline hover:no-underline">
+                Open feed charts page
+              </Link>{' '}
+              for the same exports with chart view.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -445,32 +637,8 @@ function ReportJsonTable({
     return <p className="py-8 text-center text-sm text-gray-500">No weight gain rows in this range.</p>;
   }
 
-  if (reportId === 'weight_gain' && isWeightGainRowArray(data)) {
-    const keys = Object.keys(data[0]);
-    return (
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead>
-          <tr className="border-b border-gray-200">
-            {keys.map((k) => (
-              <th key={k} className="px-3 py-2 font-semibold capitalize text-gray-700">
-                {k.replace(/([A-Z])/g, ' $1').trim()}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row, i) => (
-            <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/80">
-              {keys.map((k) => (
-                <td key={k} className="px-3 py-2 text-gray-800">
-                  {row[k] === null || row[k] === undefined ? '—' : String(row[k])}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
+  if (reportId === 'weight_gain' && isWeightGainReportArray(data)) {
+    return <WeightGainReportTable rows={data} weightUnit={weightUnit} />;
   }
 
   if (reportId === 'activity_log' && isActivityJson(data)) {
@@ -542,7 +710,7 @@ function ReportJsonTable({
             </tr>
           </thead>
           <tbody>
-            {data.sales.map((s: any, i: number) => (
+            {data.sales.map((s, i) => (
               <tr key={i} className="border-b border-gray-100 hover:bg-gray-50/80">
                 <td className="px-3 py-2 font-medium">{s.tag}</td>
                 <td className="px-3 py-2 text-gray-600">{s.breed}</td>

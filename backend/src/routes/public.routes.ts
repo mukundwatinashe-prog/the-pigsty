@@ -4,6 +4,6 @@ import { PublicController } from '../controllers/public.controller';
 const router = Router();
 
 router.get('/import-template', PublicController.downloadImportTemplate);
-router.post('/leads', PublicController.captureLead);
+router.post('/contact', PublicController.submitContact);
 
 export default router;

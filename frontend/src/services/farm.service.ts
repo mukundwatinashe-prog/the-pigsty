@@ -1,5 +1,5 @@
 import api from './api';
-import type { Farm, FarmMember, FarmBillingInfo, Role } from '../types';
+import type { AuditLog, Farm, FarmMember, FarmBillingInfo, PigObservation, Role } from '../types';
 
 export interface FarmDetailResponse {
   farm: Farm & { members: FarmMember[] };
@@ -8,7 +8,8 @@ export interface FarmDetailResponse {
   stats: {
     byStatus: { status: string; _count: number }[];
     avgWeight: number;
-    recentActivity: unknown[];
+    recentActivity: AuditLog[];
+    recentPigObservations: PigObservation[];
   };
 }
 
@@ -44,6 +45,10 @@ export interface FarmFinancialsResponse {
     revenue: number;
     transactionCount: number;
     totalWeightSold: number;
+  };
+  feedPurchasesInPeriod: {
+    totalSpend: number;
+    byType: { feedType: string; spend: number; kgPurchased: number }[];
   };
   recentSales: {
     id: string;

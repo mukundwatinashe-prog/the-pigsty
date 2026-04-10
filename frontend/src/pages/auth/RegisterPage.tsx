@@ -3,16 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, UserPlus, Smartphone, FileDown, Shield, Globe } from 'lucide-react';
+import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { BrandLogo } from '../../components/BrandLogo';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { track } from '../../lib/analytics';
 import { apiErrorMessage } from '../../services/api';
 
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Valid email required'),
+  phone: z
+    .string()
+    .min(8, 'Enter your mobile number')
+    .max(24)
+    .refine((s) => s.replace(/\D/g, '').length >= 8, 'Use at least 8 digits (include country code if needed)'),
   password: z
     .string()
     .min(12, 'Password must be at least 12 characters')
@@ -31,7 +37,8 @@ type FormData = z.infer<typeof schema>;
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const { register: registerUser } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { register: registerUser, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -39,7 +46,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      await registerUser(data.name, data.email, data.password);
+      await registerUser(data.name, data.email, data.password, data.phone.trim());
       track('sign_up', { method: 'email' });
       toast.success('Account created! Welcome to The Pigsty');
       navigate('/farms');
@@ -48,50 +55,51 @@ export default function RegisterPage() {
     }
   };
 
+  const handleGoogleCredential = async (idToken: string) => {
+    setGoogleLoading(true);
+    try {
+      const u = await loginWithGoogle(idToken);
+      track('sign_up', { method: 'google' });
+      toast.success('Welcome to The Pigsty!');
+      navigate(u.phone?.trim() ? '/farms' : '/complete-profile');
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, 'Google sign-in failed'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-dvh min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 via-white to-accent-50 px-safe py-4 pb-safe pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="relative min-h-dvh min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50 px-safe pb-safe">
+      <Link
+        to="/"
+        className="absolute left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] z-10 text-sm font-medium text-primary-700 hover:text-primary-800"
+      >
+        ← Back to home
+      </Link>
+      <div className="flex min-h-dvh min-h-screen items-center justify-center py-4 pt-14 sm:pt-16">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex justify-center">
+        <div className="mb-8 text-center">
+          <div className="mx-auto flex flex-col items-center gap-0">
             <BrandLogo size="xl" />
+            <h1 className="-mt-2 text-2xl font-bold text-gray-900 sm:-mt-2.5">Create your account</h1>
           </div>
-          <Link to="/" className="text-sm text-primary-600 hover:text-primary-700 mb-4 inline-block">
-            ← Back to home
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-          <p className="text-gray-500 mt-1">
-            Built for smallholders and family farms — free for up to 100 pigs per farm. Works on your phone; export reports anytime. If you
-            live in the <strong className="font-medium text-gray-700">diaspora</strong>, use The Pigsty to stay on top of your home farm:
-            herd, weights, sales, and team activity in one place so you can manage with comfort and account for everything.
-          </p>
-          <ul className="mx-auto mt-4 flex max-w-sm flex-col gap-2 text-left text-xs text-gray-600 sm:text-sm">
-            <li className="flex items-start gap-2">
-              <Shield className="mt-0.5 size-4 shrink-0 text-primary-600" aria-hidden />
-              <span>No credit card to start · Your farm data is yours to export</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Smartphone className="mt-0.5 size-4 shrink-0 text-primary-600" aria-hidden />
-              <span>Use in the browser on Android or iPhone — add to home screen like an app</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <FileDown className="mt-0.5 size-4 shrink-0 text-primary-600" aria-hidden />
-              <span>
-                <a href="/api/public/import-template" download className="font-medium text-primary-700 hover:underline">
-                  Download the free Excel template
-                </a>{' '}
-                before or after you sign up
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Globe className="mt-0.5 size-4 shrink-0 text-primary-600" aria-hidden />
-              <span>
-                Overseas? Oversee your farm back home with shared access for family or workers — clear numbers, not guesswork.
-              </span>
-            </li>
-          </ul>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          <GoogleSignInButton
+            text="signup_with"
+            className={googleLoading ? 'pointer-events-none opacity-60' : ''}
+            onCredential={handleGoogleCredential}
+          />
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden>
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase tracking-wide">
+              <span className="bg-white px-3 text-gray-500">Or register with email</span>
+            </div>
+          </div>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
@@ -112,6 +120,19 @@ export default function RegisterPage() {
                 placeholder="you@example.com"
               />
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile number</label>
+              <input
+                {...register('phone')}
+                type="tel"
+                autoComplete="tel"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
+                placeholder="8–15 digits, e.g. country code + number"
+              />
+              <p className="mt-1 text-xs text-gray-500">Required for security and SMS password reset.</p>
+              {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
             </div>
 
             <div>
@@ -150,7 +171,7 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || googleLoading}
               className="w-full bg-primary-600 text-white py-2.5 rounded-lg font-medium hover:bg-primary-700 focus:ring-4 focus:ring-primary-200 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <UserPlus size={18} />
@@ -171,6 +192,7 @@ export default function RegisterPage() {
             </Link>
           </p>
         </div>
+      </div>
       </div>
     </div>
   );

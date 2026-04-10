@@ -7,6 +7,8 @@ import AppLayout from './components/layout/AppLayout';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import CompleteProfilePage from './pages/auth/CompleteProfilePage';
 import LandingPage from './pages/marketing/LandingPage';
 import PrivacyPage from './pages/marketing/PrivacyPage';
 import TermsPage from './pages/marketing/TermsPage';
@@ -19,11 +21,18 @@ import PigFormPage from './pages/pigs/PigFormPage';
 import PigImportPage from './pages/pigs/PigImportPage';
 import ServicedSowsPage from './pages/pigs/ServicedSowsPage';
 import PenListPage from './pages/pens/PenListPage';
+import PenDetailPage from './pages/pens/PenDetailPage';
 import WeightLogPage from './pages/weights/WeightLogPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import AuditLogPage from './pages/reports/AuditLogPage';
 import BillingPage from './pages/billing/BillingPage';
 import FinancialsPage from './pages/financials/FinancialsPage';
+import FeedDashboardPage from './pages/feed/FeedDashboardPage';
+import FeedPurchasePage from './pages/feed/FeedPurchasePage';
+import FeedDailyUsagePage from './pages/feed/FeedDailyUsagePage';
+import FeedUsageHistoryPage from './pages/feed/FeedUsageHistoryPage';
+import FeedPurchaseHistoryPage from './pages/feed/FeedPurchaseHistoryPage';
+import FeedReportsPage from './pages/feed/FeedReportsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,8 +53,10 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/farms" element={<FarmSelectPage />} />
               <Route element={<AppLayout />}>
+                <Route path="/complete-profile" element={<CompleteProfilePage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/pigs" element={<PigListPage />} />
                 <Route path="/pigs/new" element={<PigFormPage />} />
@@ -54,7 +65,14 @@ export default function App() {
                 <Route path="/import" element={<PigImportPage />} />
                 <Route path="/serviced-sows" element={<ServicedSowsPage />} />
                 <Route path="/pens" element={<PenListPage />} />
+                <Route path="/pens/:penId" element={<PenDetailPage />} />
                 <Route path="/weights" element={<WeightLogPage />} />
+                <Route path="/feed" element={<FeedDashboardPage />} />
+                <Route path="/feed/purchase" element={<FeedPurchasePage />} />
+                <Route path="/feed/daily" element={<FeedDailyUsagePage />} />
+                <Route path="/feed/usage-history" element={<FeedUsageHistoryPage />} />
+                <Route path="/feed/purchases" element={<FeedPurchaseHistoryPage />} />
+                <Route path="/feed/reports" element={<FeedReportsPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/financials" element={<FinancialsPage />} />
                 <Route path="/audit-log" element={<AuditLogPage />} />

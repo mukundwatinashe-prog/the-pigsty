@@ -1,50 +1,50 @@
 @import "tailwindcss";
 
 @theme {
-  /* Coolors: #d8a47f · #ef8354 · #565554 · #5bc0eb — sand, coral, charcoal, sky */
-  --color-primary-50: #fff8f5;
-  --color-primary-100: #ffefe8;
-  --color-primary-200: #ffdbc8;
-  --color-primary-300: #ffc19e;
-  --color-primary-400: #f7a578;
-  --color-primary-500: #ef8354;
-  --color-primary-600: #d4693d;
-  --color-primary-700: #b25530;
-  --color-primary-800: #8c4428;
-  --color-primary-900: #5c2e1a;
+  /* Coolors: #143109 · #aaae7f · #d0d6b3 · #f7f7f7 — forest, sage, mist, off-white */
+  --color-primary-50: #f7f7f7;
+  --color-primary-100: #eaede0;
+  --color-primary-200: #dde2cc;
+  --color-primary-300: #d0d6b3;
+  --color-primary-400: #bfc5a0;
+  --color-primary-500: #aaae7f;
+  --color-primary-600: #2f5a18;
+  --color-primary-700: #143109;
+  --color-primary-800: #102709;
+  --color-primary-900: #0b1a06;
 
-  --color-accent-50: #f7f7f6;
-  --color-accent-100: #eaeae9;
-  --color-accent-200: #d5d5d3;
-  --color-accent-300: #b8b7b5;
-  --color-accent-400: #8f8e8c;
-  --color-accent-500: #706f6d;
-  --color-accent-600: #565554;
-  --color-accent-700: #464543;
-  --color-accent-800: #363534;
-  --color-accent-900: #232221;
+  --color-accent-50: #f7f7f7;
+  --color-accent-100: #ecece9;
+  --color-accent-200: #d9d9d4;
+  --color-accent-300: #bcbcb5;
+  --color-accent-400: #94948c;
+  --color-accent-500: #76766e;
+  --color-accent-600: #5e5e57;
+  --color-accent-700: #4c4c47;
+  --color-accent-800: #41413c;
+  --color-accent-900: #232322;
 
-  --color-farm-50: #faf7f2;
-  --color-farm-100: #f2ebe1;
-  --color-farm-200: #e8d9c4;
-  --color-farm-300: #d8a47f;
-  --color-farm-400: #c49163;
-  --color-farm-500: #a6784e;
-  --color-farm-600: #87603f;
-  --color-farm-700: #6d4e34;
-  --color-farm-800: #563f2a;
-  --color-farm-900: #3b2b1d;
+  --color-farm-50: #f6f7f3;
+  --color-farm-100: #e9ebdf;
+  --color-farm-200: #d5dac5;
+  --color-farm-300: #b8c09a;
+  --color-farm-400: #97a06f;
+  --color-farm-500: #7a8556;
+  --color-farm-600: #606b45;
+  --color-farm-700: #4d5638;
+  --color-farm-800: #3f462f;
+  --color-farm-900: #2a3023;
 
-  --color-sky-50: #edf9fd;
-  --color-sky-100: #d6f0fa;
-  --color-sky-200: #ade4f5;
-  --color-sky-300: #7ad4ef;
-  --color-sky-400: #5bc0eb;
-  --color-sky-500: #47b3e6;
-  --color-sky-600: #3aa8d4;
-  --color-sky-700: #2d87ad;
-  --color-sky-800: #286c8c;
-  --color-sky-900: #255a73;
+  --color-sky-50: #eef3f0;
+  --color-sky-100: #dce8e2;
+  --color-sky-200: #b9d0c5;
+  --color-sky-300: #8fb0a1;
+  --color-sky-400: #6a8f7f;
+  --color-sky-500: #537565;
+  --color-sky-600: #425e52;
+  --color-sky-700: #374d44;
+  --color-sky-800: #2f4039;
+  --color-sky-900: #283530;
 }
 
 @layer utilities {

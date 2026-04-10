@@ -7,6 +7,7 @@ import { Eye, EyeOff, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { BrandLogo } from '../../components/BrandLogo';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { track } from '../../lib/analytics';
 import { apiErrorMessage } from '../../services/api';
 
@@ -19,7 +20,8 @@ type FormData = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -27,27 +29,45 @@ export default function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      await login(data.email, data.password);
+      const u = await login(data.email, data.password);
       track('login', { method: 'email' });
       toast.success('Welcome back!');
-      navigate('/farms');
+      navigate(u.phone?.trim() ? '/farms' : '/complete-profile');
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Login failed'));
     }
   };
 
+  const handleGoogleCredential = async (idToken: string) => {
+    setGoogleLoading(true);
+    try {
+      const u = await loginWithGoogle(idToken);
+      track('login', { method: 'google' });
+      toast.success('Welcome back!');
+      navigate(u.phone?.trim() ? '/farms' : '/complete-profile');
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, 'Google sign-in failed'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-dvh min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 via-white to-accent-50 px-safe py-4 pb-safe pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="relative min-h-dvh min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50 px-safe pb-safe">
+      <Link
+        to="/"
+        className="absolute left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] z-10 text-sm font-medium text-primary-700 hover:text-primary-800"
+      >
+        ← Back to home
+      </Link>
+      <div className="flex min-h-dvh min-h-screen items-center justify-center py-4 pt-14 sm:pt-16">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex justify-center">
+        <div className="mb-8 text-center">
+          <div className="mx-auto flex flex-col items-center gap-0">
             <BrandLogo size="xl" />
+            <h1 className="-mt-2 text-2xl font-bold text-gray-900 sm:-mt-2.5">Welcome to The Pigsty</h1>
           </div>
-          <Link to="/" className="text-sm text-primary-600 hover:text-primary-700 mb-4 inline-block">
-            ← Back to home
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome to The Pigsty</h1>
-          <p className="text-gray-500 mt-1">Sign in to manage your herd, pens, and reports</p>
+          <p className="mt-1 text-gray-500">Sign in to manage your herd, pens, and reports</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
@@ -85,19 +105,33 @@ export default function LoginPage() {
 
             <div className="flex justify-end">
               <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">
-                Forgot password?
+                Forgot password? (email or phone)
               </Link>
             </div>
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || googleLoading}
               className="w-full bg-primary-600 text-white py-2.5 rounded-lg font-medium hover:bg-primary-700 focus:ring-4 focus:ring-primary-200 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <LogIn size={18} />
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden>
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase tracking-wide">
+              <span className="bg-white px-3 text-gray-500">Or</span>
+            </div>
+          </div>
+          <GoogleSignInButton
+            text="continue_with"
+            className={googleLoading ? 'pointer-events-none opacity-60' : ''}
+            onCredential={handleGoogleCredential}
+          />
 
           <p className="text-center text-xs text-gray-500 mt-4">
             <Link to="/privacy" className="text-primary-600 hover:underline">Privacy</Link>
@@ -111,6 +145,7 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
+      </div>
       </div>
     </div>
   );

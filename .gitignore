@@ -8,12 +8,20 @@ frontend/dist/
 dist/
 dist-ssr/
 
+# Uploaded files (feed receipts, etc.)
+uploads/
+
 # Environment & secrets
 .env
 .env.local
 .env.*.local
 backend/.env
 frontend/.env
+*client_secret*.json
+
+# Local scratch / reference (not app source)
+/IMG-*.jpg*
+/feed_report.xlsx
 
 # Logs
 logs/

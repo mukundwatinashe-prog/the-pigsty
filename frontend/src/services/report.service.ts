@@ -1,6 +1,7 @@
+import type { AxiosResponse } from 'axios';
 import api from './api';
 
-const downloadFile = (response: any, filename: string) => {
+const downloadFile = (response: AxiosResponse<Blob>, filename: string) => {
   const url = window.URL.createObjectURL(new Blob([response.data]));
   const a = document.createElement('a');
   a.href = url;

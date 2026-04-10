@@ -10,6 +10,7 @@ import {
   parseFinancialsDateQuery,
   type FinancialsSummaryResult,
 } from '../services/financials-summary.service';
+import { compareAdgToTarget, targetAdgKgPerDay } from '../lib/weightTargets';
 
 function imageExtFromDataUrl(dataUrl?: string | null): 'png' | 'jpeg' | null {
   if (!dataUrl) return null;
@@ -29,7 +30,7 @@ function base64BufferFromDataUrl(dataUrl?: string | null): Buffer | null {
   }
 }
 
-function drawPdfBrandHeader(doc: PDFKit.PDFDocument, farmName: string, logoUrl: string | null | undefined, title: string, subtitle?: string) {
+export function drawPdfBrandHeader(doc: PDFKit.PDFDocument, farmName: string, logoUrl: string | null | undefined, title: string, subtitle?: string) {
   const topY = doc.y;
   const logo = base64BufferFromDataUrl(logoUrl);
   if (logo) {
@@ -55,7 +56,7 @@ const PDF_TABLE_HEADER_FILL = '#e8e8e8';
  * Grid table with vertical/horizontal rules and a shaded header row.
  * Repeats column titles after each page break.
  */
-function drawPdfGridTable(
+export function drawPdfGridTable(
   doc: PDFKit.PDFDocument,
   params: {
     x: number;
@@ -206,6 +207,10 @@ function financialStageLabel(stage: string): string {
   return stage.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function feedTypeFinancialLabel(t: string): string {
+  return t.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function applyFinancialsGridHeaderRow(row: ExcelJS.Row): void {
   row.font = { bold: true };
   row.fill = {
@@ -247,7 +252,7 @@ function addFinancialsSheetTitleBlock(ws: ExcelJS.Worksheet, farmName: string, t
 
 async function buildFinancialsXlsx(data: FinancialsSummaryResult): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  const { farm, herd, breakdownByStage, breakdownByPen, period, salesInPeriod, recentSales } = data;
+  const { farm, herd, breakdownByStage, breakdownByPen, period, salesInPeriod, recentSales, feedPurchasesInPeriod } = data;
   const cur = farm.currency;
   const wu = farm.weightUnit;
   const logoExt = imageExtFromDataUrl(farm.logoUrl);
@@ -278,6 +283,7 @@ async function buildFinancialsXlsx(data: FinancialsSummaryResult): Promise<Buffe
     ['Inventory headcount', String(herd.inventoryHeadcount)],
     ['Average weight (inventory)', herd.inventoryHeadcount ? `${herd.avgWeight.toFixed(1)} ${wu}` : '—'],
     [`Reference price per ${wu}`, farm.pricePerKg.toFixed(4)],
+    ['Feed purchase spend (selected period)', `${feedPurchasesInPeriod.totalSpend.toFixed(2)} ${cur}`],
   ];
   for (const sr of summaryRows) {
     ws0.getRow(row).values = sr;
@@ -344,6 +350,23 @@ async function buildFinancialsXlsx(data: FinancialsSummaryResult): Promise<Buffe
   ws3.getColumn(2).width = 18;
   ws3.getColumn(3).width = 16;
   ws3.getColumn(4).width = 20;
+
+  const wsFeed = wb.addWorksheet('Feed purchases');
+  row = addFinancialsSheetTitleBlock(wsFeed, farm.name, `Feed purchases (${formatFinancialsPeriodLabel(period)})`, 1);
+  wsFeed.getRow(row).values = ['Feed type', `Spend (${cur})`, 'Kg purchased'];
+  applyFinancialsGridHeaderRow(wsFeed.getRow(row));
+  row++;
+  for (const f of feedPurchasesInPeriod.byType) {
+    wsFeed.getRow(row).values = [feedTypeFinancialLabel(f.feedType), Number(f.spend.toFixed(2)), Number(f.kgPurchased.toFixed(3))];
+    applyFinancialsBodyRowBorders(wsFeed.getRow(row));
+    row++;
+  }
+  const feedTotalKg = feedPurchasesInPeriod.byType.reduce((a, f) => a + f.kgPurchased, 0);
+  wsFeed.getRow(row).values = ['Total', Number(feedPurchasesInPeriod.totalSpend.toFixed(2)), Number(feedTotalKg.toFixed(3))];
+  wsFeed.getRow(row).font = { bold: true };
+  wsFeed.getColumn(1).width = 26;
+  wsFeed.getColumn(2).width = 18;
+  wsFeed.getColumn(3).width = 18;
 
   const ws4 = wb.addWorksheet('Recent sales');
   row = addFinancialsSheetTitleBlock(ws4, farm.name, `Recent sales (up to ${recentSales.length} rows)`, 1);
@@ -469,7 +492,7 @@ export class ReportController {
         },
       });
 
-      const report = pigs.map(pig => {
+      const report = pigs.map((pig) => {
         const logs = pig.weightLogs;
         let adg = 0;
         if (logs.length >= 2) {
@@ -478,22 +501,35 @@ export class ReportController {
           const days = (last.date.getTime() - first.date.getTime()) / (1000 * 60 * 60 * 24);
           if (days > 0) adg = (Number(last.weight) - Number(first.weight)) / days;
         }
+        const adgRounded = Math.round(adg * 100) / 100;
+        const targetAdg = targetAdgKgPerDay(pig.stage);
+        const vsTarget =
+          logs.length < 2 ? 'n_a' : compareAdgToTarget(adg, pig.stage);
         return {
           tagNumber: pig.tagNumber,
+          stage: pig.stage,
           entryWeight: Number(pig.entryWeight),
           currentWeight: Number(pig.currentWeight),
           totalGain: Number(pig.currentWeight) - Number(pig.entryWeight),
-          adg: Math.round(adg * 100) / 100,
+          adg: adgRounded,
+          targetAdg,
+          vsTarget,
           measurements: logs.length,
         };
       });
       const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
 
       if (format === 'xlsx') {
-        const rows = report.map(r => ({
-          'Tag': r.tagNumber, 'Entry Weight': r.entryWeight,
-          'Current Weight': r.currentWeight, 'Total Gain': r.totalGain,
-          'Avg Daily Gain': r.adg, 'Measurements': r.measurements,
+        const rows = report.map((r) => ({
+          Tag: r.tagNumber,
+          Stage: r.stage,
+          'Entry Weight': r.entryWeight,
+          'Current Weight': r.currentWeight,
+          'Total Gain': r.totalGain,
+          'Avg Daily Gain': r.adg,
+          'Target ADG': r.targetAdg,
+          'Vs target': r.vsTarget === 'on_track' ? 'On target' : r.vsTarget === 'below' ? 'Below target' : 'N/A',
+          Measurements: r.measurements,
         }));
         const buf = await buildBrandedWorkbook({
           farmName: farm?.name || 'Farm',
@@ -512,14 +548,27 @@ export class ReportController {
         doc.pipe(res);
         drawPdfBrandHeader(doc, farm?.name || 'Farm', farm?.logoUrl, 'Weight Gain Report', `Generated: ${new Date().toLocaleDateString()}`);
 
-        const wgHeaders = ['Tag', 'Entry (kg)', 'Current (kg)', 'Total gain (kg)', 'ADG (kg/day)', '# Weighings'];
-        const wgColW = [78, 72, 78, 88, 88, 72];
+        const wgHeaders = [
+          'Tag',
+          'Stage',
+          'Entry (kg)',
+          'Current (kg)',
+          'Gain (kg)',
+          'ADG',
+          'Target',
+          'Vs target',
+          '#',
+        ];
+        const wgColW = [64, 52, 56, 56, 52, 44, 44, 52, 28];
         const wgRows = report.map((r) => [
           r.tagNumber,
+          r.stage,
           String(r.entryWeight),
           String(r.currentWeight),
           String(r.totalGain),
           String(r.adg),
+          String(r.targetAdg),
+          r.vsTarget === 'on_track' ? 'OK' : r.vsTarget === 'below' ? 'Low' : '—',
           String(r.measurements),
         ]);
         drawPdfGridTable(doc, {
@@ -706,7 +755,7 @@ export class ReportController {
       });
       if (!data) return next(new AppError('Farm not found', 404));
 
-      const { farm, herd, breakdownByStage, breakdownByPen, period, salesInPeriod, recentSales } = data;
+      const { farm, herd, breakdownByStage, breakdownByPen, period, salesInPeriod, recentSales, feedPurchasesInPeriod } = data;
       const cur = farm.currency;
       const wu = farm.weightUnit;
       const subtitle = `Reference: ${farm.pricePerKg} ${cur} per ${wu} | Generated: ${new Date().toLocaleDateString()}`;
@@ -799,6 +848,24 @@ export class ReportController {
             salesInPeriod.totalWeightSold.toFixed(1),
           ],
         ],
+        headerFontSize: 8,
+        bodyFontSize: 7.5,
+      });
+
+      doc.y = y + 14;
+      doc.fontSize(11).font('Helvetica-Bold').text('Feed purchases (selected period)', doc.page.margins.left, doc.y);
+      doc.moveDown(0.7);
+
+      y = drawPdfGridTable(doc, {
+        x: doc.page.margins.left,
+        y: doc.y,
+        colWidths: [220, 100, 100],
+        headers: ['Feed type', `Spend (${cur})`, 'Kg purchased'],
+        rows: feedPurchasesInPeriod.byType.map((f) => [
+          feedTypeFinancialLabel(f.feedType),
+          f.spend.toFixed(2),
+          f.kgPurchased.toFixed(3),
+        ]),
         headerFontSize: 8,
         bodyFontSize: 7.5,
       });
