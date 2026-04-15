@@ -56,7 +56,7 @@ const webPort = resolveWebPort();
 const appOrigin = `http://127.0.0.1:${webPort}`;
 
 /** Same icon as the Vite app (relative to repo root for file:// open-app.html). */
-const iconHref = 'frontend/public/logo.png';
+const iconHref = 'frontend/public/favicon.png';
 
 const html = `<!DOCTYPE html>
 <html lang="en">
