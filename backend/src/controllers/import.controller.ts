@@ -7,6 +7,7 @@ import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
 import { FREE_TIER_MAX_PIGS, wouldExceedFreeTier } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
+import { formatBreakdown, notifyFarmLeads } from '../services/farmNotify.service';
 
 const BREEDS = ['LARGE_WHITE', 'LANDRACE', 'DUROC', 'PIETRAIN', 'BERKSHIRE', 'HAMPSHIRE', 'CHESTER_WHITE', 'YORKSHIRE', 'TAMWORTH', 'MUKOTA', 'KOLBROEK', 'WINDSNYER', 'SA_LANDRACE', 'INDIGENOUS', 'CROSSBREED', 'OTHER'];
 const STAGES = ['BOAR', 'SOW', 'GILT', 'WEANER', 'PIGLET', 'PORKER', 'GROWER', 'FINISHER'];
@@ -606,6 +607,40 @@ export class ImportController {
         action: 'IMPORT', entity: 'Pig', entityId: 'bulk',
         details: `Imported ${imported} pigs`,
       });
+
+      const [farm, actor] = await Promise.all([
+        prisma.farm.findUnique({
+          where: { id: req.farmId! },
+          select: { name: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: req.userId! },
+          select: { name: true, email: true },
+        }),
+      ]);
+      if (farm) {
+        const breedCounts = new Map<string, number>();
+        for (const row of validRows) {
+          const breed = String(row.data.breed || 'UNKNOWN').trim() || 'UNKNOWN';
+          breedCounts.set(breed, (breedCounts.get(breed) || 0) + 1);
+        }
+        await notifyFarmLeads({
+          farmId: req.farmId!,
+          subject: `[The Pigsty] Bulk pig import completed — ${farm.name}`,
+          text: [
+            `A bulk pig import was completed on farm "${farm.name}".`,
+            '',
+            `Imported pigs: ${imported}`,
+            `Rows with errors: ${preview.length - imported}`,
+            '',
+            ...formatBreakdown(breedCounts, 'Breed breakdown'),
+            '',
+            `Imported by: ${actor?.name || 'Team member'} (${actor?.email || 'unknown'})`,
+            `Time (UTC): ${new Date().toISOString()}`,
+          ].join('\n'),
+          logTag: 'farm-pig-added-import',
+        });
+      }
 
       res.json({ imported, total: preview.length, errors: preview.length - imported });
     } catch (error) {

@@ -5,6 +5,7 @@ import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
 import { pigOnStockOnlyWhere } from '../lib/pigStock';
+import { notifyFarmLeads } from '../services/farmNotify.service';
 
 const penSchema = z.object({
   name: z.string().min(1).max(100),
@@ -71,6 +72,17 @@ export class PenController {
   static async create(req: FarmRequest, res: Response, next: NextFunction) {
     try {
       const data = penSchema.parse(req.body);
+      const [farm, actor] = await Promise.all([
+        prisma.farm.findUnique({
+          where: { id: req.farmId! },
+          select: { id: true, name: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: req.userId! },
+          select: { name: true, email: true },
+        }),
+      ]);
+      if (!farm) return next(new AppError('Farm not found', 404));
       const pen = await prisma.pen.create({
         data: { ...data, farmId: req.farmId! },
         include: {
@@ -85,6 +97,21 @@ export class PenController {
         userId: req.userId!, farmId: req.farmId!,
         action: 'CREATE', entity: 'Pen', entityId: pen.id,
         details: `Created pen "${pen.name}"`,
+      });
+      await notifyFarmLeads({
+        farmId: req.farmId!,
+        subject: `[The Pigsty] New pen created — ${farm.name}`,
+        text: [
+          `A new pen was created on farm "${farm.name}".`,
+          '',
+          `Pen name: ${pen.name}`,
+          `Pen type: ${pen.type}`,
+          `Capacity: ${pen.capacity}`,
+          '',
+          `Created by: ${actor?.name || 'Team member'} (${actor?.email || 'unknown'})`,
+          `Time (UTC): ${new Date().toISOString()}`,
+        ].join('\n'),
+        logTag: 'farm-pen-created',
       });
       res.status(201).json(pen);
     } catch (error) {

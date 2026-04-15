@@ -32,7 +32,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
   WORKER: [
     'pigs:read', 'pigs:write',
-    'pens:read',
+    'pens:read', 'pens:write',
     'weights:read', 'weights:write',
     'reports:read', 'reports:export',
     'audit:read', 'import:write',

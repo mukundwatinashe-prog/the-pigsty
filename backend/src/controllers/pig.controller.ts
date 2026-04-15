@@ -8,6 +8,7 @@ import { AuditService } from '../services/audit.service';
 import { FREE_TIER_MAX_PIGS, wouldExceedFreeTier } from '../config/planLimits';
 import { syncPigGrowthStageIfNeeded } from '../services/pigStageSync.service';
 import { onHandPigsWhere } from '../lib/pigStock';
+import { notifyFarmLeads } from '../services/farmNotify.service';
 
 const BREEDS = ['LARGE_WHITE', 'LANDRACE', 'DUROC', 'PIETRAIN', 'BERKSHIRE', 'HAMPSHIRE', 'CHESTER_WHITE', 'YORKSHIRE', 'TAMWORTH', 'MUKOTA', 'KOLBROEK', 'WINDSNYER', 'SA_LANDRACE', 'INDIGENOUS', 'CROSSBREED', 'OTHER'] as const;
 const STAGES = ['BOAR', 'SOW', 'GILT', 'WEANER', 'PIGLET', 'PORKER', 'GROWER', 'FINISHER'] as const;
@@ -166,13 +167,13 @@ export class PigController {
     try {
       const data = pigSchema.parse(req.body);
 
-      const farm = await prisma.farm.findUnique({
+      const farmPlan = await prisma.farm.findUnique({
         where: { id: req.farmId! },
         select: { plan: true },
       });
-      if (!farm) return next(new AppError('Farm not found', 404));
+      if (!farmPlan) return next(new AppError('Farm not found', 404));
       const pigCount = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
-      if (wouldExceedFreeTier(pigCount, 1, farm.plan)) {
+      if (wouldExceedFreeTier(pigCount, 1, farmPlan.plan)) {
         return next(
           new AppError(
             `Free plan supports up to ${FREE_TIER_MAX_PIGS} pigs. Upgrade to Pro to add more.`,
@@ -204,6 +205,37 @@ export class PigController {
         action: 'CREATE', entity: 'Pig', entityId: pig.id,
         details: `Added pig "${pig.tagNumber}"`,
       });
+
+      const [farmInfo, actor] = await Promise.all([
+        prisma.farm.findUnique({
+          where: { id: req.farmId! },
+          select: { name: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: req.userId! },
+          select: { name: true, email: true },
+        }),
+      ]);
+      if (farmInfo) {
+        await notifyFarmLeads({
+          farmId: req.farmId!,
+          subject: `[The Pigsty] Pig added — ${farmInfo.name}`,
+          text: [
+            `A pig was added to farm "${farmInfo.name}".`,
+            '',
+            'Breed breakdown:',
+            `- ${pig.breed}: 1`,
+            '',
+            `Tag number: ${pig.tagNumber}`,
+            `Stage: ${pig.stage}`,
+            `Health status: ${pig.healthStatus}`,
+            '',
+            `Added by: ${actor?.name || 'Team member'} (${actor?.email || 'unknown'})`,
+            `Time (UTC): ${new Date().toISOString()}`,
+          ].join('\n'),
+          logTag: 'farm-pig-added-single',
+        });
+      }
 
       res.status(201).json(pig);
     } catch (error) {
