@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, PiggyBank, Warehouse, Weight, FileSpreadsheet,
-  FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet, Wheat,
+  FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet, Wheat, LifeBuoy,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useFarm } from '../../context/FarmContext';
 import { appLogoUrl } from '../../lib/siteConfig';
+import { prefetchRoute, prefetchRouteGroup } from '../../lib/routePrefetch';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/financials', icon: Wallet, label: 'Financials' },
   { to: '/audit-log', icon: FileSpreadsheet, label: 'Audit Log' },
   { to: '/billing', icon: CreditCard, label: 'Billing' },
+  { to: '/help', icon: LifeBuoy, label: 'Help' },
   { to: '/settings', icon: Settings, label: 'Farm Settings' },
 ];
 
@@ -33,6 +35,18 @@ export default function Sidebar({ mobileNavOpen = false, onNavigate }: SidebarPr
   const { currentFarm } = useFarm();
 
   const showNavText = mobileNavOpen || !collapsed;
+  const warmRoute = (to: string) => {
+    prefetchRoute(to);
+    if (to === '/feed') {
+      prefetchRouteGroup([
+        '/feed/daily',
+        '/feed/purchase',
+        '/feed/purchases',
+        '/feed/usage-history',
+        '/feed/reports',
+      ]);
+    }
+  };
 
   return (
     <aside
@@ -89,6 +103,8 @@ export default function Sidebar({ mobileNavOpen = false, onNavigate }: SidebarPr
             key={to}
             to={to}
             onClick={() => onNavigate?.()}
+            onMouseEnter={() => warmRoute(to)}
+            onFocus={() => warmRoute(to)}
             className={({ isActive }) =>
               `flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'

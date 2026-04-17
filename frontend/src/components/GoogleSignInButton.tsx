@@ -35,8 +35,11 @@ export function GoogleSignInButton({ onCredential, text = 'continue_with', class
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
   const containerRef = useRef<HTMLDivElement>(null);
   const callbackRef = useRef(onCredential);
-  callbackRef.current = onCredential;
   const fallbackLabel = text === 'signup_with' ? 'Sign up with Google' : 'Continue with Google';
+
+  useEffect(() => {
+    callbackRef.current = onCredential;
+  }, [onCredential]);
 
   useEffect(() => {
     if (!clientId || !containerRef.current) return;

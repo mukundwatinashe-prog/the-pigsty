@@ -82,7 +82,7 @@ export default function PenDetailPage() {
   const pricePerKg = Number(farmDetail?.farm?.pricePerKg) || 0;
 
   const pen = penQuery.data;
-  const pigs = pen?.pigs ?? [];
+  const pigs = useMemo(() => pen?.pigs ?? [], [pen?.pigs]);
   const activePigs = useMemo(() => pigs.filter((p) => p.status === 'ACTIVE'), [pigs]);
 
   const bulkMutation = useMutation({

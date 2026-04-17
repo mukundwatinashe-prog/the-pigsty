@@ -122,6 +122,11 @@ const DEFAULT_SORT_ORDER: Record<PigSortKey, 'asc' | 'desc'> = {
   createdAt: 'desc',
 };
 
+function statusFromParams(searchParams: URLSearchParams): string {
+  const raw = searchParams.get('status');
+  return raw && STATUS_OPTIONS.some((o) => o.value === raw) ? raw : '';
+}
+
 function SortableTh({
   label,
   sortKey,
@@ -175,7 +180,7 @@ export default function PigListPage() {
   const [breedFilter, setBreedFilter] = useState<string>('');
   const [stageFilter, setStageFilter] = useState<string>('');
   /** '' = on-hand only (API inStockOnly); '__ALL__' = every status; else specific PigStatus. */
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>(() => statusFromParams(searchParams));
   const [healthFilter, setHealthFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<PigSortKey>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -205,17 +210,6 @@ export default function PigListPage() {
   const currency = currentFarm?.currency ?? 'USD';
   const saleWeight = parseFloat(saleForm.weightAtSale) || 0;
   const calculatedPrice = parseFloat((saleWeight * pricePerKg).toFixed(2));
-
-  useEffect(() => {
-    const raw = searchParams.get('status');
-    if (raw && STATUS_OPTIONS.some((o) => o.value === raw)) {
-      setStatusFilter(raw);
-      setPage(1);
-      return;
-    }
-    setStatusFilter('');
-    setPage(1);
-  }, [searchParams]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);

@@ -71,6 +71,11 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isEditableUntil(editableUntil?: string) {
+  if (!editableUntil) return true;
+  return new Date(editableUntil).getTime() > Date.now();
+}
+
 export default function FeedDailyUsagePage() {
   const { currentFarm } = useFarm();
   const qc = useQueryClient();
@@ -93,6 +98,7 @@ export default function FeedDailyUsagePage() {
   useEffect(() => {
     const e = existing?.entry;
     if (e) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(formFromEntry(e));
       setNotes(e.notes ?? '');
       return;
@@ -130,9 +136,7 @@ export default function FeedDailyUsagePage() {
     return <p className="text-gray-600">Select a farm first.</p>;
   }
 
-  const editable =
-    !existing?.entry ||
-    new Date(existing.entry.editableUntil).getTime() > Date.now();
+  const editable = !existing?.entry || isEditableUntil(existing.entry.editableUntil);
 
   const setField = (key: keyof DailyPayload, val: string) => {
     setForm((prev) => ({ ...prev, [key]: val }));

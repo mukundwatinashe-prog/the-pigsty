@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, KeyRound, ArrowLeft } from 'lucide-react';
@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
 
   const defaultChannel = state?.email ? 'email' : state?.phone ? 'phone' : 'email';
 
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       channel: defaultChannel,
@@ -65,7 +65,7 @@ export default function ResetPasswordPage() {
       confirmPassword: '',
     },
   });
-  const channel = watch('channel');
+  const channel = useWatch({ control, name: 'channel' });
 
   const onSubmit = async (data: FormData) => {
     try {

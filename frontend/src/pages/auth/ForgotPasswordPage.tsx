@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Mail, Smartphone, ArrowLeft } from 'lucide-react';
@@ -30,11 +30,11 @@ type Step1Data = z.infer<typeof step1Schema>;
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<Step1Data>({
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<Step1Data>({
     resolver: zodResolver(step1Schema),
     defaultValues: { channel: 'email', email: '', phone: '' },
   });
-  const channel = watch('channel');
+  const channel = useWatch({ control, name: 'channel' });
 
   const onSubmit = async (data: Step1Data) => {
     try {

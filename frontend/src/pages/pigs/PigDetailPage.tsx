@@ -75,6 +75,10 @@ function addDays(iso: string, days: number): Date {
   return d;
 }
 
+function daysSince(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+}
+
 function StatusBadge({ kind, value }: { kind: 'status' | 'health'; value: string }) {
   const base = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
   if (kind === 'status') {
@@ -619,7 +623,7 @@ export default function PigDetailPage() {
     pig.serviced && pig.servicedDate ? addDays(pig.servicedDate, GESTATION_DAY_100) : null;
   const gestationDaysSinceService =
     pig.serviced && pig.servicedDate
-      ? Math.floor((Date.now() - new Date(pig.servicedDate).getTime()) / (1000 * 60 * 60 * 24))
+      ? daysSince(pig.servicedDate)
       : null;
   const showPostServiceHeatCheckReminder =
     Boolean(
