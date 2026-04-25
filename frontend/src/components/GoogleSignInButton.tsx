@@ -32,7 +32,17 @@ type Props = {
  * Renders the official Google button. Requires `VITE_GOOGLE_CLIENT_ID` (same OAuth client ID as backend `GOOGLE_CLIENT_ID`).
  */
 export function GoogleSignInButton({ onCredential, text = 'continue_with', className = '' }: Props) {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+  const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+  const fallbackClientId = (() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.toLowerCase();
+      if (host === 'the-pigsty.org' || host.endsWith('.the-pigsty.org')) {
+        return '556349279611-bv7sf5q249p3j76m2spr0ums3lermenj.apps.googleusercontent.com';
+      }
+    }
+    return undefined;
+  })();
+  const clientId = envClientId || fallbackClientId;
   const containerRef = useRef<HTMLDivElement>(null);
   const callbackRef = useRef(onCredential);
   const fallbackLabel = text === 'signup_with' ? 'Sign up with Google' : 'Continue with Google';
