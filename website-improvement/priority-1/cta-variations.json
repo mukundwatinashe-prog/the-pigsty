@@ -1,0 +1,61 @@
+{
+  "cta_variations": [
+    {
+      "type": "action_oriented",
+      "text": "Start Tracking Now"
+    },
+    {
+      "type": "action_oriented",
+      "text": "Create My Farm Dashboard"
+    },
+    {
+      "type": "benefit_focused",
+      "text": "Save 5 Hours Every Week"
+    },
+    {
+      "type": "benefit_focused",
+      "text": "Protect Profit With Better Records"
+    },
+    {
+      "type": "benefit_focused",
+      "text": "Catch Health Problems Earlier"
+    },
+    {
+      "type": "curiosity",
+      "text": "See Why Pig Farmers Switch"
+    },
+    {
+      "type": "curiosity",
+      "text": "See Your Farm Data Come Alive"
+    },
+    {
+      "type": "urgency",
+      "text": "Try Free for 30 Days"
+    },
+    {
+      "type": "urgency",
+      "text": "Start Free Today"
+    },
+    {
+      "type": "direct",
+      "text": "Get Started in 2 Minutes"
+    }
+  ],
+  "microcopy": {
+    "form_labels": {
+      "email": "Work email",
+      "password": "Create a secure password",
+      "farm_name": "Farm name"
+    },
+    "validation_errors": {
+      "email_required": "Please enter your email so we can create your account.",
+      "password_weak": "Use 12+ characters with uppercase, lowercase, number, and symbol.",
+      "farm_name_required": "Add your farm name to finish setup."
+    },
+    "success_states": {
+      "signup_success": "Your account is ready. Add your first pig to start tracking.",
+      "form_saved": "Saved successfully. Your farm records are up to date.",
+      "invite_sent": "Invite sent. Your teammate can now join this farm."
+    }
+  }
+}

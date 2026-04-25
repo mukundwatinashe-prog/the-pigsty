@@ -14,6 +14,7 @@ import reportRoutes from './routes/report.routes';
 import feedRoutes from './routes/feed.routes';
 import publicRoutes from './routes/public.routes';
 import contactRoutes from './routes/contact.routes';
+import chatRoutes from './routes/chat.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { BillingController } from './controllers/billing.controller';
 
@@ -62,8 +63,16 @@ const limiter = rateLimit({
 });
 app.use('/api/auth', limiter);
 
+const chatLimiter = rateLimit({
+  windowMs: env.AI_RATE_LIMIT_WINDOW_MS,
+  max: env.AI_RATE_LIMIT_MAX_REQUESTS,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/contact', limiter, express.json({ limit: '32kb' }), contactRoutes);
+app.use('/api/chat', chatLimiter, chatRoutes);
 app.use('/api/farms', farmRoutes);
 app.use('/api/farms', penRoutes);
 app.use('/api/farms', pigRoutes);
@@ -77,10 +86,17 @@ app.get('/api/health', (_req, res) => {
 
 app.use(errorHandler);
 
+let prismaConnected = false;
+export const connectDb = async () => {
+  if (prismaConnected) return;
+  await prisma.$connect();
+  prismaConnected = true;
+  console.log('Database connected');
+};
+
 const start = async () => {
   try {
-    await prisma.$connect();
-    console.log('Database connected');
+    await connectDb();
     app.listen(env.PORT, () => {
       console.log(`Server running on port ${env.PORT}`);
     });
@@ -90,6 +106,10 @@ const start = async () => {
   }
 };
 
-start();
+// Prevent side-effects during Vercel serverless imports.
+// Vercel will call our exported API handler instead.
+if (typeof require !== 'undefined' && require.main === module) {
+  start();
+}
 
 export default app;

@@ -1,5 +1,5 @@
 import type { AxiosResponse } from 'axios';
-import api, { apiErrorMessage } from './api';
+import api, { apiErrorMessage, withBase } from './api';
 import type { FeedType } from '../types';
 
 const downloadBlob = (response: AxiosResponse<Blob>, filename: string) => {
@@ -79,7 +79,7 @@ export const feedService = {
     const form = new FormData();
     form.append('data', JSON.stringify(payload));
     form.append('receipt', receiptFile);
-    const res = await fetch(`/api/farms/${farmId}/feed/purchases`, {
+    const res = await fetch(withBase(`/farms/${farmId}/feed/purchases`), {
       method: 'POST',
       body: form,
       credentials: 'include',
@@ -96,7 +96,7 @@ export const feedService = {
   },
 
   receiptUrl(farmId: string, purchaseId: string) {
-    return `/api/farms/${farmId}/feed/purchases/${purchaseId}/receipt`;
+    return withBase(`/farms/${farmId}/feed/purchases/${purchaseId}/receipt`);
   },
 
   listDailyUsage(farmId: string, params?: { from?: string; to?: string }) {

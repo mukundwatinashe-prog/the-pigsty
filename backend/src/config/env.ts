@@ -15,6 +15,15 @@ export const env = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
   STRIPE_PRICE_ID_PRO: process.env.STRIPE_PRICE_ID_PRO || '',
+  AI_PROVIDER: process.env.AI_PROVIDER || 'openai',
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+  OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  CLAUDE_API_KEY: process.env.CLAUDE_API_KEY || '',
+  CLAUDE_MODEL: process.env.CLAUDE_MODEL || 'claude-3-5-haiku-latest',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+  AI_RATE_LIMIT_WINDOW_MS: parseInt(process.env.AI_RATE_LIMIT_WINDOW_MS || '900000', 10),
+  AI_RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.AI_RATE_LIMIT_MAX_REQUESTS || '30', 10),
   NODE_ENV: process.env.NODE_ENV || 'development',
 };
 

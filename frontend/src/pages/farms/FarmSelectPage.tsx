@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -76,6 +77,7 @@ export default function FarmSelectPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [switchingFarmId, setSwitchingFarmId] = useState<string | null>(null);
 
   const {
     data: farms,
@@ -105,7 +107,13 @@ export default function FarmSelectPage() {
     mutationFn: (body: CreateFarmForm) => farmService.create(body),
     onSuccess: farm => {
       queryClient.invalidateQueries({ queryKey: ['farms'] });
-      setCurrentFarm(farm);
+      flushSync(() => {
+        setCurrentFarm(farm);
+      });
+      void queryClient.prefetchQuery({
+        queryKey: ['farm-dashboard', farm.id],
+        queryFn: () => farmService.getById(farm.id),
+      });
       track('farm_created', { farm_id: farm.id });
       toast.success('Farm created successfully');
       setCreateOpen(false);
@@ -117,10 +125,24 @@ export default function FarmSelectPage() {
     },
   });
 
-  const onSelectFarm = (farm: Farm) => {
-    setCurrentFarm(farm);
-    toast.success(`Switched to ${farm.name}`);
-    navigate('/dashboard');
+  const onSelectFarm = async (farm: Farm) => {
+    try {
+      setSwitchingFarmId(farm.id);
+      const freshFarm = await farmService.getById(farm.id);
+      flushSync(() => {
+        setCurrentFarm(freshFarm.farm);
+      });
+      await queryClient.prefetchQuery({
+        queryKey: ['farm-dashboard', farm.id],
+        queryFn: () => farmService.getById(farm.id),
+      });
+      toast.success(`Switched to ${farm.name}`);
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Could not open farm');
+    } finally {
+      setSwitchingFarmId(null);
+    }
   };
 
   if (authLoading) {
@@ -143,7 +165,7 @@ export default function FarmSelectPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
+      <div className="mx-auto max-w-5xl px-4 pb-28 pt-8 sm:py-14">
         <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="mb-3 flex items-center gap-0">
@@ -163,7 +185,7 @@ export default function FarmSelectPage() {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-200"
+            className="hidden min-h-[44px] items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-primary-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-200 sm:inline-flex"
           >
             <Plus className="size-4" />
             Create farm
@@ -236,8 +258,9 @@ export default function FarmSelectPage() {
                 <li key={farm.id}>
                   <button
                     type="button"
-                    onClick={() => onSelectFarm(farm)}
-                    className="group flex w-full flex-col rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm ring-primary-200 transition hover:border-primary-200 hover:shadow-md focus:outline-none focus-visible:ring-4"
+                    onClick={() => void onSelectFarm(farm)}
+                    disabled={switchingFarmId !== null}
+                    className="group flex min-h-[140px] w-full flex-col rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm ring-primary-200 transition hover:border-primary-200 hover:shadow-md focus:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -259,7 +282,11 @@ export default function FarmSelectPage() {
                           </span>
                         </div>
                       </div>
-                      <ChevronRight className="size-5 shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-primary-500" />
+                      {switchingFarmId === farm.id ? (
+                        <Loader2 className="size-5 shrink-0 animate-spin text-primary-500" />
+                      ) : (
+                        <ChevronRight className="size-5 shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-primary-500" />
+                      )}
                     </div>
                     <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-gray-50 pt-4">
                       <StatPill icon={PiggyBank} value={pigs} label="pigs" />
@@ -281,6 +308,17 @@ export default function FarmSelectPage() {
         </p>
       </div>
 
+      <div className="fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 px-4 sm:hidden">
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-primary-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-200"
+        >
+          <Plus className="size-4" />
+          Create farm
+        </button>
+      </div>
+
       {createOpen && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-gray-900/50 p-4 backdrop-blur-sm sm:items-center"
@@ -288,7 +326,7 @@ export default function FarmSelectPage() {
           aria-modal="true"
           aria-labelledby="create-farm-title"
         >
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+          <div className="max-h-[100dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl">
             <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
               <h2 id="create-farm-title" className="text-lg font-semibold text-gray-900">
                 Create farm

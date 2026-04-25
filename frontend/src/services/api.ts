@@ -1,5 +1,22 @@
 import axios from 'axios';
 
+const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
+const normalizedApiBase = envApiBase ? envApiBase.replace(/\/+$/, '') : '';
+const fallbackApiBase = (() => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    if (host === 'the-pigsty.org' || host.endsWith('.the-pigsty.org')) {
+      return 'https://api.the-pigsty.org/api';
+    }
+  }
+  return '/api';
+})();
+const apiBaseURL = normalizedApiBase || fallbackApiBase;
+
+function withBase(path: string): string {
+  return `${apiBaseURL}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 /** User-facing message for failed API calls (network, CORS, server errors). */
 export function apiErrorMessage(err: unknown, fallback = 'Something went wrong'): string {
   const e = err as {
@@ -21,7 +38,7 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
 }
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBaseURL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
@@ -31,7 +48,7 @@ let refreshInFlight: Promise<void> | null = null;
 function refreshSession(): Promise<void> {
   if (!refreshInFlight) {
     refreshInFlight = axios
-      .post('/api/auth/refresh', {}, { withCredentials: true })
+      .post(withBase('/auth/refresh'), {}, { withCredentials: true })
       .then(() => undefined)
       .finally(() => {
         refreshInFlight = null;
@@ -77,4 +94,5 @@ api.interceptors.response.use(
   },
 );
 
+export { apiBaseURL, withBase };
 export default api;

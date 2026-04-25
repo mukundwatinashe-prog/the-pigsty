@@ -1,0 +1,46 @@
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How quickly can I set up my farm account?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Most farmers can complete setup in under 5 minutes by creating an account, adding a farm, and registering their first pigs."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I import existing records from spreadsheets?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. The Pigsty supports spreadsheet import so you can move from Excel to digital records faster."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need a credit card to start?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. You can start on the free plan without a credit card and upgrade when needed."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Who owns my farm data?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You own your farm data. The platform processes it only to provide service functionality."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How can I contact support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Use the website support channels such as email or WhatsApp and include your farm name plus issue details."
+      }
+    }
+  ]
+}

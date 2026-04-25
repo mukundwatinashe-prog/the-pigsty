@@ -1,0 +1,58 @@
+{
+  "organization": {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "The Pigsty",
+    "url": "https://the-pigsty.org",
+    "logo": "https://the-pigsty.org/logo.png",
+    "sameAs": [
+      "https://the-pigsty.org"
+    ],
+    "description": "The Pigsty helps pig farmers manage health, breeding, feed, and profitability records in one place."
+  },
+  "softwareApplication": {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "The Pigsty",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "description": "Free plan available for smallholder pig farms."
+    },
+    "description": "Pig farm management software for smallholders. Track health, breeding, feed, inventory, and farm performance.",
+    "url": "https://the-pigsty.org"
+  },
+  "faqPage": {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Can I use The Pigsty for a small family farm?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. The Pigsty is designed for smallholder and family pig farms, with a simple workflow that works from your first pig onward."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Do I need a credit card to start?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. You can start on the free tier without a credit card and upgrade later when your farm needs more capacity."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can my team and I use the same records?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Team workflows let farm owners and workers use the same records, reducing errors and duplicated work."
+        }
+      }
+    ]
+  }
+}

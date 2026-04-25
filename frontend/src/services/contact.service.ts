@@ -1,4 +1,4 @@
-import api from './api';
+import api, { withBase } from './api';
 
 export type ContactFormPayload = {
   firstName: string;
@@ -10,7 +10,7 @@ export type ContactFormPayload = {
 };
 
 export async function submitPublicContact(payload: ContactFormPayload): Promise<void> {
-  const res = await fetch('/api/public/contact', {
+  const res = await fetch(withBase('/public/contact'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

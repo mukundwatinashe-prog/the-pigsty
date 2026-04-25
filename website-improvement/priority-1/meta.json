@@ -1,0 +1,66 @@
+{
+  "pages": [
+    {
+      "page": "homepage",
+      "title": "The Pigsty | Pig Farm Management Software for Smallholders",
+      "meta_description": "Pig farm management software for smallholders. Track health, breeding, weights, feed, and sales in one place. Start free and scale with confidence.",
+      "keywords": [
+        "pig farm management software",
+        "pig health tracking app",
+        "smallholder pig record keeping",
+        "herd management software for pig farmers",
+        "pig breeding record app"
+      ],
+      "canonical_url": "https://the-pigsty.org/"
+    },
+    {
+      "page": "features",
+      "title": "Pig Farm Features | Health, Breeding, Weights, Feed and Reports",
+      "meta_description": "Explore Pigsty features for pig farmers: health logs, breeding records, feed tracking, inventory, and reports that improve farm decisions.",
+      "keywords": [
+        "pig tracking features",
+        "pig breeding records software",
+        "pig feed tracking app",
+        "livestock reporting tools",
+        "pig inventory management"
+      ],
+      "canonical_url": "https://the-pigsty.org/features"
+    },
+    {
+      "page": "pricing",
+      "title": "Pigsty Pricing | Free and Pro Plans for Pig Farmers",
+      "meta_description": "Simple Pigsty pricing for pig farmers. Start free, then upgrade for advanced tracking, team workflows, and deeper farm performance insights.",
+      "keywords": [
+        "pig farm software pricing",
+        "free pig management app",
+        "pig herd software subscription",
+        "small farm software plans",
+        "livestock app pricing"
+      ],
+      "canonical_url": "https://the-pigsty.org/pricing"
+    },
+    {
+      "page": "help",
+      "title": "Pigsty Help Center | Setup Guides, FAQs and Support",
+      "meta_description": "Get started quickly with Pigsty setup guides, FAQs, and support resources for pig farmers managing health, breeding, and farm records.",
+      "keywords": [
+        "pig farm software help",
+        "pig tracking faq",
+        "pigsty support",
+        "pig record keeping guide",
+        "farm app onboarding"
+      ],
+      "canonical_url": "https://the-pigsty.org/help"
+    }
+  ],
+  "long_tail_keywords": [
+    "how to track pig health records digitally",
+    "best pig farm software for smallholders",
+    "pig breeding schedule tracker app",
+    "pig feed cost tracking for profitability",
+    "digital herd records for family pig farms",
+    "pig farm software for diaspora farm owners",
+    "how to manage pig inventory and sales",
+    "pig farm KPI dashboard for small farms"
+  ]
+}

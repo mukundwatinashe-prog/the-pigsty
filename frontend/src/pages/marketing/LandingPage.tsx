@@ -240,23 +240,29 @@ export default function LandingPage() {
               Pig records for smallholders
             </p>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
-              Herd records that stay clear as you grow.
+              Track every pig. Protect every profit.
             </h1>
             <p className="mt-5 text-lg text-gray-600 sm:text-xl">
-              Simple software for <strong className="font-semibold text-gray-800">smallholder and family pig farms</strong> — starting in{' '}
-              <strong className="font-semibold text-gray-800">Zimbabwe</strong>, open to farmers anywhere who want honest tools, not bloat.
+              The Pigsty helps smallholder and family pig farmers replace scattered notebooks with one clear source of truth. Track health,
+              breeding, weights, and sales in minutes so you can make faster, smarter farm decisions with confidence.
             </p>
             <ul className="mx-auto mt-6 flex max-w-lg flex-col gap-2 text-left text-sm text-gray-600 sm:text-base">
               <li className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
                 <span>
-                  <strong className="text-gray-800">Free up to 50 pigs</strong> per farm — no card required.
+                  <strong className="text-gray-800">Catch health risks earlier</strong> with complete histories by pig, pen, and date.
                 </span>
               </li>
               <li className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
                 <span>
-                  <strong className="text-gray-800">Diaspora-friendly</strong> — same records for you and your team on the ground.
+                  <strong className="text-gray-800">Stop revenue leaks</strong> by tying feed, growth, and sales into one workflow.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
+                <span>
+                  <strong className="text-gray-800">Coordinate teams anywhere</strong> with shared records for on-farm and diaspora owners.
                 </span>
               </li>
             </ul>
@@ -266,7 +272,7 @@ export default function LandingPage() {
                 className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-primary-700 sm:w-auto"
                 onClick={() => track('cta_register_click', { placement: 'hero' })}
               >
-                Create your free account
+                Start Free Trial
               </Link>
             </div>
             <div className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-gray-100 pt-8 text-xs font-medium text-gray-500 sm:text-sm">
