@@ -3,10 +3,7 @@ import app, { connectDb } from '../src/server';
 
 let connectPromise: Promise<void> | null = null;
 
-const expressHandler = serverlessHttp(app, {
-  // Avoid Vercel hanging on open Prisma connections.
-  callbackWaitsForEmptyEventLoop: false,
-});
+const expressHandler = serverlessHttp(app);
 
 function rebuildUrlWithApiPrefix(req: any, apiPath: string) {
   const queryObj: Record<string, unknown> = { ...(req.query || {}) };
