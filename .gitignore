@@ -15,6 +15,7 @@ uploads/
 .env
 .env.local
 .env.*.local
+vercel-env-import.txt
 backend/.env
 frontend/.env
 *client_secret*.json
