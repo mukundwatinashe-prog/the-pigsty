@@ -41,6 +41,8 @@ const api = axios.create({
   baseURL: apiBaseURL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
+  /** Avoid infinite spinners when the API or dev proxy is unreachable. */
+  timeout: 15_000,
 });
 
 let refreshInFlight: Promise<void> | null = null;
@@ -60,6 +62,7 @@ function refreshSession(): Promise<void> {
 function shouldSkipRefreshRetry(config: { url?: string; method?: string }): boolean {
   const u = config.url ?? '';
   return (
+    u.includes('/auth/me') ||
     u.includes('/auth/login') ||
     u.includes('/auth/register') ||
     u.includes('/auth/google') ||

@@ -12,40 +12,26 @@ export type AiResponse = {
 class AiService {
   private provider = env.AI_PROVIDER;
 
-  constructor() {
-    this.initializeProvider();
-  }
-
-  private initializeProvider() {
+  /** Validate provider credentials only when chat is used — missing keys must not block API startup. */
+  private assertProviderConfigured() {
     switch (this.provider) {
       case 'openai':
-        this.initializeOpenAI();
+        if (!env.OPENAI_API_KEY) throw new AppError('OPENAI_API_KEY is not configured', 503);
         break;
       case 'claude':
-        this.initializeClaude();
+        if (!env.CLAUDE_API_KEY) throw new AppError('CLAUDE_API_KEY is not configured', 503);
         break;
       case 'gemini':
-        this.initializeGemini();
+        if (!env.GEMINI_API_KEY) throw new AppError('GEMINI_API_KEY is not configured', 503);
         break;
       default:
         throw new AppError(`Unsupported AI provider: ${this.provider}`, 500);
     }
   }
 
-  private initializeOpenAI() {
-    if (!env.OPENAI_API_KEY) throw new AppError('OPENAI_API_KEY is not configured', 500);
-  }
-
-  private initializeClaude() {
-    if (!env.CLAUDE_API_KEY) throw new AppError('CLAUDE_API_KEY is not configured', 500);
-  }
-
-  private initializeGemini() {
-    if (!env.GEMINI_API_KEY) throw new AppError('GEMINI_API_KEY is not configured', 500);
-  }
-
   async generateResponse(messages: ChatMessage[], systemPrompt: string): Promise<AiResponse> {
     if (!messages.length) throw new AppError('No chat messages provided', 400);
+    this.assertProviderConfigured();
     switch (this.provider) {
       case 'openai':
         return this.generateOpenAiResponse(messages, systemPrompt);
