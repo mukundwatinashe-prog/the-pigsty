@@ -2,15 +2,7 @@ import axios from 'axios';
 
 const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
 const normalizedApiBase = envApiBase ? envApiBase.replace(/\/+$/, '') : '';
-const fallbackApiBase = (() => {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname.toLowerCase();
-    if (host === 'the-pigsty.org' || host.endsWith('.the-pigsty.org')) {
-      return 'https://api.the-pigsty.org/api';
-    }
-  }
-  return '/api';
-})();
+const fallbackApiBase = '/api';
 const apiBaseURL = normalizedApiBase || fallbackApiBase;
 
 function withBase(path: string): string {
