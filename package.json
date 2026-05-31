@@ -5,7 +5,8 @@
     "sync:open-app": "node scripts/sync-open-app.cjs",
     "dev": "node scripts/dev.cjs",
     "dev:backend": "npm run dev --prefix backend",
-    "dev:frontend": "node scripts/sync-open-app.cjs && npm run dev --prefix frontend"
+    "dev:frontend": "node scripts/sync-open-app.cjs && npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
