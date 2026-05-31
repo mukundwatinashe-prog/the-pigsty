@@ -1,8 +1,8 @@
 /**
- * Contact form deliveries go to CONTACT_INBOX_EMAIL (default agape@magnaagape.com).
+ * Contact form deliveries go to CONTACT_INBOX_EMAIL (default mukundwatinashe@gmail.com).
  * If SMTP_HOST is set, sends email via nodemailer; otherwise logs the payload (DB still stores the row).
  */
-const DEFAULT_INBOX = 'agape@magnaagape.com';
+const DEFAULT_INBOX = 'mukundwatinashe@gmail.com';
 
 export function contactInboxAddress(): string {
   return (process.env.CONTACT_INBOX_EMAIL || DEFAULT_INBOX).trim();

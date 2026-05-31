@@ -1,7 +1,7 @@
 import prisma from '../config/database';
 import { notifyContactInbox, type ContactPayload } from './contactNotify.service';
 
-export async function recordAndNotifyContact(row: ContactPayload): Promise<void> {
+export async function recordContact(row: ContactPayload): Promise<void> {
   await prisma.lead.create({
     data: {
       email: row.email.trim().toLowerCase(),
@@ -15,5 +15,9 @@ export async function recordAndNotifyContact(row: ContactPayload): Promise<void>
       farmId: row.farmId,
     },
   });
+}
+
+export async function recordAndNotifyContact(row: ContactPayload): Promise<void> {
+  await recordContact(row);
   await notifyContactInbox(row);
 }

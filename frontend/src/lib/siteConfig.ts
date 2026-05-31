@@ -7,7 +7,7 @@ function trimEnv(v: string | undefined): string {
   return (v ?? '').trim();
 }
 
-const DEFAULT_SUPPORT_EMAIL = 'agape@magnaagape.com';
+const DEFAULT_SUPPORT_EMAIL = 'mukundwatinashe@gmail.com';
 
 /** Served from `frontend/public` — used for favicon, tab icon, BrandLogo, and sidebar mark. */
 export const appLogoUrl = '/logo.png';
