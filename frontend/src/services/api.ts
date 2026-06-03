@@ -3,28 +3,25 @@ import axios from 'axios';
 /** Production API host when the SPA is served from the-pigsty.org (API is on api.the-pigsty.org). */
 const PRODUCTION_API_BASE = 'https://api.the-pigsty.org/api';
 
-function resolveApiBaseURL(): string {
+export function resolveApiBaseURL(): string {
   const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
   if (envApiBase) return envApiBase.replace(/\/+$/, '');
 
-  if (import.meta.env.PROD && typeof window !== 'undefined') {
+  if (typeof window !== 'undefined') {
     const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return '/api';
     if (host === 'the-pigsty.org' || host === 'www.the-pigsty.org') {
       return PRODUCTION_API_BASE;
     }
   }
 
-  if (import.meta.env.PROD && !envApiBase) {
-    return PRODUCTION_API_BASE;
-  }
+  if (import.meta.env.PROD) return PRODUCTION_API_BASE;
 
   return '/api';
 }
 
-const apiBaseURL = resolveApiBaseURL();
-
 function withBase(path: string): string {
-  return `${apiBaseURL}${path.startsWith('/') ? path : `/${path}`}`;
+  return `${resolveApiBaseURL()}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 /** User-facing message for failed API calls (network, CORS, server errors). */
@@ -35,6 +32,9 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
     message?: string;
   };
   const status = e.response?.status;
+  if (status === 404) {
+    return 'Could not reach the API (404). Try a hard refresh (Ctrl+Shift+R). If it persists, the app may be outdated — contact support.';
+  }
   if (status === 502 || status === 503 || status === 504) {
     return 'API unavailable (bad gateway). The dev server proxies /api to port 4000 — start the backend: cd backend && npm run dev. Or from the repo root: npm install && npm run dev. Check http://localhost:4000/api/health responds.';
   }
@@ -48,11 +48,16 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
 }
 
 const api = axios.create({
-  baseURL: apiBaseURL,
+  baseURL: resolveApiBaseURL(),
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
   /** Avoid infinite spinners when the API or dev proxy is unreachable. */
   timeout: 15_000,
+});
+
+api.interceptors.request.use((config) => {
+  config.baseURL = resolveApiBaseURL();
+  return config;
 });
 
 let refreshInFlight: Promise<void> | null = null;
@@ -107,5 +112,8 @@ api.interceptors.response.use(
   },
 );
 
-export { apiBaseURL, withBase };
+/** @deprecated Use resolveApiBaseURL() — resolved per request for correct production routing. */
+export const apiBaseURL = resolveApiBaseURL();
+
+export { withBase };
 export default api;
