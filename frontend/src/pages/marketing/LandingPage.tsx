@@ -7,7 +7,6 @@ import {
   Shield,
   Upload,
   CheckCircle2,
-  X,
   Loader2,
   MessageCircle,
   HeartHandshake,
