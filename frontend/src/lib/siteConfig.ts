@@ -19,6 +19,17 @@ export const siteConfig = {
   whatsappE164: trimEnv(import.meta.env.VITE_WHATSAPP_E164).replace(/\D/g, ''),
 };
 
+/** Public plan prices and default farm currency for the UK-facing site. */
+export const sitePricing = {
+  currencyCode: 'GBP',
+  symbol: '£',
+  smallholder: '£0',
+  growerMonthly: '£19',
+  enterpriseMonthly: '£49',
+} as const;
+
+export const DEFAULT_FARM_CURRENCY = sitePricing.currencyCode;
+
 export function whatsappHelpUrl(): string | null {
   return siteConfig.whatsappE164 ? `https://wa.me/${siteConfig.whatsappE164}` : null;
 }

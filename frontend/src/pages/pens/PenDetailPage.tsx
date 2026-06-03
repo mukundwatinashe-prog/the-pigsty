@@ -54,7 +54,7 @@ export default function PenDetailPage() {
   const { currentFarm } = useFarm();
   const farmId = currentFarm?.id;
   const weightUnit = currentFarm?.weightUnit ?? 'kg';
-  const currency = currentFarm?.currency ?? 'USD';
+  const currency = currentFarm?.currency ?? 'GBP';
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   /** Pigs included in the current bulk sale modal (may differ from checkbox selection). */

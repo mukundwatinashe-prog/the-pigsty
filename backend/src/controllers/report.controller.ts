@@ -648,7 +648,7 @@ export class ReportController {
       const totalWeight = sales.reduce((s, r) => s + Number(r.weightAtSale), 0);
       const liveSales = sales.filter(s => s.saleType === 'LIVE_SALE');
       const slaughters = sales.filter(s => s.saleType === 'SLAUGHTER');
-      const currency = farm?.currency ?? 'USD';
+      const currency = farm?.currency ?? 'GBP';
 
       const rows = sales.map(s => ({
         tag: s.pig.tagNumber,

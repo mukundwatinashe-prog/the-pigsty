@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, ExternalLink, Loader2, Sparkles, MessageCircle } from 'lucide-react';
-import { siteConfig, whatsappHelpUrl } from '../../lib/siteConfig';
+import { siteConfig, sitePricing, whatsappHelpUrl } from '../../lib/siteConfig';
 import toast from 'react-hot-toast';
 import { useFarm } from '../../context/FarmContext';
 import { farmService } from '../../services/farm.service';
@@ -142,7 +142,7 @@ export default function BillingPage() {
           <div className="flex items-start gap-3">
             <Sparkles className="size-6 shrink-0 text-primary-600" aria-hidden />
             <div>
-              <h2 className="font-semibold text-gray-900">Grower — $19/month</h2>
+              <h2 className="font-semibold text-gray-900">Grower — {sitePricing.growerMonthly}/month</h2>
               <p className="mt-1 text-sm text-gray-700">
                 Up to 500 pigs, all reports, mass import, and up to 5 users. Includes a 14-day free trial.
               </p>
@@ -206,7 +206,7 @@ export default function BillingPage() {
 
       {!isEnterprise && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-900">Enterprise — $49/month</h2>
+          <h2 className="font-semibold text-gray-900">Enterprise — {sitePricing.enterpriseMonthly}/month</h2>
           <p className="mt-1 text-sm text-gray-600">
             Unlimited pigs, unlimited users, and multi-farm support for larger operations.
           </p>

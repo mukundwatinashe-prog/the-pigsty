@@ -94,7 +94,7 @@ export class FeedController {
       const { byType, totalSpend } = await costSummaryForRange(req.farmId!, monthStart, monthEnd);
 
       res.json({
-        currency: farm?.currency ?? 'USD',
+        currency: farm?.currency ?? 'GBP',
         stock: stockToJson(stock),
         lowStockThresholdKg: parseFloat(threshold.toFixed(2)),
         lowStockFeedTypes: FEED_TYPES.filter((t) => stock[t].lte(threshold)),
@@ -381,7 +381,7 @@ export class FeedController {
       const payload = {
         farmName: farm.name,
         logoUrl: farm.logoUrl,
-        currency: farm.currency ?? 'USD',
+        currency: farm.currency ?? 'GBP',
         range: report.range,
         start: report.start,
         end: report.end,
@@ -437,7 +437,7 @@ export class FeedController {
       const payload = {
         farmName: farm.name,
         logoUrl: farm.logoUrl,
-        currency: farm.currency ?? 'USD',
+        currency: farm.currency ?? 'GBP',
         purchases,
       };
 

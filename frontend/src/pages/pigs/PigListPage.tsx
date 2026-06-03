@@ -207,7 +207,7 @@ export default function PigListPage() {
     enabled: !!currentFarm?.id,
   });
   const pricePerKg = Number(farmDetail?.farm?.pricePerKg) || 0;
-  const currency = currentFarm?.currency ?? 'USD';
+  const currency = currentFarm?.currency ?? 'GBP';
   const saleWeight = parseFloat(saleForm.weightAtSale) || 0;
   const calculatedPrice = parseFloat((saleWeight * pricePerKg).toFixed(2));
 

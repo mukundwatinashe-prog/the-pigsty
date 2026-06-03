@@ -1,7 +1,7 @@
 /** Must match backend `FARM_CURRENCY_CODES`. */
 export const FARM_CURRENCY_CODES = [
-  'USD',
   'GBP',
+  'USD',
   'EUR',
   'ZAR',
   'NGN',
@@ -24,8 +24,8 @@ export const FARM_CURRENCY_CODES = [
 export type FarmCurrencyCode = (typeof FARM_CURRENCY_CODES)[number];
 
 export const FARM_CURRENCY_OPTIONS: { code: FarmCurrencyCode; label: string }[] = [
-  { code: 'USD', label: 'USD — US dollar' },
   { code: 'GBP', label: 'GBP — British pound' },
+  { code: 'USD', label: 'USD — US dollar' },
   { code: 'EUR', label: 'EUR — Euro' },
   { code: 'ZAR', label: 'ZAR — South African rand' },
   { code: 'NGN', label: 'NGN — Nigerian naira' },

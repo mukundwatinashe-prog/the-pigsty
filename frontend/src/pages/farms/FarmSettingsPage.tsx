@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useFarm } from '../../context/FarmContext';
 import { FARM_CURRENCY_OPTIONS, isFarmCurrency, type FarmCurrencyCode } from '../../constants/farmCurrencies';
+import { DEFAULT_FARM_CURRENCY } from '../../lib/siteConfig';
 import { farmService } from '../../services/farm.service';
 import type { Farm, FarmMember, FeedType, Role } from '../../types';
 import { FEED_TYPE_LABELS } from '../../lib/feedUnits';
@@ -156,7 +157,7 @@ export default function FarmSettingsPage() {
       name: '',
       location: '',
       country: '',
-      currency: 'USD',
+      currency: DEFAULT_FARM_CURRENCY,
       timezone: 'UTC',
       weightUnit: 'kg',
       pricePerKg: 3.3,
@@ -190,7 +191,7 @@ export default function FarmSettingsPage() {
       name: farm.name,
       location: farm.location,
       country: farm.country,
-      currency: isFarmCurrency(farm.currency) ? farm.currency : 'USD',
+      currency: isFarmCurrency(farm.currency) ? farm.currency : DEFAULT_FARM_CURRENCY,
       timezone: farm.timezone,
       weightUnit: farm.weightUnit as SettingsForm['weightUnit'],
       pricePerKg: Number(farm.pricePerKg) || 3.3,
@@ -593,7 +594,7 @@ export default function FarmSettingsPage() {
             </label>
             <div className="relative mt-1.5">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500 tabular-nums">
-                {currencyWatch || 'USD'}
+                {currencyWatch || DEFAULT_FARM_CURRENCY}
               </span>
               <input
                 id="settings-ppkg"
@@ -673,7 +674,7 @@ export default function FarmSettingsPage() {
                   </div>
                 </fieldset>
                 <p className="mt-2 text-xs text-gray-500">
-                  All amounts below are in <span className="font-medium text-gray-700">{currencyWatch || 'USD'}</span>,{' '}
+                  All amounts below are in <span className="font-medium text-gray-700">{currencyWatch || DEFAULT_FARM_CURRENCY}</span>,{' '}
                   {feedPurchaseUnitWatch === 'TONNE' ? 'per tonne' : 'per kilogram'}.
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -691,7 +692,7 @@ export default function FarmSettingsPage() {
                       <label className="block text-xs font-medium text-gray-700">{FEED_TYPE_LABELS[ft]}</label>
                       <div className="relative mt-1">
                         <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-gray-500">
-                          {currencyWatch || 'USD'}
+                          {currencyWatch || DEFAULT_FARM_CURRENCY}
                         </span>
                         <input
                           type="number"

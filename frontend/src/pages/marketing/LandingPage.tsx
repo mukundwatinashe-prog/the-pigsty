@@ -18,7 +18,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { BrandLogo } from '../../components/BrandLogo';
 import { track } from '../../lib/analytics';
-import { mailtoSupport, siteConfig, whatsappHelpUrl } from '../../lib/siteConfig';
+import { mailtoSupport, siteConfig, sitePricing, whatsappHelpUrl } from '../../lib/siteConfig';
 import { ContactForm } from '../../components/ContactForm';
 
 const benefits = [
@@ -57,7 +57,7 @@ const benefits = [
 const tiers = [
   {
     name: 'Smallholder',
-    price: '$0',
+    price: sitePricing.smallholder,
     period: 'free forever',
     desc: 'For small farms getting organized before scaling.',
     includes: [
@@ -78,7 +78,7 @@ const tiers = [
   },
   {
     name: 'Grower',
-    price: '$19',
+    price: sitePricing.growerMonthly,
     period: 'per month',
     trial: '14-day free trial',
     desc: 'Best for active commercial farms that need reports and a small team.',
@@ -99,7 +99,7 @@ const tiers = [
   },
   {
     name: 'Enterprise',
-    price: '$49',
+    price: sitePricing.enterpriseMonthly,
     period: 'per month',
     desc: 'For co-ops, large operations, and farms that have outgrown Grower limits.',
     includes: [

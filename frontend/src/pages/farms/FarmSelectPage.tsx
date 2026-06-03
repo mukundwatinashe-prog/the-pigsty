@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useFarm } from '../../context/FarmContext';
 import { FARM_CURRENCY_OPTIONS, isFarmCurrency, type FarmCurrencyCode } from '../../constants/farmCurrencies';
+import { DEFAULT_FARM_CURRENCY } from '../../lib/siteConfig';
 import { farmService } from '../../services/farm.service';
 import { BrandLogo } from '../../components/BrandLogo';
 import { track } from '../../lib/analytics';
@@ -97,7 +98,7 @@ export default function FarmSelectPage() {
       name: '',
       location: '',
       country: '',
-      currency: 'USD',
+      currency: DEFAULT_FARM_CURRENCY,
       timezone: 'Africa/Harare',
       weightUnit: 'kg',
     },

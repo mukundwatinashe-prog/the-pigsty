@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 /** ISO 4217 codes supported for farm display & reporting (USD, GBP, common African + EUR legacy). */
 export const FARM_CURRENCY_CODES = [
-  'USD',
   'GBP',
+  'USD',
   'EUR',
   'ZAR',
   'NGN',

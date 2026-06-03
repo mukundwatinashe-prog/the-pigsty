@@ -14,7 +14,7 @@ const createFarmSchema = z.object({
   name: z.string().min(2).max(100),
   location: z.string().min(2),
   country: z.string().min(2),
-  currency: farmCurrencySchema.default('USD'),
+  currency: farmCurrencySchema.default('GBP'),
   timezone: z.string().default('UTC'),
   weightUnit: z.string().default('kg'),
 });

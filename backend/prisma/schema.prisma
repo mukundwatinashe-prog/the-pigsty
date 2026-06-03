@@ -185,7 +185,7 @@ model Farm {
   logoUrl              String?
   location             String
   country              String
-  currency             String    @default("USD")
+  currency             String    @default("GBP")
   timezone             String    @default("UTC")
   weightUnit           String    @default("kg")
   pricePerKg           Decimal   @default(3.3) @db.Decimal(10, 2)
