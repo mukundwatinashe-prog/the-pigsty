@@ -1,9 +1,27 @@
 import axios from 'axios';
 
-const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
-const normalizedApiBase = envApiBase ? envApiBase.replace(/\/+$/, '') : '';
-const fallbackApiBase = '/api';
-const apiBaseURL = normalizedApiBase || fallbackApiBase;
+/** Production API host when the SPA is served from the-pigsty.org (API is on api.the-pigsty.org). */
+const PRODUCTION_API_BASE = 'https://api.the-pigsty.org/api';
+
+function resolveApiBaseURL(): string {
+  const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (envApiBase) return envApiBase.replace(/\/+$/, '');
+
+  if (import.meta.env.PROD && typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'the-pigsty.org' || host === 'www.the-pigsty.org') {
+      return PRODUCTION_API_BASE;
+    }
+  }
+
+  if (import.meta.env.PROD && !envApiBase) {
+    return PRODUCTION_API_BASE;
+  }
+
+  return '/api';
+}
+
+const apiBaseURL = resolveApiBaseURL();
 
 function withBase(path: string): string {
   return `${apiBaseURL}${path.startsWith('/') ? path : `/${path}`}`;
