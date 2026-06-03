@@ -80,7 +80,8 @@ enum PenType {
 
 enum FarmPlan {
   FREE
-  PRO
+  GROWER
+  ENTERPRISE
 }
 
 enum FeedType {

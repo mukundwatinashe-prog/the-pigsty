@@ -386,6 +386,9 @@ export default function FarmSettingsPage() {
   }
 
   const members: FarmMember[] = farm.members ?? [];
+  const billingInfo = detail?.billing;
+  const teamLocked = billingInfo?.canManageTeam === false;
+  const teamMemberLimit = billingInfo?.memberLimit ?? null;
   const logoChanged = logoDataUrl !== (farm.logoUrl ?? null);
   const canSave =
     settingsForm.formState.isDirty || logoChanged;
@@ -792,6 +795,21 @@ export default function FarmSettingsPage() {
           </div>
         </div>
 
+        {teamLocked && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Team access is available on Grower and Enterprise plans. Upgrade in{' '}
+            <Link to="/billing" className="font-medium underline hover:no-underline">
+              Billing
+            </Link>{' '}
+            to invite additional members.
+          </div>
+        )}
+        {!teamLocked && teamMemberLimit != null && (
+          <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+            Team members: {members.length} / {teamMemberLimit}
+          </div>
+        )}
+
         <div className="mb-8 overflow-hidden rounded-xl border border-gray-100">
           {members.length === 0 ? (
             <p className="p-6 text-center text-sm text-gray-500">No members loaded.</p>
@@ -800,7 +818,7 @@ export default function FarmSettingsPage() {
               {members.map(m => {
                 const isSelf = user?.id === m.userId;
                 const isOwner = m.role === 'OWNER';
-                const canRemove = !isOwner && !removeMutation.isPending;
+                const canRemove = !isOwner && !removeMutation.isPending && !teamLocked;
                 return (
                   <li
                     key={m.id}
@@ -879,8 +897,9 @@ export default function FarmSettingsPage() {
               <input
                 id="invite-email"
                 type="email"
+                disabled={teamLocked}
                 {...inviteForm.register('email')}
-                className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 disabled:opacity-60"
                 placeholder="colleague@example.com"
               />
               {inviteForm.formState.errors.email && (
@@ -893,8 +912,9 @@ export default function FarmSettingsPage() {
               </label>
               <select
                 id="invite-role"
+                disabled={teamLocked}
                 {...inviteForm.register('role')}
-                className="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                className="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 disabled:opacity-60"
               >
                 {INVITE_ROLES.map(r => (
                   <option key={r} value={r}>
@@ -905,7 +925,7 @@ export default function FarmSettingsPage() {
             </div>
             <button
               type="submit"
-              disabled={inviteMutation.isPending}
+              disabled={inviteMutation.isPending || teamLocked}
               className="inline-flex h-[42px] shrink-0 items-center justify-center gap-2 rounded-lg bg-primary-600 px-5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50 sm:mb-0.5"
             >
               {inviteMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}

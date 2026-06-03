@@ -1,12 +1,35 @@
 import { FarmPlan } from '@prisma/client';
 
 export const FREE_TIER_MAX_PIGS = 50;
+export const GROWER_TIER_MAX_PIGS = 500;
+export const GROWER_TIER_MAX_MEMBERS = 5;
 
 export function pigLimitForPlan(plan: FarmPlan): number | null {
-  return plan === FarmPlan.FREE ? FREE_TIER_MAX_PIGS : null;
+  if (plan === FarmPlan.FREE) return FREE_TIER_MAX_PIGS;
+  if (plan === FarmPlan.GROWER) return GROWER_TIER_MAX_PIGS;
+  return null;
 }
 
 export function wouldExceedFreeTier(currentCount: number, toAdd: number, plan: FarmPlan): boolean {
-  if (plan !== FarmPlan.FREE) return false;
-  return currentCount + toAdd > FREE_TIER_MAX_PIGS;
+  const limit = pigLimitForPlan(plan);
+  if (limit == null) return false;
+  return currentCount + toAdd > limit;
+}
+
+export function allowsReports(plan: FarmPlan): boolean {
+  return plan !== FarmPlan.FREE;
+}
+
+export function allowsMassImport(plan: FarmPlan): boolean {
+  return plan !== FarmPlan.FREE;
+}
+
+export function allowsMultiUser(plan: FarmPlan): boolean {
+  return plan !== FarmPlan.FREE;
+}
+
+export function memberLimitForPlan(plan: FarmPlan): number {
+  if (plan === FarmPlan.GROWER) return GROWER_TIER_MAX_MEMBERS;
+  if (plan === FarmPlan.ENTERPRISE) return Number.MAX_SAFE_INTEGER;
+  return 1;
 }

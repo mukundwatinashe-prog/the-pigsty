@@ -14,7 +14,10 @@ export const env = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
-  STRIPE_PRICE_ID_PRO: process.env.STRIPE_PRICE_ID_PRO || '',
+  STRIPE_PRICE_ID_GROWER: process.env.STRIPE_PRICE_ID_GROWER || process.env.STRIPE_PRICE_ID_PRO || '',
+  STRIPE_PRICE_ID_ENTERPRISE: process.env.STRIPE_PRICE_ID_ENTERPRISE || '',
+  STRIPE_PRODUCT_ID_GROWER: process.env.STRIPE_PRODUCT_ID_GROWER || '',
+  STRIPE_PRODUCT_ID_ENTERPRISE: process.env.STRIPE_PRODUCT_ID_ENTERPRISE || '',
   AI_PROVIDER: process.env.AI_PROVIDER || 'openai',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
@@ -28,5 +31,5 @@ export const env = {
 };
 
 export const stripeConfigured = Boolean(
-  env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_ID_PRO,
+  env.STRIPE_SECRET_KEY && (env.STRIPE_PRICE_ID_GROWER || env.STRIPE_PRODUCT_ID_GROWER),
 );

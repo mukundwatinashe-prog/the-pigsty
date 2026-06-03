@@ -120,7 +120,7 @@ export default function PigImportPage() {
       if (err.response?.status === 402) {
         track('plan_limit_hit', { context: 'import' });
         toast.error(
-          `${err.response?.data?.message || 'Free tier limit reached'}. Open Billing in the sidebar to upgrade.`,
+          `${err.response?.data?.message || 'Plan limit reached'}. Open Billing in the sidebar to upgrade.`,
           { duration: 6500 },
         );
         return;
@@ -248,18 +248,18 @@ export default function PigImportPage() {
         </div>
       </div>
 
-      {farmDash?.billing?.plan === 'FREE' && farmDash.billing.atLimit && (
+      {farmDash?.billing?.atLimit && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-          <span className="font-medium">Free tier pig limit reached.</span> Importing more pigs is blocked until you{' '}
+          <span className="font-medium">Plan pig limit reached.</span> Importing more pigs is blocked until you{' '}
           <Link to="/billing" className="font-medium text-red-800 underline hover:no-underline">
             upgrade the farm
           </Link>
           .
         </div>
       )}
-      {farmDash?.billing?.plan === 'FREE' && farmDash.billing.nearLimit && !farmDash.billing.atLimit && (
+      {farmDash?.billing?.nearLimit && !farmDash.billing.atLimit && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          You are near the Free tier limit ({farmDash.billing.pigCount} / {farmDash.billing.pigLimit ?? '—'} pigs).
+          You are near the current plan limit ({farmDash.billing.pigCount} / {farmDash.billing.pigLimit ?? '—'} pigs).
           Large imports may fail if they exceed the cap —{' '}
           <Link to="/billing" className="font-medium text-amber-900 underline hover:no-underline">
             see billing

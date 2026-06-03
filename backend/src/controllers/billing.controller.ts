@@ -1,16 +1,79 @@
 import { Request, Response, NextFunction } from 'express';
 import Stripe from 'stripe';
+import { z } from 'zod';
 import prisma from '../config/database';
 import { env, stripeConfigured } from '../config/env';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { FarmPlan } from '@prisma/client';
-import { FREE_TIER_MAX_PIGS, pigLimitForPlan } from '../config/planLimits';
+import { GROWER_TIER_MAX_MEMBERS, pigLimitForPlan } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
 
 function stripeClient(): Stripe | null {
   if (!env.STRIPE_SECRET_KEY) return null;
   return new Stripe(env.STRIPE_SECRET_KEY);
+}
+
+const checkoutSchema = z.object({
+  plan: z.enum(['GROWER', 'ENTERPRISE']).default('GROWER'),
+});
+
+function labelForPlan(plan: FarmPlan): string {
+  if (plan === FarmPlan.GROWER) return 'Grower';
+  if (plan === FarmPlan.ENTERPRISE) return 'Enterprise';
+  return 'Free';
+}
+
+function matchesEnterpriseTier(priceId: string | null, productId: string | null): boolean {
+  if (priceId && priceId === env.STRIPE_PRICE_ID_ENTERPRISE) return true;
+  if (productId && productId === env.STRIPE_PRODUCT_ID_ENTERPRISE) return true;
+  return false;
+}
+
+function planFromSubscription(sub: Stripe.Subscription): FarmPlan {
+  const firstItem = sub.items.data[0];
+  const priceId = typeof firstItem?.price === 'string' ? firstItem.price : firstItem?.price?.id;
+  const productId =
+    typeof firstItem?.price === 'string'
+      ? null
+      : typeof firstItem?.price?.product === 'string'
+        ? firstItem.price.product
+        : firstItem?.price?.product?.id ?? null;
+  if (matchesEnterpriseTier(priceId ?? null, productId)) return FarmPlan.ENTERPRISE;
+  return FarmPlan.GROWER;
+}
+
+async function resolveCheckoutPriceId(
+  stripe: Stripe,
+  plan: 'GROWER' | 'ENTERPRISE',
+): Promise<string> {
+  const configuredPriceId =
+    plan === 'ENTERPRISE' ? env.STRIPE_PRICE_ID_ENTERPRISE : env.STRIPE_PRICE_ID_GROWER;
+  if (configuredPriceId) return configuredPriceId;
+
+  const configuredProductId =
+    plan === 'ENTERPRISE' ? env.STRIPE_PRODUCT_ID_ENTERPRISE : env.STRIPE_PRODUCT_ID_GROWER;
+  if (!configuredProductId) {
+    throw new AppError(`${labelForPlan(plan as FarmPlan)} billing is not configured yet. Contact support.`, 503);
+  }
+
+  const product = await stripe.products.retrieve(configuredProductId, {
+    expand: ['default_price'],
+  });
+  if (product.deleted) {
+    throw new AppError(`${labelForPlan(plan as FarmPlan)} billing product is archived. Contact support.`, 503);
+  }
+
+  const defaultPriceId =
+    typeof product.default_price === 'string' ? product.default_price : product.default_price?.id;
+  if (!defaultPriceId) {
+    throw new AppError(
+      `${labelForPlan(plan as FarmPlan)} product has no default price in Stripe. Contact support.`,
+      503,
+    );
+  }
+
+  return defaultPriceId;
 }
 
 export class BillingController {
@@ -27,10 +90,15 @@ export class BillingController {
       res.json({
         myRole: req.memberRole,
         plan: farm.plan,
+        planLabel: labelForPlan(farm.plan),
         pigCount,
         pigLimit: limit,
-        nearLimit: farm.plan === FarmPlan.FREE && pigCount >= FREE_TIER_MAX_PIGS * 0.8,
-        atLimit: farm.plan === FarmPlan.FREE && pigCount >= FREE_TIER_MAX_PIGS,
+        nearLimit: limit != null && pigCount >= limit * 0.8,
+        atLimit: limit != null && pigCount >= limit,
+        canAccessReports: farm.plan !== FarmPlan.FREE,
+        canUseMassImport: farm.plan !== FarmPlan.FREE,
+        canManageTeam: farm.plan !== FarmPlan.FREE,
+        memberLimit: farm.plan === FarmPlan.FREE ? 1 : farm.plan === FarmPlan.GROWER ? GROWER_TIER_MAX_MEMBERS : null,
         stripeConfigured,
         hasStripeCustomer: Boolean(farm.stripeCustomerId),
       });
@@ -46,24 +114,31 @@ export class BillingController {
       }
       const stripe = stripeClient();
       if (!stripe) return next(new AppError('Stripe not configured', 503));
+      const { plan } = checkoutSchema.parse(req.body ?? {});
 
       const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
       if (!farm || farm.isDeleted) return next(new AppError('Farm not found', 404));
-      if (farm.plan === FarmPlan.PRO) return next(new AppError('Farm is already on Pro', 400));
+      if (farm.plan === plan) {
+        return next(new AppError(`Farm is already on ${labelForPlan(farm.plan)}`, 400));
+      }
 
       const user = await prisma.user.findUnique({ where: { id: req.userId! } });
       if (!user?.email) return next(new AppError('User email required for checkout', 400));
+      const targetPriceId = await resolveCheckoutPriceId(stripe, plan);
 
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         customer_email: farm.stripeCustomerId ? undefined : user.email,
         ...(farm.stripeCustomerId ? { customer: farm.stripeCustomerId } : {}),
-        line_items: [{ price: env.STRIPE_PRICE_ID_PRO, quantity: 1 }],
+        line_items: [{ price: targetPriceId, quantity: 1 }],
         success_url: `${env.FRONTEND_URL}/billing?checkout=success`,
         cancel_url: `${env.FRONTEND_URL}/billing?checkout=canceled`,
         client_reference_id: farm.id,
-        metadata: { farmId: farm.id },
-        subscription_data: { metadata: { farmId: farm.id } },
+        metadata: { farmId: farm.id, plan },
+        subscription_data: {
+          metadata: { farmId: farm.id, plan },
+          ...(plan === 'GROWER' ? { trial_period_days: 14 } : {}),
+        },
       });
 
       res.json({ url: session.url });
@@ -127,7 +202,7 @@ export class BillingController {
           await prisma.farm.update({
             where: { id: farmId },
             data: {
-              plan: FarmPlan.PRO,
+              plan: session.metadata?.plan === 'ENTERPRISE' ? FarmPlan.ENTERPRISE : FarmPlan.GROWER,
               ...(customerId ? { stripeCustomerId: customerId } : {}),
               ...(subId ? { stripeSubscriptionId: subId } : {}),
             },
@@ -146,6 +221,23 @@ export class BillingController {
             await prisma.farm.updateMany({
               where: { stripeSubscriptionId: sub.id },
               data: { plan: FarmPlan.FREE, stripeSubscriptionId: null },
+            });
+          }
+          break;
+        }
+        case 'customer.subscription.updated': {
+          const sub = event.data.object as Stripe.Subscription;
+          const mappedPlan = planFromSubscription(sub);
+          const farmId = sub.metadata?.farmId;
+          if (farmId) {
+            await prisma.farm.updateMany({
+              where: { id: farmId, stripeSubscriptionId: sub.id },
+              data: { plan: mappedPlan },
+            });
+          } else {
+            await prisma.farm.updateMany({
+              where: { stripeSubscriptionId: sub.id },
+              data: { plan: mappedPlan },
             });
           }
           break;

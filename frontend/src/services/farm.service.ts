@@ -73,8 +73,8 @@ export const farmService = {
   getFinancials: (farmId: string, params?: { from?: string; to?: string }) =>
     api.get<FarmFinancialsResponse>(`/farms/${farmId}/financials`, { params }).then((r) => r.data),
 
-  billingCheckout: (farmId: string) =>
-    api.post<{ url: string }>(`/farms/${farmId}/billing/checkout`).then(r => r.data),
+  billingCheckout: (farmId: string, plan: 'GROWER' | 'ENTERPRISE') =>
+    api.post<{ url: string }>(`/farms/${farmId}/billing/checkout`, { plan }).then(r => r.data),
 
   billingPortal: (farmId: string) =>
     api.post<{ url: string }>(`/farms/${farmId}/billing/portal`).then(r => r.data),

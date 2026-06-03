@@ -5,7 +5,7 @@ import prisma from '../config/database';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
-import { FREE_TIER_MAX_PIGS, wouldExceedFreeTier } from '../config/planLimits';
+import { wouldExceedFreeTier, pigLimitForPlan } from '../config/planLimits';
 import { syncPigGrowthStageIfNeeded } from '../services/pigStageSync.service';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { notifyFarmLeads } from '../services/farmNotify.service';
@@ -174,9 +174,10 @@ export class PigController {
       if (!farmPlan) return next(new AppError('Farm not found', 404));
       const pigCount = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
       if (wouldExceedFreeTier(pigCount, 1, farmPlan.plan)) {
+        const limit = pigLimitForPlan(farmPlan.plan);
         return next(
           new AppError(
-            `Free plan supports up to ${FREE_TIER_MAX_PIGS} pigs. Upgrade to Pro to add more.`,
+            `Current plan supports up to ${limit} pigs. Upgrade to continue adding more.`,
             402,
           ),
         );

@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from './auth.middleware';
 import { AppError } from './error.middleware';
 import prisma from '../config/database';
+import { allowsMassImport, allowsMultiUser, allowsReports } from '../config/planLimits';
 
 type Permission = 'pigs:read' | 'pigs:write' | 'pigs:delete' |
   'pens:read' | 'pens:write' | 'pens:delete' |
@@ -59,6 +60,22 @@ export const requireFarmAccess = (...permissions: Permission[]) => {
       const rolePerms = ROLE_PERMISSIONS[member.role] || [];
       const hasAll = permissions.every(p => rolePerms.includes(p));
       if (!hasAll) return next(new AppError('Insufficient permissions', 403));
+
+      const farm = await prisma.farm.findUnique({
+        where: { id: farmId },
+        select: { plan: true, isDeleted: true },
+      });
+      if (!farm || farm.isDeleted) return next(new AppError('Farm not found', 404));
+
+      if (!allowsReports(farm.plan) && permissions.some(p => p === 'reports:read' || p === 'reports:export')) {
+        return next(new AppError('Reports are available on Grower and Enterprise plans.', 402));
+      }
+      if (!allowsMassImport(farm.plan) && permissions.includes('import:write')) {
+        return next(new AppError('Bulk import is available on Grower and Enterprise plans.', 402));
+      }
+      if (!allowsMultiUser(farm.plan) && permissions.includes('users:manage')) {
+        return next(new AppError('Team management is available on Grower and Enterprise plans.', 402));
+      }
 
       req.farmId = farmId;
       req.memberRole = member.role;

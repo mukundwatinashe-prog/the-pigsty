@@ -7,6 +7,7 @@ import {
   Shield,
   Upload,
   CheckCircle2,
+  X,
   Loader2,
   MessageCircle,
   HeartHandshake,
@@ -56,42 +57,63 @@ const benefits = [
 
 const tiers = [
   {
-    name: 'Free',
+    name: 'Smallholder',
     price: '$0',
-    period: 'per farm',
-    desc: 'For smallholders getting organised.',
-    features: [
-      'Up to 50 pigs per farm',
-      'Pens, weights, import from Excel',
-      '2 team members',
+    period: 'free forever',
+    desc: 'For small farms getting organized before scaling.',
+    includes: [
+      'Core records: pigs, pens, health & weights',
+      'Dashboard for your farm',
       'No credit card required',
+    ],
+    limitations: [
+      'Up to 50 pigs per farm',
+      '1 user only (owner)',
+      'No reports or exports',
+      'No mass import from Excel',
+      'No team invites',
     ],
     cta: 'Create free account',
     href: '/register',
     highlight: false,
   },
   {
-    name: 'Pro',
-    price: 'Subscription',
-    period: 'card or contact us',
-    desc: 'Unlimited pigs when you outgrow the free herd size.',
-    features: [
-      'Unlimited pigs',
-      'Everything in Free',
-      'Stripe checkout where cards work',
-      'Ask us about bank transfer or mobile money in your country',
+    name: 'Grower',
+    price: '$19',
+    period: 'per month',
+    trial: '14-day free trial',
+    desc: 'Best for active commercial farms that need reports and a small team.',
+    includes: [
+      'Everything in Smallholder',
+      'All reports & exports',
+      'Mass import from Excel',
+      'Invite farm managers & workers',
     ],
-    cta: 'Start free — upgrade in app',
+    limitations: [
+      'Up to 500 pigs per farm',
+      'Up to 5 users per farm',
+      'Single-farm billing (upgrade per farm)',
+    ],
+    cta: 'Start free, upgrade in app',
     href: '/register',
     highlight: true,
   },
   {
-    name: 'Groups & co-ops',
-    price: 'Let’s talk',
-    period: 'custom',
-    desc: 'Programmes or co-ops rolling out to many farms.',
-    features: ['Training & onboarding', 'Reporting for supervisors', 'Custom arrangements'],
-    cta: 'Contact us',
+    name: 'Enterprise',
+    price: '$49',
+    period: 'per month',
+    desc: 'For co-ops, large operations, and farms that have outgrown Grower limits.',
+    includes: [
+      'Everything in Grower',
+      'Unlimited pigs per farm',
+      'Unlimited users per farm',
+      'Priority support & onboarding help',
+    ],
+    limitations: [
+      'Billed per farm (contact us for group deals)',
+      'Checkout via sales (not self-serve Stripe yet)',
+    ],
+    cta: 'Contact sales',
     href: '#contact',
     highlight: false,
     external: false,
@@ -343,8 +365,9 @@ export default function LandingPage() {
 
         <section id="pricing" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-14 sm:py-16">
           <h2 className="text-center text-2xl font-bold text-gray-900 sm:text-3xl">Pricing</h2>
-          <p className="mx-auto mt-2 max-w-lg text-center text-gray-600">
-            Start free. Pro adds unlimited pigs. No card? We can discuss other payment options where possible.
+          <p className="mx-auto mt-2 max-w-2xl text-center text-gray-600">
+            Compare what each plan costs and what you can do on it. Every plan includes core herd records; paid plans unlock reports,
+            imports, and team access with higher pig and user limits.
           </p>
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
             {tiers.map((t) => (
@@ -355,17 +378,38 @@ export default function LandingPage() {
                 }`}
               >
                 <h3 className="text-lg font-bold text-gray-900">{t.name}</h3>
-                <p className="mt-1 text-3xl font-extrabold text-gray-900">{t.price}</p>
-                <p className="text-sm text-gray-500">{t.period}</p>
+                <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <p className="text-3xl font-extrabold text-gray-900">{t.price}</p>
+                  <p className="text-sm text-gray-500">{t.period}</p>
+                </div>
+                {'trial' in t && t.trial ? (
+                  <p className="mt-1 text-sm font-medium text-primary-700">{t.trial}</p>
+                ) : null}
                 <p className="mt-3 text-sm text-gray-600">{t.desc}</p>
-                <ul className="mt-4 flex-1 space-y-2">
-                  {t.features.map((f) => (
-                    <li key={f} className="flex gap-2 text-sm text-gray-700">
-                      <CheckCircle2 className="size-4 shrink-0 text-primary-600" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-5 flex-1 space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Included</p>
+                    <ul className="mt-2 space-y-2">
+                      {t.includes.map((f) => (
+                        <li key={f} className="flex gap-2 text-sm text-gray-700">
+                          <CheckCircle2 className="size-4 shrink-0 text-primary-600" aria-hidden />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Limits</p>
+                    <ul className="mt-2 space-y-2">
+                      {t.limitations.map((f) => (
+                        <li key={f} className="flex gap-2 text-sm text-gray-600">
+                          <X className="size-4 shrink-0 text-gray-400" aria-hidden />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
                 {t.external ? (
                   <a
                     href={t.href}

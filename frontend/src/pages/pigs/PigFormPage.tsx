@@ -228,7 +228,7 @@ export default function PigFormPage() {
       if (res?.status === 402) {
         track('plan_limit_hit', { context: 'pig_create' });
         toast.error(
-          `${msg || 'Free tier pig limit reached'}. Open Billing in the sidebar to upgrade to Pro.`,
+          `${msg || 'Plan pig limit reached'}. Open Billing in the sidebar to upgrade.`,
           { duration: 6500 },
         );
         return;

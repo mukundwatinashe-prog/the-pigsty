@@ -1,6 +1,6 @@
 {
   "installCommand": "unset npm_config_devdir NPM_CONFIG_DEVDIR && npm install",
-  "buildCommand": "unset npm_config_devdir NPM_CONFIG_DEVDIR && npm run build:deploy",
+  "buildCommand": "unset npm_config_devdir NPM_CONFIG_DEVDIR && npm run build",
   "outputDirectory": ".",
   "functions": {
     "api/index.ts": {

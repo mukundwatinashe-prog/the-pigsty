@@ -16,7 +16,7 @@ export default function TermsPage() {
           </p>
           <h2 className="mt-8 text-lg font-semibold text-gray-900">The service</h2>
           <p className="mt-2 text-gray-700">
-            The Pigsty is provided “as is”. We strive for reliability but do not guarantee uninterrupted access. Features and limits (including Free vs Pro) may change with notice where reasonable.
+            The Pigsty is provided “as is”. We strive for reliability but do not guarantee uninterrupted access. Features and plan limits (including Smallholder, Grower, and Enterprise) may change with reasonable notice.
           </p>
           <h2 className="mt-8 text-lg font-semibold text-gray-900">Your data</h2>
           <p className="mt-2 text-gray-700">
@@ -24,7 +24,7 @@ export default function TermsPage() {
           </p>
           <h2 className="mt-8 text-lg font-semibold text-gray-900">Subscriptions</h2>
           <p className="mt-2 text-gray-700">
-            Pro subscriptions are billed through Stripe according to the plan you select. Cancellations and refunds follow Stripe and the policies you publish at checkout.
+            Paid subscriptions are billed through Stripe according to the plan you select. Cancellations and refunds follow Stripe and the policies you publish at checkout.
           </p>
           <h2 className="mt-8 text-lg font-semibold text-gray-900">Limitation of liability</h2>
           <p className="mt-2 text-gray-700">

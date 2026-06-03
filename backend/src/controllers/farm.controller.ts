@@ -6,7 +6,7 @@ import { FarmRequest, ASSIGNABLE_ROLES } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
 import { FarmPlan, Prisma } from '@prisma/client';
-import { FREE_TIER_MAX_PIGS, pigLimitForPlan } from '../config/planLimits';
+import { allowsMassImport, allowsMultiUser, allowsReports, memberLimitForPlan, pigLimitForPlan } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { farmCurrencySchema } from '../config/farmCurrencies';
 
@@ -166,6 +166,7 @@ export class FarmController {
       });
 
       const pigCount = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
+      const pigLimit = pigLimitForPlan(farm.plan);
       const { stripeCustomerId: _c, stripeSubscriptionId: _s, ...farmPublic } = farm;
 
       res.json({
@@ -174,9 +175,13 @@ export class FarmController {
         billing: {
           plan: farm.plan,
           pigCount,
-          pigLimit: pigLimitForPlan(farm.plan),
-          nearLimit: farm.plan === FarmPlan.FREE && pigCount >= FREE_TIER_MAX_PIGS * 0.8,
-          atLimit: farm.plan === FarmPlan.FREE && pigCount >= FREE_TIER_MAX_PIGS,
+          pigLimit,
+          nearLimit: pigLimit != null && pigCount >= pigLimit * 0.8,
+          atLimit: pigLimit != null && pigCount >= pigLimit,
+          canAccessReports: allowsReports(farm.plan),
+          canUseMassImport: allowsMassImport(farm.plan),
+          canManageTeam: allowsMultiUser(farm.plan),
+          memberLimit: farm.plan === FarmPlan.ENTERPRISE ? null : memberLimitForPlan(farm.plan),
         },
         stats: {
           byStatus: stats,
@@ -249,6 +254,21 @@ export class FarmController {
         where: { userId_farmId: { userId: user.id, farmId: req.farmId! } },
       });
       if (existing) return next(new AppError('User already a member', 400));
+
+      const farm = await prisma.farm.findUnique({
+        where: { id: req.farmId! },
+        select: { plan: true, _count: { select: { members: true } } },
+      });
+      if (!farm) return next(new AppError('Farm not found', 404));
+      const limit = memberLimitForPlan(farm.plan);
+      if (farm._count.members >= limit) {
+        if (farm.plan === FarmPlan.FREE) {
+          return next(new AppError('Free plan supports only 1 user. Upgrade to Grower or Enterprise.', 402));
+        }
+        if (farm.plan === FarmPlan.GROWER) {
+          return next(new AppError('Grower plan supports up to 5 users. Upgrade to Enterprise for more seats.', 402));
+        }
+      }
 
       const member = await prisma.farmMember.create({
         data: { userId: user.id, farmId: req.farmId!, role: role as any },

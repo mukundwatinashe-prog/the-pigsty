@@ -5,7 +5,7 @@ import prisma from '../config/database';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
-import { FREE_TIER_MAX_PIGS, wouldExceedFreeTier } from '../config/planLimits';
+import { allowsMassImport, pigLimitForPlan, wouldExceedFreeTier } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { formatBreakdown, notifyFarmLeads } from '../services/farmNotify.service';
 
@@ -480,11 +480,17 @@ export class ImportController {
         select: { plan: true },
       });
       if (!farmRec) return next(new AppError('Farm not found', 404));
+      if (!allowsMassImport(farmRec.plan)) {
+        return next(
+          new AppError('Bulk import is available on Grower and Enterprise plans only.', 402),
+        );
+      }
       const currentPigs = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
       if (wouldExceedFreeTier(currentPigs, validRows.length, farmRec.plan)) {
+        const limit = pigLimitForPlan(farmRec.plan);
         return next(
           new AppError(
-            `This import would exceed the Free plan limit of ${FREE_TIER_MAX_PIGS} pigs. Upgrade to Pro or split the file.`,
+            `This import would exceed your current pig limit of ${limit}. Upgrade your plan or split the file.`,
             402,
           ),
         );

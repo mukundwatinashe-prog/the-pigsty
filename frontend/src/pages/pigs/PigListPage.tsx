@@ -452,23 +452,23 @@ export default function PigListPage() {
         </div>
       </div>
 
-      {farmDetail?.billing?.plan === 'FREE' && farmDetail.billing.atLimit && (
+      {farmDetail?.billing?.atLimit && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-          <span className="font-medium">Free tier pig limit reached.</span>{' '}
+          <span className="font-medium">Plan pig limit reached.</span>{' '}
           You cannot add or import more pigs until the farm is upgraded.{' '}
           <Link to="/billing" className="font-medium text-red-800 underline hover:no-underline">
             Open billing
           </Link>
         </div>
       )}
-      {farmDetail?.billing?.plan === 'FREE' && farmDetail.billing.nearLimit && !farmDetail.billing.atLimit && (
+      {farmDetail?.billing?.nearLimit && !farmDetail.billing.atLimit && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          <span className="font-medium">Approaching the Free tier limit</span> ({farmDetail.billing.pigCount} /{' '}
+          <span className="font-medium">Approaching the current plan limit</span> ({farmDetail.billing.pigCount} /{' '}
           {farmDetail.billing.pigLimit ?? '—'} pigs).{' '}
           <Link to="/billing" className="font-medium text-amber-900 underline hover:no-underline">
-            Upgrade to Pro
+            Upgrade plan
           </Link>{' '}
-          for unlimited pigs.
+          to keep growing.
         </div>
       )}
 

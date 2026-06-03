@@ -44,7 +44,7 @@ export default function BillingPage() {
   }, [searchParams, setSearchParams, queryClient, farmId]);
 
   const checkoutMutation = useMutation({
-    mutationFn: () => farmService.billingCheckout(farmId!),
+    mutationFn: (plan: 'GROWER' | 'ENTERPRISE') => farmService.billingCheckout(farmId!, plan),
     onSuccess: ({ url }) => {
       track('checkout_started');
       if (url) window.location.href = url;
@@ -92,14 +92,16 @@ export default function BillingPage() {
 
   const manage = canManageSubscription(data.myRole);
   const limitLabel = data.pigLimit == null ? 'Unlimited' : String(data.pigLimit);
-  const isPro = data.plan === 'PRO';
+  const isGrower = data.plan === 'GROWER';
+  const isEnterprise = data.plan === 'ENTERPRISE';
+  const currentPlanLabel = data.planLabel ?? (data.plan === 'FREE' ? 'Smallholder' : data.plan === 'GROWER' ? 'Grower' : 'Enterprise');
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Billing & plan</h1>
         <p className="mt-1 text-gray-600">
-          {currentFarm?.name} · {isPro ? 'Pro' : 'Free'} plan
+          {currentFarm?.name} · {currentPlanLabel} plan
         </p>
       </div>
 
@@ -123,26 +125,26 @@ export default function BillingPage() {
             </p>
             {data.plan === 'FREE' && data.nearLimit && !data.atLimit && (
               <p className="mt-2 text-sm text-amber-700">
-                You are approaching the Free tier limit. Upgrade to add more pigs without interruption.
+                You are approaching the Smallholder tier limit. Upgrade to Grower to continue scaling.
               </p>
             )}
             {data.atLimit && (
               <p className="mt-2 text-sm text-red-700">
-                Free tier limit reached. Upgrade to Pro to add or import more pigs.
+                Plan limit reached. Upgrade to continue adding or importing pigs.
               </p>
             )}
           </div>
         </div>
       </div>
 
-      {!isPro && (
+      {!isGrower && !isEnterprise && (
         <div className="rounded-2xl border border-primary-200 bg-primary-50/80 p-6">
           <div className="flex items-start gap-3">
             <Sparkles className="size-6 shrink-0 text-primary-600" aria-hidden />
             <div>
-              <h2 className="font-semibold text-gray-900">Pro</h2>
+              <h2 className="font-semibold text-gray-900">Grower — $19/month</h2>
               <p className="mt-1 text-sm text-gray-700">
-                Unlimited pigs, priority for future features, and self-serve billing when Stripe is configured.
+                Up to 500 pigs, all reports, mass import, and up to 5 users. Includes a 14-day free trial.
               </p>
               {!manage && (
                 <p className="mt-3 text-sm text-gray-600">Ask a farm owner or manager to upgrade this farm.</p>
@@ -157,7 +159,7 @@ export default function BillingPage() {
                 <button
                   type="button"
                   disabled={checkoutMutation.isPending}
-                  onClick={() => checkoutMutation.mutate()}
+                  onClick={() => checkoutMutation.mutate('GROWER')}
                   className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
                 >
                   {checkoutMutation.isPending ? (
@@ -202,7 +204,25 @@ export default function BillingPage() {
         </div>
       )}
 
-      {isPro && manage && data.stripeConfigured && data.hasStripeCustomer && (
+      {!isEnterprise && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-900">Enterprise — $49/month</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Unlimited pigs, unlimited users, and multi-farm support for larger operations.
+          </p>
+          <p className="mt-2 text-sm text-gray-600">
+            Contact sales for enterprise onboarding and deployment support.
+          </p>
+          <a
+            href={`mailto:${siteConfig.supportEmail}?subject=${encodeURIComponent('Enterprise plan request')}`}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
+          >
+            Contact sales
+          </a>
+        </div>
+      )}
+
+      {(isGrower || isEnterprise) && manage && data.stripeConfigured && data.hasStripeCustomer && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-gray-900">Manage subscription</h2>
           <p className="mt-1 text-sm text-gray-600">Update payment method or cancel in the Stripe customer portal.</p>
@@ -218,9 +238,9 @@ export default function BillingPage() {
         </div>
       )}
 
-      {isPro && manage && data.stripeConfigured && !data.hasStripeCustomer && (
+      {(isGrower || isEnterprise) && manage && data.stripeConfigured && !data.hasStripeCustomer && (
         <p className="text-sm text-gray-600">
-          Pro is active. Customer portal becomes available after the first successful Stripe checkout for this farm.
+          Paid plan is active. Customer portal becomes available after the first successful Stripe checkout for this farm.
         </p>
       )}
     </div>

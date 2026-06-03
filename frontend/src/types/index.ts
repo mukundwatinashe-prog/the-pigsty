@@ -1,5 +1,5 @@
 export type Role = 'OWNER' | 'FARM_MANAGER' | 'WORKER';
-export type FarmPlan = 'FREE' | 'PRO';
+export type FarmPlan = 'FREE' | 'GROWER' | 'ENTERPRISE';
 export type PigBreed = 'LARGE_WHITE' | 'LANDRACE' | 'DUROC' | 'PIETRAIN' | 'BERKSHIRE' | 'HAMPSHIRE' | 'CHESTER_WHITE' | 'YORKSHIRE' | 'TAMWORTH' | 'MUKOTA' | 'KOLBROEK' | 'WINDSNYER' | 'SA_LANDRACE' | 'INDIGENOUS' | 'CROSSBREED' | 'OTHER';
 export type PigStage =
   | 'BOAR'
@@ -59,6 +59,11 @@ export interface FarmBillingInfo {
   pigLimit: number | null;
   nearLimit: boolean;
   atLimit: boolean;
+  planLabel?: string;
+  canAccessReports?: boolean;
+  canUseMassImport?: boolean;
+  canManageTeam?: boolean;
+  memberLimit?: number | null;
 }
 
 export interface FarmMember {
