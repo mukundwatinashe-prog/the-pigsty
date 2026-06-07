@@ -62,6 +62,64 @@ export function welcomeEmail(name: string): EmailTemplate {
   return { subject, html: layout({ heading: `Welcome aboard`, bodyHtml }), text };
 }
 
+export function passwordResetEmail(code: string, resetUrl: string): EmailTemplate {
+  const subject = 'Your password reset code';
+  const bodyHtml = `
+    <p>You requested a password reset for ${BRAND}.</p>
+    <p style="font-size:28px;font-weight:700;letter-spacing:0.2em;color:#15803d;margin:16px 0;">${code}</p>
+    <p>Enter this code on the reset page. It expires in <strong>15 minutes</strong>.</p>
+    <p>If you did not request this, you can ignore this email.</p>`;
+  const text = [
+    `You requested a password reset for ${BRAND}.`,
+    '',
+    `Your verification code is: ${code}`,
+    '',
+    'It expires in 15 minutes. If you did not request this, ignore this email.',
+    '',
+    `Reset page: ${resetUrl}`,
+  ].join('\n');
+  return {
+    subject,
+    html: layout({ heading: 'Reset your password', bodyHtml, cta: { label: 'Open reset page', url: resetUrl } }),
+    text,
+  };
+}
+
+export function contactInboxEmail(p: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  subject: string | null;
+  message: string | null;
+  source: string;
+}): EmailTemplate {
+  const subj = p.subject?.trim() || 'Contact';
+  const subject = `[The Pigsty] ${subj} — ${p.firstName} ${p.lastName}`;
+  const bodyHtml = `
+    <p><strong>Name:</strong> ${p.firstName} ${p.lastName}</p>
+    <p><strong>Email:</strong> <a href="mailto:${p.email}">${p.email}</a></p>
+    ${p.phone ? `<p><strong>Phone:</strong> ${p.phone}</p>` : ''}
+    <p><strong>Source:</strong> ${p.source}</p>
+    ${p.subject ? `<p><strong>Subject:</strong> ${p.subject}</p>` : ''}
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />
+    <p style="white-space:pre-wrap;">${(p.message || '(no message)').replace(/</g, '&lt;')}</p>`;
+  const text = [
+    'New message from The Pigsty contact form',
+    '',
+    `Name: ${p.firstName} ${p.lastName}`,
+    `Email: ${p.email}`,
+    p.phone ? `Phone: ${p.phone}` : null,
+    `Source: ${p.source}`,
+    p.subject ? `Subject: ${p.subject}` : null,
+    '',
+    p.message || '(no message)',
+  ]
+    .filter(Boolean)
+    .join('\n');
+  return { subject, html: layout({ heading: 'New contact message', bodyHtml }), text };
+}
+
 export function upgradeEmail(name: string, planLabel: string): EmailTemplate {
   const firstName = name?.trim().split(/\s+/)[0] || 'there';
   const subject = `Your ${BRAND} plan is now ${planLabel}`;

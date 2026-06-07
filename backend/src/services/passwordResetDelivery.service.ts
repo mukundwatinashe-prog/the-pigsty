@@ -1,46 +1,13 @@
-const FRONTEND = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+import { env } from '../config/env';
+import { sendUserEmail } from './email/emailSender';
+import { passwordResetEmail } from './email/templates';
+
+const FRONTEND = env.FRONTEND_URL.replace(/\/$/, '');
 
 export async function sendPasswordResetCodeEmail(toEmail: string, code: string): Promise<void> {
-  const subject = 'Your password reset code';
-  const text = [
-    'You requested a password reset for The Pigsty.',
-    '',
-    `Your verification code is: ${code}`,
-    '',
-    'It expires in 15 minutes. If you did not request this, ignore this email.',
-    '',
-    `You can also enter this code on: ${FRONTEND}/reset-password`,
-  ].join('\n');
-
-  const host = process.env.SMTP_HOST?.trim();
-  if (!host) {
-    console.info(`[password-reset-email] SMTP_HOST not set — to=${toEmail} code=${code}`);
-    return;
-  }
-
-  const from = process.env.SMTP_FROM?.trim();
-  if (!from) {
-    console.warn('[password-reset-email] SMTP_FROM not set — skipping send.');
-    return;
-  }
-
-  try {
-    const nodemailer = await import('nodemailer');
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth:
-        process.env.SMTP_USER && process.env.SMTP_PASS
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-          : undefined,
-    });
-    await transporter.sendMail({ from, to: toEmail, subject, text });
-  } catch (e) {
-    console.error('[password-reset-email] send failed:', e);
-  }
+  const resetUrl = `${FRONTEND}/reset-password`;
+  const tmpl = passwordResetEmail(code, resetUrl);
+  await sendUserEmail({ to: toEmail, ...tmpl, replyTo: undefined });
 }
 
 /**
