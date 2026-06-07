@@ -6,9 +6,15 @@ import { sendUserEmail } from './email/emailSender';
 import { contactInboxEmail } from './email/templates';
 
 const DEFAULT_INBOX = 'pigfarm@the-pigsty.org';
+const DEFAULT_CONTACT_PAGE_INBOX = 'mukundwatinashe@gmail.com';
 
 export function contactInboxAddress(): string {
   return (process.env.CONTACT_INBOX_EMAIL || DEFAULT_INBOX).trim();
+}
+
+/** Submissions from the dedicated Contact page are delivered here. */
+export function contactPageInboxAddress(): string {
+  return (process.env.CONTACT_PAGE_INBOX_EMAIL || DEFAULT_CONTACT_PAGE_INBOX).trim();
 }
 
 export type ContactPayload = {
@@ -40,8 +46,8 @@ export function formatContactEmailBody(p: ContactPayload): string {
   return lines.filter((x) => x != null).join('\n');
 }
 
-export async function notifyContactInbox(p: ContactPayload): Promise<void> {
-  const to = contactInboxAddress();
+export async function notifyContactInbox(p: ContactPayload, toOverride?: string): Promise<void> {
+  const to = toOverride?.trim() || contactInboxAddress();
   const tmpl = contactInboxEmail({
     firstName: p.firstName,
     lastName: p.lastName,
