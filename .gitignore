@@ -20,6 +20,9 @@ vercel-env-import.txt
 backend/.env
 frontend/.env
 *client_secret*.json
+# Vercel env exports / production secret dumps (never commit)
+.env.vercel.*
+.env.vercel.production*
 
 # Local scratch / reference (not app source)
 /IMG-*.jpg*

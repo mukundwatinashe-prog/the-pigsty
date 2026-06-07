@@ -4,6 +4,7 @@ import { requireFarmAccess } from '../middleware/rbac.middleware';
 import { FarmController } from '../controllers/farm.controller';
 import { BillingController } from '../controllers/billing.controller';
 import { FinancialController } from '../controllers/financial.controller';
+import { InvitationController } from '../controllers/invitation.controller';
 
 const router = Router();
 
@@ -19,6 +20,9 @@ router.get('/:farmId', requireFarmAccess('pigs:read'), FarmController.getById);
 router.patch('/:farmId', requireFarmAccess('farm:settings'), FarmController.update);
 router.delete('/:farmId', requireFarmAccess('farm:delete'), FarmController.delete);
 router.post('/:farmId/invite', requireFarmAccess('users:manage'), FarmController.invite);
+router.post('/:farmId/invitations', requireFarmAccess('users:manage'), InvitationController.create);
+router.get('/:farmId/invitations', requireFarmAccess('users:manage'), InvitationController.list);
+router.delete('/:farmId/invitations/:invitationId', requireFarmAccess('users:manage'), InvitationController.revoke);
 router.delete('/:farmId/members/:memberId', requireFarmAccess('users:manage'), FarmController.removeMember);
 
 export default router;

@@ -74,6 +74,29 @@ export interface FarmMember {
   user: User;
 }
 
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
+
+export interface Invitation {
+  id: string;
+  email: string;
+  role: Role;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+  invitedBy?: { id: string; name: string } | null;
+  acceptUrl: string;
+}
+
+/** Public invitation details shown on the accept page. */
+export interface InvitationDetails {
+  email: string;
+  role: Role;
+  status: InvitationStatus;
+  farmName: string;
+  inviterName: string;
+  expiresAt: string;
+}
+
 export interface Pen {
   id: string;
   farmId: string;

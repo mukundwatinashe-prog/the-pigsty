@@ -168,6 +168,12 @@ export default function LandingPage() {
                 <a href="#contact" className="text-gray-600 hover:text-primary-700">
                   Contact
                 </a>
+                <a
+                  href={mailtoSupport('The Pigsty — question', '')}
+                  className="hidden text-gray-600 hover:text-primary-700 lg:inline"
+                >
+                  {siteConfig.supportEmail}
+                </a>
                 {waUrl && (
                   <a
                     href={waUrl}
@@ -233,6 +239,13 @@ export default function LandingPage() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Contact
+              </a>
+              <a
+                href={mailtoSupport('The Pigsty — question', '')}
+                className="min-h-[44px] rounded-lg px-3 py-3 text-sm font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-800"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {siteConfig.supportEmail}
               </a>
               {waUrl && (
                 <a
@@ -451,7 +464,13 @@ export default function LandingPage() {
             </h2>
             <p className="mt-2 text-center text-primary-100">
               First name, last name, and email are required. Everything else is optional. Messages go to our team at{' '}
-              <span className="font-medium text-white">{siteConfig.supportEmail}</span>.
+              <a
+                href={mailtoSupport('The Pigsty — message from website', '')}
+                className="font-medium text-white underline decoration-white/50 hover:decoration-white"
+              >
+                {siteConfig.supportEmail}
+              </a>
+              .
             </p>
             <div className="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
               {waUrl && (
@@ -496,6 +515,12 @@ export default function LandingPage() {
             <Link to="/#contact" className="hover:text-primary-700">
               Contact
             </Link>
+            <a
+              href={mailtoSupport('The Pigsty — question', '')}
+              className="hover:text-primary-700"
+            >
+              {siteConfig.supportEmail}
+            </a>
             {waUrl && (
               <a href={waUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary-700">
                 WhatsApp

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { siteConfig } from '../../lib/siteConfig';
 
 export default function TermsPage() {
   return (
@@ -29,6 +30,14 @@ export default function TermsPage() {
           <h2 className="mt-8 text-lg font-semibold text-gray-900">Limitation of liability</h2>
           <p className="mt-2 text-gray-700">
             To the maximum extent permitted by law, The Pigsty and its operators are not liable for indirect or consequential losses arising from use of the software. Farming decisions remain your responsibility.
+          </p>
+          <h2 className="mt-8 text-lg font-semibold text-gray-900">Contact</h2>
+          <p className="mt-2 text-gray-700">
+            Questions about these terms? Email us at{' '}
+            <a href={`mailto:${siteConfig.supportEmail}`} className="font-medium text-primary-700 hover:underline">
+              {siteConfig.supportEmail}
+            </a>
+            .
           </p>
         </article>
       </div>

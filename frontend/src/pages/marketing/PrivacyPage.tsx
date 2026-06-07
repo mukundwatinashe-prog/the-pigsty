@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { siteConfig } from '../../lib/siteConfig';
 
 export default function PrivacyPage() {
   return (
@@ -32,7 +33,11 @@ export default function PrivacyPage() {
           </p>
           <h2 className="mt-8 text-lg font-semibold text-gray-900">Contact</h2>
           <p className="mt-2 text-gray-700">
-            For privacy requests, contact your farm administrator or the operator of this Pigsty deployment. Replace this section with your legal entity and contact email before production.
+            For privacy requests, contact us at{' '}
+            <a href={`mailto:${siteConfig.supportEmail}`} className="font-medium text-primary-700 hover:underline">
+              {siteConfig.supportEmail}
+            </a>
+            .
           </p>
         </article>
       </div>

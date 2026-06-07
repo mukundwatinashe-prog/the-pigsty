@@ -16,7 +16,8 @@ interface FarmContextType {
 }
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
-const CURRENT_FARM_STORAGE_KEY = 'currentFarmId';
+export const CURRENT_FARM_STORAGE_KEY = 'currentFarmId';
+export const FARM_STORAGE_CLEARED_EVENT = 'pigtrack:farm-storage-cleared';
 
 function readStoredFarm(): Farm | null {
   const saved = localStorage.getItem(CURRENT_FARM_STORAGE_KEY);
@@ -27,6 +28,12 @@ function readStoredFarm(): Farm | null {
     localStorage.removeItem(CURRENT_FARM_STORAGE_KEY);
     return null;
   }
+}
+
+/** Clear persisted farm selection (e.g. on logout). */
+export function clearStoredFarm(): void {
+  localStorage.removeItem(CURRENT_FARM_STORAGE_KEY);
+  window.dispatchEvent(new Event(FARM_STORAGE_CLEARED_EVENT));
 }
 
 export function FarmProvider({ children }: { children: ReactNode }) {
@@ -49,8 +56,13 @@ export function FarmProvider({ children }: { children: ReactNode }) {
       if (event.key !== CURRENT_FARM_STORAGE_KEY) return;
       setCurrentFarmState(readStoredFarm());
     };
+    const onCleared = () => setCurrentFarmState(null);
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener(FARM_STORAGE_CLEARED_EVENT, onCleared);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(FARM_STORAGE_CLEARED_EVENT, onCleared);
+    };
   }, []);
 
   return (

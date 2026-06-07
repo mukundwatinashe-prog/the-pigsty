@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,8 +40,13 @@ export default function RegisterPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { register: registerUser, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get('redirect');
+  const safeRedirect = redirectParam && redirectParam.startsWith('/') ? redirectParam : null;
+  const prefillEmail = searchParams.get('email') ?? '';
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { email: prefillEmail },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -49,7 +54,7 @@ export default function RegisterPage() {
       await registerUser(data.name, data.email, data.password, data.phone.trim());
       track('sign_up', { method: 'email' });
       toast.success('Account created! Welcome to The Pigsty');
-      navigate('/farms');
+      navigate(safeRedirect ?? '/farms');
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Registration failed'));
     }
@@ -61,7 +66,7 @@ export default function RegisterPage() {
       const u = await loginWithGoogle(idToken);
       track('sign_up', { method: 'google' });
       toast.success('Welcome to The Pigsty!');
-      navigate(u.phone?.trim() ? '/farms' : '/complete-profile');
+      navigate(!u.phone?.trim() ? '/complete-profile' : (safeRedirect ?? '/farms'));
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Google sign-in failed'));
     } finally {
@@ -187,7 +192,10 @@ export default function RegisterPage() {
           </p>
           <p className="text-center text-sm text-gray-500 mt-4">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 font-medium hover:text-primary-700">
+            <Link
+              to={safeRedirect ? `/login?redirect=${encodeURIComponent(safeRedirect)}` : '/login'}
+              className="text-primary-600 font-medium hover:text-primary-700"
+            >
               Sign in
             </Link>
           </p>

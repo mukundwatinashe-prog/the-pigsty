@@ -28,6 +28,10 @@ export const env = {
   AI_RATE_LIMIT_WINDOW_MS: parseInt(process.env.AI_RATE_LIMIT_WINDOW_MS || '900000', 10),
   AI_RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.AI_RATE_LIMIT_MAX_REQUESTS || '30', 10),
   NODE_ENV: process.env.NODE_ENV || 'development',
+  /** Cloudflare email Worker that relays transactional mail to Resend. */
+  CLOUDFLARE_EMAIL_WORKER_URL: process.env.CLOUDFLARE_EMAIL_WORKER_URL || '',
+  EMAIL_WORKER_TOKEN: process.env.EMAIL_WORKER_TOKEN || '',
+  EMAIL_FROM: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'The Pigsty <noreply@the-pigsty.org>',
 };
 
 export const stripeConfigured = Boolean(

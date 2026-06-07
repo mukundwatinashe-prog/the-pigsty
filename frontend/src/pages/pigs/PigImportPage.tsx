@@ -18,6 +18,8 @@ import { useFarm } from '../../context/FarmContext';
 import { track } from '../../lib/analytics';
 import { pigService, type ConfirmImportResponse } from '../../services/pig.service';
 import { farmService } from '../../services/farm.service';
+import { PlanUpgradeBanner } from '../../components/PlanUpgradeBanner';
+import { apiErrorMessage } from '../../services/api';
 import type { ImportPreviewRow } from '../../types';
 
 type Step = 1 | 2 | 3;
@@ -86,11 +88,13 @@ export default function PigImportPage() {
     enabled: !!farmId,
   });
 
+  const massImportLocked = farmDash?.billing?.canUseMassImport === false;
+
   const downloadMutation = useMutation({
     mutationFn: () => pigService.downloadTemplate(farmId!),
     onSuccess: () => toast.success('Template download started'),
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err.response?.data?.message ?? 'Download failed');
+      toast.error(apiErrorMessage(err, 'Download failed'));
     },
   });
 
@@ -145,7 +149,7 @@ export default function PigImportPage() {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
     },
     maxFiles: 1,
-    disabled: !farmId || isValidating,
+    disabled: !farmId || isValidating || massImportLocked,
   });
 
   const resetFlow = () => {
@@ -248,6 +252,13 @@ export default function PigImportPage() {
         </div>
       </div>
 
+      {massImportLocked && (
+        <PlanUpgradeBanner
+          title="Bulk Excel import requires Grower or Enterprise"
+          message="Add pigs one at a time on Free, or upgrade to download the template and import many pigs at once."
+        />
+      )}
+
       {farmDash?.billing?.atLimit && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           <span className="font-medium">Plan pig limit reached.</span> Importing more pigs is blocked until you{' '}
@@ -286,7 +297,7 @@ export default function PigImportPage() {
             <button
               type="button"
               onClick={() => downloadMutation.mutate()}
-              disabled={downloadMutation.isPending}
+              disabled={downloadMutation.isPending || massImportLocked}
               className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-primary-600 text-white font-semibold hover:bg-primary-700 shadow-md shadow-primary-200 transition disabled:opacity-60"
             >
               <Download size={20} />

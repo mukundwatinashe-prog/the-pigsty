@@ -1,5 +1,14 @@
 import api from './api';
-import type { AuditLog, Farm, FarmMember, FarmBillingInfo, PigObservation, Role } from '../types';
+import type {
+  AuditLog,
+  Farm,
+  FarmMember,
+  FarmBillingInfo,
+  Invitation,
+  InvitationDetails,
+  PigObservation,
+  Role,
+} from '../types';
 
 export interface FarmDetailResponse {
   farm: Farm & { members: FarmMember[] };
@@ -92,4 +101,26 @@ export const farmService = {
 
   removeMember: (farmId: string, memberId: string) =>
     api.delete(`/farms/${farmId}/members/${memberId}`).then(r => r.data),
+
+  /** Create a link-based invitation (works even if the person has no account yet). */
+  createInvitation: (farmId: string, email: string, role: string) =>
+    api.post<Invitation>(`/farms/${farmId}/invitations`, { email, role }).then(r => r.data),
+
+  listInvitations: (farmId: string) =>
+    api.get<Invitation[]>(`/farms/${farmId}/invitations`).then(r => r.data),
+
+  revokeInvitation: (farmId: string, invitationId: string) =>
+    api.delete(`/farms/${farmId}/invitations/${invitationId}`).then(r => r.data),
+
+  /** Public: read an invitation by token (no auth required). */
+  getInvitation: (token: string) =>
+    api.get<InvitationDetails>(`/public/invitations/${token}`).then(r => r.data),
+
+  /** Authenticated: accept an invitation and join the farm. */
+  acceptInvitation: (token: string) =>
+    api
+      .post<{ farmId: string; farmName: string; role: Role; alreadyMember?: boolean }>(
+        `/public/invitations/${token}/accept`,
+      )
+      .then(r => r.data),
 };

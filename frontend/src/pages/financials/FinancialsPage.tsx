@@ -19,6 +19,9 @@ import { useFarm } from '../../context/FarmContext';
 import { farmService } from '../../services/farm.service';
 import { reportService } from '../../services/report.service';
 import { FeedPurchaseForm } from '../../components/FeedPurchaseForm';
+import { PlanUpgradeBanner } from '../../components/PlanUpgradeBanner';
+import { isPlanUpgradeError, planUpgradeMessage } from '../../lib/planAccess';
+import { apiErrorMessage } from '../../services/api';
 
 function formatMoney(amount: number, currency: string): string {
   try {
@@ -120,6 +123,14 @@ export default function FinancialsPage() {
     enabled: !!currentFarm?.id && queryRange !== 'INVALID',
   });
 
+  const { data: farmDash } = useQuery({
+    queryKey: ['farm-dashboard', currentFarm?.id],
+    queryFn: () => farmService.getById(currentFarm!.id),
+    enabled: !!currentFarm?.id,
+  });
+
+  const planLocked = farmDash?.billing?.canAccessReports === false;
+
   if (!currentFarm) {
     return (
       <div className="mx-auto max-w-lg py-16 text-center text-gray-600">
@@ -139,8 +150,8 @@ export default function FinancialsPage() {
     try {
       await reportService.financials(currentFarm.id, format, financialsParams);
       toast.success(format === 'pdf' ? 'PDF downloaded' : 'Excel downloaded');
-    } catch {
-      toast.error('Export failed');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Export failed'));
     } finally {
       setExporting(null);
     }
@@ -189,6 +200,13 @@ export default function FinancialsPage() {
           </Link>
         </div>
       </div>
+
+      {planLocked && (
+        <PlanUpgradeBanner
+          title="Financials require Grower or Enterprise"
+          message="Upgrade to see herd value, sales totals, feed costs, and export financial reports."
+        />
+      )}
 
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
@@ -248,9 +266,16 @@ export default function FinancialsPage() {
           <Loader2 className="size-10 animate-spin text-primary-600" aria-label="Loading" />
         </div>
       ) : isError || !data ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-800">
-          {(error as Error)?.message || 'Could not load financials.'}
-        </div>
+        isPlanUpgradeError(error) || planLocked ? (
+          <PlanUpgradeBanner
+            title="Financials require Grower or Enterprise"
+            message={planUpgradeMessage(error, 'Upgrade to view herd value, sales, feed costs, and exports.')}
+          />
+        ) : (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-800">
+            {apiErrorMessage(error, 'Could not load financials.')}
+          </div>
+        )
       ) : (
         <FinancialsBody data={data} periodDescription={periodLabel(data.period)} farmId={currentFarm.id} />
       )}

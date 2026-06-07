@@ -84,6 +84,12 @@ enum FarmPlan {
   ENTERPRISE
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
 enum FeedType {
   MAIZE_CRECHE
   SOYA
@@ -104,18 +110,22 @@ model User {
   photo             String?
   mfaEnabled   Boolean  @default(false)
   googleId     String?  @unique
+  /** Incremented on logout / password reset to invalidate outstanding access JWTs. */
+  tokenVersion Int      @default(0) @map("token_version")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  farmMemberships FarmMember[]
-  weightLogs      WeightLog[]
-  auditLogs       AuditLog[]
-  refreshTokens   RefreshToken[]
-  feedPurchases   FeedPurchase[]
-  feedDailyUsages FeedDailyUsage[]
-  pigObservations PigObservation[]
-  aiConversations AiConversation[]
-  aiUsageLogs     AiUsageLog[]
+  farmMemberships    FarmMember[]     @relation("FarmMembership")
+  invitedMemberships FarmMember[]     @relation("FarmMemberInviter")
+  invitationsSent    Invitation[]     @relation("InvitationInviter")
+  weightLogs         WeightLog[]
+  auditLogs          AuditLog[]
+  refreshTokens      RefreshToken[]
+  feedPurchases      FeedPurchase[]
+  feedDailyUsages    FeedDailyUsage[]
+  pigObservations    PigObservation[]
+  aiConversations    AiConversation[]
+  aiUsageLogs        AiUsageLog[]
 
   @@map("users")
 }
@@ -205,6 +215,7 @@ model Farm {
   updatedAt            DateTime  @updatedAt
 
   members    FarmMember[]
+  invitations Invitation[]
   pigs       Pig[]
   pens       Pen[]
   auditLogs  AuditLog[]
@@ -217,19 +228,44 @@ model Farm {
 }
 
 model FarmMember {
-  id     String @id @default(uuid())
-  userId String
-  farmId String
-  role   Role
+  id          String  @id @default(uuid())
+  userId      String
+  farmId      String
+  role        Role
+  /** The member (parent) who invited this user into the farm; null for the owner/seed members. */
+  invitedById String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  user      User  @relation("FarmMembership", fields: [userId], references: [id], onDelete: Cascade)
+  farm      Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  invitedBy User? @relation("FarmMemberInviter", fields: [invitedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, farmId])
   @@map("farm_members")
+}
+
+model Invitation {
+  id               String           @id @default(uuid())
+  farmId           String
+  email            String
+  role             Role
+  token            String           @unique
+  status           InvitationStatus @default(PENDING)
+  invitedById      String?
+  acceptedByUserId String?
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  farm      Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  invitedBy User? @relation("InvitationInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([farmId, status])
+  @@index([email])
+  @@map("invitations")
 }
 
 model Pen {

@@ -8,6 +8,8 @@ import { AppError } from '../middleware/error.middleware';
 import { FarmPlan } from '@prisma/client';
 import { GROWER_TIER_MAX_MEMBERS, pigLimitForPlan } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
+import { sendUserEmail } from '../services/email/emailSender';
+import { upgradeEmail } from '../services/email/templates';
 
 function stripeClient(): Stripe | null {
   if (!env.STRIPE_SECRET_KEY) return null;
@@ -28,6 +30,21 @@ function matchesEnterpriseTier(priceId: string | null, productId: string | null)
   if (priceId && priceId === env.STRIPE_PRICE_ID_ENTERPRISE) return true;
   if (productId && productId === env.STRIPE_PRODUCT_ID_ENTERPRISE) return true;
   return false;
+}
+
+/** Emails the farm owner that their plan has been upgraded. Fire-and-forget. */
+async function notifyFarmUpgrade(farmId: string, plan: FarmPlan): Promise<void> {
+  try {
+    const owner = await prisma.farmMember.findFirst({
+      where: { farmId, role: 'OWNER' },
+      include: { user: { select: { name: true, email: true } } },
+    });
+    if (!owner?.user?.email) return;
+    const tmpl = upgradeEmail(owner.user.name, labelForPlan(plan));
+    await sendUserEmail({ to: owner.user.email, ...tmpl });
+  } catch (err) {
+    console.error('[billing] upgrade email failed:', err);
+  }
 }
 
 function planFromSubscription(sub: Stripe.Subscription): FarmPlan {
@@ -199,14 +216,19 @@ export class BillingController {
           const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
           const subId =
             typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+          const newPlan = session.metadata?.plan === 'ENTERPRISE' ? FarmPlan.ENTERPRISE : FarmPlan.GROWER;
+          const before = await prisma.farm.findUnique({ where: { id: farmId }, select: { plan: true } });
           await prisma.farm.update({
             where: { id: farmId },
             data: {
-              plan: session.metadata?.plan === 'ENTERPRISE' ? FarmPlan.ENTERPRISE : FarmPlan.GROWER,
+              plan: newPlan,
               ...(customerId ? { stripeCustomerId: customerId } : {}),
               ...(subId ? { stripeSubscriptionId: subId } : {}),
             },
           });
+          if (before && before.plan !== newPlan) {
+            void notifyFarmUpgrade(farmId, newPlan);
+          }
           break;
         }
         case 'customer.subscription.deleted': {
@@ -229,16 +251,13 @@ export class BillingController {
           const sub = event.data.object as Stripe.Subscription;
           const mappedPlan = planFromSubscription(sub);
           const farmId = sub.metadata?.farmId;
-          if (farmId) {
-            await prisma.farm.updateMany({
-              where: { id: farmId, stripeSubscriptionId: sub.id },
-              data: { plan: mappedPlan },
-            });
-          } else {
-            await prisma.farm.updateMany({
-              where: { stripeSubscriptionId: sub.id },
-              data: { plan: mappedPlan },
-            });
+          const where = farmId
+            ? { id: farmId, stripeSubscriptionId: sub.id }
+            : { stripeSubscriptionId: sub.id };
+          const target = await prisma.farm.findFirst({ where, select: { id: true, plan: true } });
+          await prisma.farm.updateMany({ where, data: { plan: mappedPlan } });
+          if (target && target.plan === FarmPlan.FREE && mappedPlan !== FarmPlan.FREE) {
+            void notifyFarmUpgrade(target.id, mappedPlan);
           }
           break;
         }

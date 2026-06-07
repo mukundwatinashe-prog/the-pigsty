@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import {
   AlertCircle,
   Building2,
+  Clock,
+  Copy,
   Hash,
   ImagePlus,
   Loader2,
@@ -25,7 +27,7 @@ import { useFarm } from '../../context/FarmContext';
 import { FARM_CURRENCY_OPTIONS, isFarmCurrency, type FarmCurrencyCode } from '../../constants/farmCurrencies';
 import { DEFAULT_FARM_CURRENCY } from '../../lib/siteConfig';
 import { farmService } from '../../services/farm.service';
-import type { Farm, FarmMember, FeedType, Role } from '../../types';
+import type { Farm, FarmMember, FeedType, Invitation, Role } from '../../types';
 import { FEED_TYPE_LABELS } from '../../lib/feedUnits';
 
 function parseDefaultBucketsFromFarm(farm: Farm | undefined) {
@@ -285,18 +287,42 @@ export default function FarmSettingsPage() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: (data: InviteForm) => farmService.invite(farmId!, data.email, data.role),
+    mutationFn: (data: InviteForm) => farmService.createInvitation(farmId!, data.email, data.role),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['farm', farmId] });
-      queryClient.invalidateQueries({ queryKey: ['farm-dashboard', farmId] });
-      queryClient.invalidateQueries({ queryKey: ['farms'] });
+      queryClient.invalidateQueries({ queryKey: ['farm-invitations', farmId] });
       inviteForm.reset({ email: '', role: inviteForm.getValues('role') });
-      toast.success('Member invited');
+      toast.success('Invitation sent — we emailed them a link to join.');
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       toast.error(err.response?.data?.message || 'Invite failed');
     },
   });
+
+  const { data: invitations = [] } = useQuery({
+    queryKey: ['farm-invitations', farmId],
+    queryFn: () => farmService.listInvitations(farmId!),
+    enabled: !!farmId && detail?.billing?.canManageTeam !== false,
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: (invitationId: string) => farmService.revokeInvitation(farmId!, invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['farm-invitations', farmId] });
+      toast.success('Invitation revoked');
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Could not revoke invitation');
+    },
+  });
+
+  const copyInviteLink = async (invite: Invitation) => {
+    try {
+      await navigator.clipboard.writeText(invite.acceptUrl);
+      toast.success('Invite link copied');
+    } catch {
+      toast.error('Could not copy link');
+    }
+  };
 
   const removeMutation = useMutation({
     mutationFn: (memberId: string) => farmService.removeMember(farmId!, memberId),
@@ -881,7 +907,8 @@ export default function FarmSettingsPage() {
             <h3 className="font-semibold">Invite someone</h3>
           </div>
           <p className="mb-3 text-sm text-gray-600">
-            The person must already have a Pigsty account. They will be added with the role you choose.
+            We'll email them a secure link to join — they don't need a Pigsty account yet. They'll be added with the
+            role you choose once they accept the invite.
           </p>
           <div className="mb-4 rounded-lg bg-white/70 border border-primary-100 p-3 text-xs text-gray-600 space-y-1">
             <p><span className="font-semibold text-gray-800">Farm Manager</span> — Full access: view, add, edit, delete, manage users & settings</p>
@@ -933,6 +960,56 @@ export default function FarmSettingsPage() {
               Send invite
             </button>
           </form>
+
+          {!teamLocked && invitations.length > 0 && (
+            <div className="mt-6 border-t border-primary-100 pt-5">
+              <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <Clock className="size-4 text-gray-400" />
+                Pending invitations ({invitations.length})
+              </h4>
+              <ul className="space-y-2">
+                {invitations.map((invite) => (
+                  <li
+                    key={invite.id}
+                    className="flex flex-col gap-2 rounded-lg border border-primary-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
+                        <Mail className="size-3.5 shrink-0 text-gray-400" />
+                        {invite.email}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {roleLabel(invite.role)} · expires {new Date(invite.expiresAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => copyInviteLink(invite)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+                      >
+                        <Copy className="size-3.5" />
+                        Copy link
+                      </button>
+                      <button
+                        type="button"
+                        disabled={revokeInviteMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Revoke the invitation for ${invite.email}?`)) {
+                            revokeInviteMutation.mutate(invite.id);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-40"
+                      >
+                        <X className="size-3.5" />
+                        Revoke
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </section>
 

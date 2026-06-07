@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import { clearStoredFarm } from './FarmContext';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -59,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Still clear client state if the network fails
     }
+    clearStoredFarm();
     setUser(null);
     qc.removeQueries();
   };

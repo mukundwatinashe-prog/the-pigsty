@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AppError } from '../middleware/error.middleware';
 import { createPigImportTemplateBuffer } from './import.controller';
-import { recordContact } from '../services/leadContact.service';
+import { recordAndNotifyContact } from '../services/leadContact.service';
 
 const contactPublicSchema = z.object({
   firstName: z.string().min(1).max(80).trim(),
@@ -30,7 +30,7 @@ export class PublicController {
   static async submitContact(req: Request, res: Response, next: NextFunction) {
     try {
       const body = contactPublicSchema.parse(req.body);
-      await recordContact({
+      await recordAndNotifyContact({
         firstName: body.firstName,
         lastName: body.lastName,
         email: body.email,

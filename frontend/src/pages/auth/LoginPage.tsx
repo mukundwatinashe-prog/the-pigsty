@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,16 +23,24 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get('redirect');
+  const safeRedirect = redirectParam && redirectParam.startsWith('/') ? redirectParam : null;
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+
+  const destinationFor = (hasPhone: boolean) => {
+    if (!hasPhone) return '/complete-profile';
+    return safeRedirect ?? '/farms';
+  };
 
   const onSubmit = async (data: FormData) => {
     try {
       const u = await login(data.email, data.password);
       track('login', { method: 'email' });
       toast.success('Welcome back!');
-      navigate(u.phone?.trim() ? '/farms' : '/complete-profile');
+      navigate(destinationFor(Boolean(u.phone?.trim())));
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Login failed'));
     }
@@ -44,7 +52,7 @@ export default function LoginPage() {
       const u = await loginWithGoogle(idToken);
       track('login', { method: 'google' });
       toast.success('Welcome back!');
-      navigate(u.phone?.trim() ? '/farms' : '/complete-profile');
+      navigate(destinationFor(Boolean(u.phone?.trim())));
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Google sign-in failed'));
     } finally {
@@ -140,7 +148,10 @@ export default function LoginPage() {
           </p>
           <p className="text-center text-sm text-gray-500 mt-4">
             Don't have an account?{' '}
-            <Link to="/register" className="text-primary-600 font-medium hover:text-primary-700">
+            <Link
+              to={safeRedirect ? `/register?redirect=${encodeURIComponent(safeRedirect)}` : '/register'}
+              className="text-primary-600 font-medium hover:text-primary-700"
+            >
               Create one
             </Link>
           </p>

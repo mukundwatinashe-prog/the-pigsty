@@ -1,0 +1,11 @@
+name = "pigsty-email-worker"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+# Secrets (set with `wrangler secret put <NAME>`):
+#   RESEND_API_KEY      - Resend API key (re_...)
+#   EMAIL_WORKER_TOKEN  - Shared bearer secret; must match the backend's EMAIL_WORKER_TOKEN
+#
+# Vars (safe to commit, override per-environment):
+[vars]
+EMAIL_FROM = "The Pigsty <noreply@the-pigsty.org>"

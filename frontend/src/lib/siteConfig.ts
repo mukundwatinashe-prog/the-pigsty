@@ -7,14 +7,25 @@ function trimEnv(v: string | undefined): string {
   return (v ?? '').trim();
 }
 
-const DEFAULT_SUPPORT_EMAIL = 'mukundwatinashe@gmail.com';
+const DEFAULT_SUPPORT_EMAIL = 'pigfarm@the-pigsty.org';
+
+function resolveSupportEmail(): string {
+  const fromEnv = trimEnv(import.meta.env.VITE_SUPPORT_EMAIL);
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'the-pigsty.org' || host === 'www.the-pigsty.org') {
+      return DEFAULT_SUPPORT_EMAIL;
+    }
+  }
+  return fromEnv || DEFAULT_SUPPORT_EMAIL;
+}
 
 /** Served from `frontend/public` — used for favicon, tab icon, BrandLogo, and sidebar mark. */
 export const appLogoUrl = '/logo.png';
 
 export const siteConfig = {
   /** Shown in mailto links and billing help; contact form submissions are delivered to this inbox on the server (see CONTACT_INBOX_EMAIL). */
-  supportEmail: trimEnv(import.meta.env.VITE_SUPPORT_EMAIL) || DEFAULT_SUPPORT_EMAIL,
+  supportEmail: resolveSupportEmail(),
   /** E.164 without leading + e.g. 263771234567 */
   whatsappE164: trimEnv(import.meta.env.VITE_WHATSAPP_E164).replace(/\D/g, ''),
 };

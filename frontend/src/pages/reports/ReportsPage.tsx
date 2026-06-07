@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -17,8 +17,12 @@ import {
 } from 'lucide-react';
 import { useFarm } from '../../context/FarmContext';
 import { track } from '../../lib/analytics';
+import { PAID_REPORT_IDS } from '../../lib/planAccess';
 import { reportService } from '../../services/report.service';
 import { feedService } from '../../services/feed.service';
+import { farmService } from '../../services/farm.service';
+import { PlanUpgradeBanner } from '../../components/PlanUpgradeBanner';
+import { apiErrorMessage } from '../../services/api';
 import type { Pig } from '../../types';
 
 type ReportId = 'herd_inventory' | 'weight_gain' | 'sales' | 'activity_log' | 'daily_summary';
@@ -206,12 +210,21 @@ export default function ReportsPage() {
   const { currentFarm } = useFarm();
   const farmId = currentFarm?.id;
 
+  const { data: farmDash } = useQuery({
+    queryKey: ['farm-dashboard', farmId],
+    queryFn: () => farmService.getById(farmId!),
+    enabled: !!farmId,
+  });
+
+  const canAccessReports = farmDash?.billing?.canAccessReports !== false;
+
   const [feedExportRange, setFeedExportRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [feedExportAnchor, setFeedExportAnchor] = useState(() => new Date().toISOString().slice(0, 10));
   const [feedExporting, setFeedExporting] = useState<FeedExportKey | null>(null);
 
   const [selectedId, setSelectedId] = useState<ReportId>('herd_inventory');
   const selected = REPORTS.find((r) => r.id === selectedId)!;
+  const selectedRequiresUpgrade = !canAccessReports && PAID_REPORT_IDS.has(selectedId);
 
   const [format, setFormat] = useState<FormatId>('json');
   const [dateFrom, setDateFrom] = useState('');
@@ -263,11 +276,7 @@ export default function ReportsPage() {
       }
     },
     onError: (err: unknown) => {
-      const msg =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
-      toast.error(msg || (err instanceof Error ? err.message : 'Could not generate report'));
+      toast.error(apiErrorMessage(err, 'Could not generate report'));
     },
   });
 
@@ -305,8 +314,7 @@ export default function ReportsPage() {
       track('report_export', { report_id: reportId, format: fmt });
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Download failed';
-      toast.error(msg);
+      toast.error(apiErrorMessage(err, 'Download failed'));
     },
   });
 
@@ -350,6 +358,14 @@ export default function ReportsPage() {
           Choose a report, set filters and format, then generate or download · {currentFarm?.name}
         </p>
       </div>
+
+      {!canAccessReports && (
+        <PlanUpgradeBanner
+          className="mb-8"
+          title="Some reports require Grower or Enterprise"
+          message="Activity log export is included on Free. Herd inventory, weight gain, sales, daily summary, and financial exports need an upgrade."
+        />
+      )}
 
       <div className="mb-8 rounded-2xl border-2 border-emerald-300 bg-emerald-50/40 p-5 shadow-sm ring-1 ring-emerald-100">
         <div className="flex flex-wrap items-start gap-3">
@@ -443,6 +459,7 @@ export default function ReportsPage() {
         {REPORTS.map((r) => {
           const Icon = r.icon;
           const active = selectedId === r.id;
+          const paidOnly = PAID_REPORT_IDS.has(r.id);
           return (
             <button
               key={r.id}
@@ -463,6 +480,11 @@ export default function ReportsPage() {
               </div>
               <h2 className="font-semibold text-gray-900">{r.title}</h2>
               <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-gray-600">{r.description}</p>
+              {paidOnly && !canAccessReports && (
+                <span className="mt-2 inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                  Grower+
+                </span>
+              )}
               {active && (
                 <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary-700">
                   <CheckCircle2 className="size-3.5" />
@@ -537,10 +559,18 @@ export default function ReportsPage() {
           </div>
         </div>
 
+        {selectedRequiresUpgrade && (
+          <PlanUpgradeBanner
+            className="mt-6"
+            title={`${selected.title} requires Grower or Enterprise`}
+            message="Switch to Activity log for audit export on Free, or upgrade to unlock this report."
+          />
+        )}
+
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            disabled={generateMutation.isPending}
+            disabled={generateMutation.isPending || selectedRequiresUpgrade}
             onClick={() => generateMutation.mutate()}
             className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-60"
           >

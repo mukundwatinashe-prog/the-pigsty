@@ -1,8 +1,8 @@
 /**
- * Contact form deliveries go to CONTACT_INBOX_EMAIL (default mukundwatinashe@gmail.com).
+ * Contact form deliveries go to CONTACT_INBOX_EMAIL (default pigfarm@the-pigsty.org).
  * If SMTP_HOST is set, sends email via nodemailer; otherwise logs the payload (DB still stores the row).
  */
-const DEFAULT_INBOX = 'mukundwatinashe@gmail.com';
+const DEFAULT_INBOX = 'pigfarm@the-pigsty.org';
 
 export function contactInboxAddress(): string {
   return (process.env.CONTACT_INBOX_EMAIL || DEFAULT_INBOX).trim();

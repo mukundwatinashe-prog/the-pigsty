@@ -7,6 +7,8 @@ import { AppError } from '../middleware/error.middleware';
 import { normalizePhone } from '../lib/phone';
 import { notifyNewUserSignup } from './signupNotify.service';
 import { sendPasswordResetCodeEmail, sendPasswordResetCodeSms } from './passwordResetDelivery.service';
+import { sendUserEmail } from './email/emailSender';
+import { welcomeEmail } from './email/templates';
 
 export class AuthService {
   static async register(name: string, email: string, password: string, phone: string) {
@@ -40,6 +42,11 @@ export class AuthService {
       name: user.name,
       method: 'password',
     }).catch((err) => console.error('[signup] notify failed:', err));
+
+    const welcome = welcomeEmail(user.name);
+    void sendUserEmail({ to: user.email, ...welcome }).catch((err) =>
+      console.error('[signup] welcome email failed:', err),
+    );
 
     const tokens = await this.generateTokens(user.id);
     return { user, ...tokens };
@@ -84,6 +91,11 @@ export class AuthService {
         name: user.name,
         method: 'google',
       }).catch((err) => console.error('[signup] notify failed:', err));
+
+      const welcome = welcomeEmail(user.name);
+      void sendUserEmail({ to: user.email, ...welcome }).catch((err) =>
+        console.error('[signup] welcome email failed:', err),
+      );
     }
 
     const tokens = await this.generateTokens(user.id);
@@ -93,7 +105,20 @@ export class AuthService {
 
   static async revokeRefreshToken(token: string | undefined) {
     if (!token) return;
-    await prisma.refreshToken.deleteMany({ where: { token } });
+
+    const stored = await prisma.refreshToken.findUnique({
+      where: { token },
+      select: { userId: true },
+    });
+    if (!stored) return;
+
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({ where: { userId: stored.userId } }),
+      prisma.user.update({
+        where: { id: stored.userId },
+        data: { tokenVersion: { increment: 1 } },
+      }),
+    ]);
   }
 
   static async refreshToken(token: string) {
@@ -278,11 +303,23 @@ export class AuthService {
       data: { passwordHash },
     });
 
-    await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: { tokenVersion: { increment: 1 } },
+      }),
+    ]);
   }
 
   private static async generateTokens(userId: string) {
-    const accessToken = jwt.sign({ userId }, env.JWT_SECRET, {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { tokenVersion: true },
+    });
+    const tv = user?.tokenVersion ?? 0;
+
+    const accessToken = jwt.sign({ userId, tv }, env.JWT_SECRET, {
       expiresIn: env.JWT_EXPIRES_IN as string,
     } as jwt.SignOptions);
 

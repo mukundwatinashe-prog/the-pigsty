@@ -32,6 +32,9 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
     message?: string;
   };
   const status = e.response?.status;
+  if (status === 402) {
+    return 'This feature requires a Grower or Enterprise plan. Open Billing to upgrade.';
+  }
   if (status === 404) {
     return 'Could not reach the API (404). Try a hard refresh (Ctrl+Shift+R). If it persists, the app may be outdated — contact support.';
   }

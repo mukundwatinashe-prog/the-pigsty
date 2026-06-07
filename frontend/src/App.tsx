@@ -10,6 +10,7 @@ const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
 const CompleteProfilePage = lazy(() => import('./pages/auth/CompleteProfilePage'));
+const InviteAcceptPage = lazy(() => import('./pages/invite/InviteAcceptPage'));
 const LandingPage = lazy(() => import('./pages/marketing/LandingPage'));
 const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/marketing/TermsPage'));
@@ -57,6 +58,7 @@ export default function App() {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/invite/:token" element={<InviteAcceptPage />} />
                 <Route path="/farms" element={<FarmSelectPage />} />
                 <Route element={<AppLayout />}>
                   <Route path="/complete-profile" element={<CompleteProfilePage />} />
