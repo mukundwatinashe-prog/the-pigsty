@@ -18,7 +18,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { BrandLogo } from '../../components/BrandLogo';
 import { track } from '../../lib/analytics';
-import { mailtoSupport, siteConfig, sitePricing, whatsappHelpUrl } from '../../lib/siteConfig';
+import { sitePricing, whatsappHelpUrl } from '../../lib/siteConfig';
 
 const benefits = [
   {
@@ -165,7 +165,7 @@ export default function LandingPage() {
                   Pricing
                 </a>
                 <Link to="/contact" className="text-gray-600 hover:text-primary-700">
-                  Contact
+                  Contact Us
                 </Link>
                 {waUrl && (
                   <a
@@ -231,7 +231,7 @@ export default function LandingPage() {
                 className="min-h-[44px] rounded-lg px-3 py-3 text-sm font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-800"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Contact
+                Contact Us
               </Link>
               {waUrl && (
                 <a
@@ -489,14 +489,8 @@ export default function LandingPage() {
               Sign in
             </Link>
             <Link to="/contact" className="hover:text-primary-700">
-              Contact
+              Contact Us
             </Link>
-            <a
-              href={mailtoSupport('The Pigsty — question', '')}
-              className="hover:text-primary-700"
-            >
-              {siteConfig.supportEmail}
-            </a>
             {waUrl && (
               <a href={waUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary-700">
                 WhatsApp
