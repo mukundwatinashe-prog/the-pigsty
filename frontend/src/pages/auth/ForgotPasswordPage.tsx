@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <div className="mx-auto flex flex-col items-center gap-0">
-              <BrandLogo size="xl" />
+              <BrandLogo size="xl" linkToHome />
               <h1 className="-mt-2 text-2xl font-bold text-gray-900 sm:-mt-2.5">Reset your password</h1>
             </div>
             <p className="mt-1 text-gray-500">We’ll send a 6-digit code to your email or phone</p>

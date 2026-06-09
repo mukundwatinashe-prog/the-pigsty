@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import {
   LayoutDashboard, PiggyBank, Warehouse, Weight, FileSpreadsheet,
   FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet, Wheat, LifeBuoy,
@@ -57,7 +57,11 @@ export default function Sidebar({ mobileNavOpen = false, onNavigate }: SidebarPr
       <div className="flex items-center gap-3 border-b border-gray-100 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] md:py-5">
         {showNavText ? (
           <>
-            <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Link
+              to="/"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+              aria-label="The Pigsty home"
+            >
               {currentFarm?.logoUrl ? (
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg md:h-9 md:w-9">
                   <img src={currentFarm.logoUrl} alt={`${currentFarm.name} logo`} className="h-full w-full object-cover" />
@@ -73,7 +77,7 @@ export default function Sidebar({ mobileNavOpen = false, onNavigate }: SidebarPr
                 <h1 className="truncate text-sm font-bold text-gray-900">The Pigsty</h1>
                 {currentFarm && <p className="truncate text-xs text-gray-500">{currentFarm.name}</p>}
               </div>
-            </div>
+            </Link>
             <button
               type="button"
               onClick={() => setCollapsed(!collapsed)}

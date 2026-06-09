@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { appLogoUrl } from '../lib/siteConfig';
 
 const sizes = {
@@ -7,17 +8,18 @@ const sizes = {
   xl: 'size-[min(15rem,85vw)]',
 } as const;
 
-type BrandLogoSize = keyof typeof sizes;
+export type BrandLogoSize = keyof typeof sizes;
 
-/** Product mark from `public/logo.png` — no frame or fill behind the image (PNG with alpha shows as empty around the art). */
-export function BrandLogo({
-  size = 'md',
-  className = '',
-}: {
+type Props = {
   size?: BrandLogoSize;
   className?: string;
-}) {
-  return (
+  /** When true, the logo image links to the marketing home page. */
+  linkToHome?: boolean;
+};
+
+/** Product mark from `public/logo.png` — no frame or fill behind the image (PNG with alpha shows as empty around the art). */
+export function BrandLogo({ size = 'md', className = '', linkToHome = false }: Props) {
+  const mark = (
     <span
       className={`inline-flex shrink-0 items-center justify-center bg-transparent [contain:layout] transform-gpu ${sizes[size]} ${className}`}
     >
@@ -31,5 +33,17 @@ export function BrandLogo({
         fetchPriority="high"
       />
     </span>
+  );
+
+  if (!linkToHome) return mark;
+
+  return (
+    <Link
+      to="/"
+      className="inline-flex rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+      aria-label="The Pigsty home"
+    >
+      {mark}
+    </Link>
   );
 }

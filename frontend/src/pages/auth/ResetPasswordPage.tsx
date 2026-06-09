@@ -101,7 +101,7 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <div className="mx-auto flex flex-col items-center gap-0">
-              <BrandLogo size="xl" />
+              <BrandLogo size="xl" linkToHome />
               <h1 className="-mt-2 text-2xl font-bold text-gray-900 sm:-mt-2.5">Enter your code</h1>
             </div>
             <p className="mt-1 text-gray-500">Use the 6-digit code we sent, then choose a new password</p>

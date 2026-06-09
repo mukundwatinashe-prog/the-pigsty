@@ -28,7 +28,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-dvh min-h-screen items-center justify-center py-4 pt-14 sm:pt-16">
         <div className="w-full max-w-md">
           <div className="mb-8 flex flex-col items-center gap-0 text-center">
-            <BrandLogo size="xl" />
+            <BrandLogo size="xl" linkToHome />
           </div>
           <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-xl">{children}</div>
         </div>

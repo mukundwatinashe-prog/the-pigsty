@@ -72,7 +72,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="mx-auto flex flex-col items-center gap-0">
-            <BrandLogo size="xl" />
+            <BrandLogo size="xl" linkToHome />
             <h1 className="-mt-2 text-2xl font-bold text-gray-900 sm:-mt-2.5">Welcome to The Pigsty</h1>
           </div>
           <p className="mt-1 text-gray-500">Sign in to manage your herd, pens, and reports</p>

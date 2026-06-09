@@ -24,7 +24,7 @@ import { useFarm } from '../../context/FarmContext';
 import { FARM_CURRENCY_OPTIONS, isFarmCurrency, type FarmCurrencyCode } from '../../constants/farmCurrencies';
 import { DEFAULT_FARM_CURRENCY } from '../../lib/siteConfig';
 import { farmService } from '../../services/farm.service';
-import { BrandLogo } from '../../components/BrandLogo';
+import { HomeBrandLink } from '../../components/HomeBrandLink';
 import { track } from '../../lib/analytics';
 import type { Farm } from '../../types';
 
@@ -169,13 +169,8 @@ export default function FarmSelectPage() {
       <div className="mx-auto max-w-5xl px-4 pb-28 pt-8 sm:py-14">
         <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-3 flex items-center gap-0">
-              <BrandLogo size="lg" className="-mr-3 shrink-0 sm:-mr-4" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-primary-700">The Pigsty</p>
-                <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Your farms</h1>
-              </div>
-            </div>
+            <HomeBrandLink size="lg" className="mb-3" />
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Your farms</h1>
             <p className="max-w-xl text-gray-600">
               Choose a farm to open the dashboard, or create a new one to get started.
             </p>

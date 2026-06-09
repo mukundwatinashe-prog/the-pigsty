@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   X,
 } from 'lucide-react';
-import { BrandLogo } from '../../components/BrandLogo';
+import { HomeBrandLink } from '../../components/HomeBrandLink';
 import { track } from '../../lib/analytics';
 import { mailtoContactPage, whatsappHelpUrl } from '../../lib/siteConfig';
 import { sendPublicChat, type PublicChatMessage } from '../../services/publicChat.service';
@@ -275,10 +275,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-gradient-to-b from-primary-50/80 via-white to-accent-50/40 pb-safe text-gray-900">
       <header className="sticky top-0 z-20 border-b border-gray-200/80 bg-white/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-safe py-3 sm:py-4">
-          <Link to="/" className="flex min-w-0 items-center gap-0 font-bold text-gray-900">
-            <BrandLogo size="md" className="-mr-3 shrink-0 sm:-mr-4" />
-            <span className="truncate leading-none">The Pigsty</span>
-          </Link>
+          <HomeBrandLink size="md" />
           <Link
             to="/"
             className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
