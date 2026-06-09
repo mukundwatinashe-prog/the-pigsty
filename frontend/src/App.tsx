@@ -5,39 +5,39 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { FarmProvider } from './context/FarmContext';
 import AppLayout from './components/layout/AppLayout';
+import MarketingLayout from './components/layout/MarketingLayout';
 import { ScrollToTop } from './components/ScrollToTop';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
-import ContactPage from './pages/marketing/ContactPage';
-import LandingPage from './pages/marketing/LandingPage';
-const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
-const CompleteProfilePage = lazy(() => import('./pages/auth/CompleteProfilePage'));
-const InviteAcceptPage = lazy(() => import('./pages/invite/InviteAcceptPage'));
-const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage'));
-const TermsPage = lazy(() => import('./pages/marketing/TermsPage'));
-const FarmSelectPage = lazy(() => import('./pages/farms/FarmSelectPage'));
-const DashboardPage = lazy(() => import('./pages/farms/DashboardPage'));
-const FarmSettingsPage = lazy(() => import('./pages/farms/FarmSettingsPage'));
-const PigListPage = lazy(() => import('./pages/pigs/PigListPage'));
-const PigDetailPage = lazy(() => import('./pages/pigs/PigDetailPage'));
-const PigFormPage = lazy(() => import('./pages/pigs/PigFormPage'));
-const PigImportPage = lazy(() => import('./pages/pigs/PigImportPage'));
-const ServicedSowsPage = lazy(() => import('./pages/pigs/ServicedSowsPage'));
-const PenListPage = lazy(() => import('./pages/pens/PenListPage'));
-const PenDetailPage = lazy(() => import('./pages/pens/PenDetailPage'));
-const WeightLogPage = lazy(() => import('./pages/weights/WeightLogPage'));
-const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
-const AuditLogPage = lazy(() => import('./pages/reports/AuditLogPage'));
-const BillingPage = lazy(() => import('./pages/billing/BillingPage'));
-const FinancialsPage = lazy(() => import('./pages/financials/FinancialsPage'));
-const FeedDashboardPage = lazy(() => import('./pages/feed/FeedDashboardPage'));
-const FeedPurchasePage = lazy(() => import('./pages/feed/FeedPurchasePage'));
-const FeedDailyUsagePage = lazy(() => import('./pages/feed/FeedDailyUsagePage'));
-const FeedUsageHistoryPage = lazy(() => import('./pages/feed/FeedUsageHistoryPage'));
-const FeedPurchaseHistoryPage = lazy(() => import('./pages/feed/FeedPurchaseHistoryPage'));
-const FeedReportsPage = lazy(() => import('./pages/feed/FeedReportsPage'));
-const HelpPage = lazy(() => import('./pages/help/HelpPage'));
+import { ContactPage, LandingPage, PrivacyPage, TermsPage } from './pages/marketing/publicPages';
+import { lazyWithRetry } from './lib/lazyWithRetry';
+
+const ForgotPasswordPage = lazyWithRetry(() => import('./pages/auth/ForgotPasswordPage'), 'forgot-password');
+const ResetPasswordPage = lazyWithRetry(() => import('./pages/auth/ResetPasswordPage'), 'reset-password');
+const CompleteProfilePage = lazyWithRetry(() => import('./pages/auth/CompleteProfilePage'), 'complete-profile');
+const InviteAcceptPage = lazyWithRetry(() => import('./pages/invite/InviteAcceptPage'), 'invite');
+const FarmSelectPage = lazyWithRetry(() => import('./pages/farms/FarmSelectPage'), 'farms');
+const DashboardPage = lazyWithRetry(() => import('./pages/farms/DashboardPage'), 'dashboard');
+const FarmSettingsPage = lazyWithRetry(() => import('./pages/farms/FarmSettingsPage'), 'settings');
+const PigListPage = lazyWithRetry(() => import('./pages/pigs/PigListPage'), 'pigs');
+const PigDetailPage = lazyWithRetry(() => import('./pages/pigs/PigDetailPage'), 'pig-detail');
+const PigFormPage = lazyWithRetry(() => import('./pages/pigs/PigFormPage'), 'pig-form');
+const PigImportPage = lazyWithRetry(() => import('./pages/pigs/PigImportPage'), 'import');
+const ServicedSowsPage = lazyWithRetry(() => import('./pages/pigs/ServicedSowsPage'), 'serviced-sows');
+const PenListPage = lazyWithRetry(() => import('./pages/pens/PenListPage'), 'pens');
+const PenDetailPage = lazyWithRetry(() => import('./pages/pens/PenDetailPage'), 'pen-detail');
+const WeightLogPage = lazyWithRetry(() => import('./pages/weights/WeightLogPage'), 'weights');
+const ReportsPage = lazyWithRetry(() => import('./pages/reports/ReportsPage'), 'reports');
+const AuditLogPage = lazyWithRetry(() => import('./pages/reports/AuditLogPage'), 'audit-log');
+const BillingPage = lazyWithRetry(() => import('./pages/billing/BillingPage'), 'billing');
+const FinancialsPage = lazyWithRetry(() => import('./pages/financials/FinancialsPage'), 'financials');
+const FeedDashboardPage = lazyWithRetry(() => import('./pages/feed/FeedDashboardPage'), 'feed');
+const FeedPurchasePage = lazyWithRetry(() => import('./pages/feed/FeedPurchasePage'), 'feed-purchase');
+const FeedDailyUsagePage = lazyWithRetry(() => import('./pages/feed/FeedDailyUsagePage'), 'feed-daily');
+const FeedUsageHistoryPage = lazyWithRetry(() => import('./pages/feed/FeedUsageHistoryPage'), 'feed-usage');
+const FeedPurchaseHistoryPage = lazyWithRetry(() => import('./pages/feed/FeedPurchaseHistoryPage'), 'feed-purchases');
+const FeedReportsPage = lazyWithRetry(() => import('./pages/feed/FeedReportsPage'), 'feed-reports');
+const HelpPage = lazyWithRetry(() => import('./pages/help/HelpPage'), 'help');
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,10 +60,12 @@ export default function App() {
               }
             >
               <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/privacy" element={<PrivacyPage />} />
-                <Route path="/terms" element={<TermsPage />} />
+                <Route element={<MarketingLayout />}>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/terms" element={<TermsPage />} />
+                </Route>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
