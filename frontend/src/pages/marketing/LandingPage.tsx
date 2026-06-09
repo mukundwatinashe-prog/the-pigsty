@@ -353,6 +353,11 @@ export default function LandingPage() {
                 I&apos;m not physically there. This app is my bridge between two worlds, a testament to the fact that you can hold onto home
                 with both hands, no matter how far away you are.
               </p>
+              <p>
+                I&apos;m also a pig farmer myself, so I know first-hand the everyday challenges this work brings — the late nights, the
+                health scares, the constant juggling of feed, breeding, weights, and finances. Every feature here comes from that lived
+                experience and the real problems I needed solved on my own farm.
+              </p>
               <p className="border-t border-gray-200/80 pt-6 text-gray-800">
                 I want to thank you for deciding to join the growing members. Whether it is for a free or paid. Each one of you is very
                 important to us at The Pigsty.
