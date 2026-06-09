@@ -433,13 +433,13 @@ export default function LandingPage() {
                 Every plan includes core herd records. Paid plans unlock reports, imports, and team access.
               </p>
             </div>
-            <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            <div className="mt-12 grid items-stretch gap-6 lg:grid-cols-3">
               {tiers.map((t) => (
                 <article
                   key={t.name}
-                  className={`flex flex-col rounded-2xl p-6 ${
+                  className={`flex h-full min-h-[520px] flex-col rounded-2xl p-6 ${
                     t.highlight
-                      ? 'relative border-2 border-primary-600 bg-primary-900 text-white shadow-xl lg:-translate-y-2'
+                      ? 'relative border-2 border-primary-600 bg-primary-900 text-white shadow-xl'
                       : 'border border-gray-200 bg-[#f7f6f2] shadow-sm'
                   }`}
                 >
@@ -455,13 +455,22 @@ export default function LandingPage() {
                     </span>
                     <span className={`text-sm ${t.highlight ? 'text-white/60' : 'text-gray-500'}`}>{t.period}</span>
                   </div>
-                  {'trial' in t && t.trial ? (
-                    <p className={`mt-2 text-sm font-medium ${t.highlight ? 'text-primary-300' : 'text-primary-700'}`}>
-                      {t.trial}
-                    </p>
-                  ) : null}
-                  <p className={`mt-3 text-sm ${t.highlight ? 'text-white/70' : 'text-gray-600'}`}>{t.desc}</p>
-                  <div className="mt-6 flex-1 space-y-4">
+                  <p
+                    className={`mt-2 min-h-[1.25rem] text-sm font-medium ${
+                      'trial' in t && t.trial
+                        ? t.highlight
+                          ? 'text-primary-300'
+                          : 'text-primary-700'
+                        : 'invisible'
+                    }`}
+                    aria-hidden={!('trial' in t && t.trial)}
+                  >
+                    {'trial' in t && t.trial ? t.trial : 'Placeholder'}
+                  </p>
+                  <p className={`mt-3 min-h-[2.5rem] text-sm ${t.highlight ? 'text-white/70' : 'text-gray-600'}`}>
+                    {t.desc}
+                  </p>
+                  <div className="mt-6 flex flex-1 flex-col space-y-4">
                     <ul className="space-y-2">
                       {t.includes.map((f) => (
                         <li key={f} className={`flex gap-2 text-sm ${t.highlight ? 'text-white/90' : 'text-gray-700'}`}>
@@ -470,7 +479,11 @@ export default function LandingPage() {
                         </li>
                       ))}
                     </ul>
-                    <ul className="space-y-2 border-t border-dashed pt-4 border-white/15">
+                    <ul
+                      className={`mt-auto space-y-2 border-t border-dashed pt-4 ${
+                        t.highlight ? 'border-white/15' : 'border-gray-300'
+                      }`}
+                    >
                       {t.limits.map((f) => (
                         <li
                           key={f}
@@ -484,7 +497,7 @@ export default function LandingPage() {
                   </div>
                   <Link
                     to={t.href}
-                    className={`mt-6 block min-h-[44px] rounded-xl py-3 text-center text-sm font-bold transition ${
+                    className={`mt-6 block min-h-[44px] shrink-0 rounded-xl py-3 text-center text-sm font-bold transition ${
                       t.highlight
                         ? 'bg-white text-primary-800 hover:bg-primary-50'
                         : 'border border-gray-300 bg-white text-gray-800 hover:border-primary-400 hover:text-primary-800'

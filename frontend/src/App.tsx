@@ -5,14 +5,15 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { FarmProvider } from './context/FarmContext';
 import AppLayout from './components/layout/AppLayout';
-const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
+import { ScrollToTop } from './components/ScrollToTop';
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+import ContactPage from './pages/marketing/ContactPage';
+import LandingPage from './pages/marketing/LandingPage';
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
 const CompleteProfilePage = lazy(() => import('./pages/auth/CompleteProfilePage'));
 const InviteAcceptPage = lazy(() => import('./pages/invite/InviteAcceptPage'));
-const LandingPage = lazy(() => import('./pages/marketing/LandingPage'));
-const ContactPage = lazy(() => import('./pages/marketing/ContactPage'));
 const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/marketing/TermsPage'));
 const FarmSelectPage = lazy(() => import('./pages/farms/FarmSelectPage'));
@@ -50,7 +51,14 @@ export default function App() {
       <AuthProvider>
         <FarmProvider>
           <BrowserRouter>
-            <Suspense fallback={<div className="p-4 text-center text-sm text-slate-600">Loading...</div>}>
+            <ScrollToTop />
+            <Suspense
+              fallback={
+                <div className="flex min-h-screen items-center justify-center bg-accent-50 px-4">
+                  <p className="text-sm font-medium text-gray-600">Loading…</p>
+                </div>
+              }
+            >
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/contact" element={<ContactPage />} />
