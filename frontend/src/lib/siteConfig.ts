@@ -50,3 +50,12 @@ export function mailtoSupport(subject: string, body?: string): string {
   if (body) q.set('body', body);
   return `mailto:${siteConfig.supportEmail}?${q.toString()}`;
 }
+
+const CONTACT_PAGE_EMAIL = 'mukundwatinashe@gmail.com';
+
+/** Mailto for the public Contact page (matches backend CONTACT_PAGE_INBOX_EMAIL). */
+export function mailtoContactPage(subject: string, body?: string): string {
+  const q = new URLSearchParams({ subject });
+  if (body) q.set('body', body);
+  return `mailto:${CONTACT_PAGE_EMAIL}?${q.toString()}`;
+}
