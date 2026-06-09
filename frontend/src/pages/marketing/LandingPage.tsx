@@ -462,7 +462,7 @@ export default function LandingPage() {
                 onClick={() => track('cta_contact_click', { placement: 'contact_section' })}
               >
                 <MessageCircle className="size-5" aria-hidden />
-                Go to Contact
+                Contact Us
               </Link>
               {waUrl && (
                 <a
