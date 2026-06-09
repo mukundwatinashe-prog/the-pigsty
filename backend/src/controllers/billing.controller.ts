@@ -18,6 +18,8 @@ function stripeClient(): Stripe | null {
 
 const checkoutSchema = z.object({
   plan: z.enum(['GROWER', 'ENTERPRISE']).default('GROWER'),
+  /** When true, start a 14-day Grower trial (one per account email). Paid £19 checkout omits this. */
+  startTrial: z.boolean().optional().default(false),
 });
 
 function labelForPlan(plan: FarmPlan): string {
@@ -103,6 +105,12 @@ export class BillingController {
 
       const pigCount = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
       const limit = pigLimitForPlan(farm.plan);
+      const user = await prisma.user.findUnique({
+        where: { id: req.userId! },
+        select: { growerTrialUsedAt: true },
+      });
+      const growerTrialUsed = Boolean(user?.growerTrialUsedAt);
+      const canStartGrowerTrial = farm.plan === FarmPlan.FREE && !growerTrialUsed;
 
       res.json({
         myRole: req.memberRole,
@@ -118,6 +126,8 @@ export class BillingController {
         memberLimit: farm.plan === FarmPlan.FREE ? 1 : farm.plan === FarmPlan.GROWER ? GROWER_TIER_MAX_MEMBERS : null,
         stripeConfigured,
         hasStripeCustomer: Boolean(farm.stripeCustomerId),
+        growerTrialUsed,
+        canStartGrowerTrial,
       });
     } catch (error) {
       next(error);
@@ -131,7 +141,7 @@ export class BillingController {
       }
       const stripe = stripeClient();
       if (!stripe) return next(new AppError('Stripe not configured', 503));
-      const { plan } = checkoutSchema.parse(req.body ?? {});
+      const { plan, startTrial } = checkoutSchema.parse(req.body ?? {});
 
       const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
       if (!farm || farm.isDeleted) return next(new AppError('Farm not found', 404));
@@ -141,7 +151,37 @@ export class BillingController {
 
       const user = await prisma.user.findUnique({ where: { id: req.userId! } });
       if (!user?.email) return next(new AppError('User email required for checkout', 400));
+
+      if (startTrial) {
+        if (plan !== 'GROWER') {
+          return next(new AppError('Free trial is only available for the Grower plan', 400));
+        }
+        if (farm.plan !== FarmPlan.FREE) {
+          return next(new AppError('Free trial is only available from the Smallholder plan', 400));
+        }
+        if (user.growerTrialUsedAt) {
+          return next(new AppError('You have already used your one free Grower trial for this email address', 400));
+        }
+      }
+
       const targetPriceId = await resolveCheckoutPriceId(stripe, plan);
+
+      if (farm.stripeSubscriptionId && farm.plan === FarmPlan.GROWER && plan === 'ENTERPRISE') {
+        const sub = await stripe.subscriptions.retrieve(farm.stripeSubscriptionId);
+        const itemId = sub.items.data[0]?.id;
+        if (!itemId) return next(new AppError('Could not update subscription', 500));
+        await stripe.subscriptions.update(farm.stripeSubscriptionId, {
+          items: [{ id: itemId, price: targetPriceId }],
+          proration_behavior: 'create_prorations',
+          metadata: { farmId: farm.id, plan: 'ENTERPRISE' },
+        });
+        await prisma.farm.update({
+          where: { id: farm.id },
+          data: { plan: FarmPlan.ENTERPRISE },
+        });
+        void notifyFarmUpgrade(farm.id, FarmPlan.ENTERPRISE);
+        return res.json({ url: `${env.FRONTEND_URL}/billing?checkout=success` });
+      }
 
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
@@ -151,10 +191,15 @@ export class BillingController {
         success_url: `${env.FRONTEND_URL}/billing?checkout=success`,
         cancel_url: `${env.FRONTEND_URL}/billing?checkout=canceled`,
         client_reference_id: farm.id,
-        metadata: { farmId: farm.id, plan },
+        metadata: {
+          farmId: farm.id,
+          plan,
+          startTrial: startTrial ? 'true' : 'false',
+          userId: req.userId!,
+        },
         subscription_data: {
-          metadata: { farmId: farm.id, plan },
-          ...(plan === 'GROWER' ? { trial_period_days: 14 } : {}),
+          metadata: { farmId: farm.id, plan, startTrial: startTrial ? 'true' : 'false', userId: req.userId! },
+          ...(startTrial && plan === 'GROWER' ? { trial_period_days: 14 } : {}),
         },
       });
 
@@ -228,6 +273,12 @@ export class BillingController {
           });
           if (before && before.plan !== newPlan) {
             void notifyFarmUpgrade(farmId, newPlan);
+          }
+          if (session.metadata?.startTrial === 'true' && session.metadata?.userId) {
+            await prisma.user.updateMany({
+              where: { id: session.metadata.userId, growerTrialUsedAt: null },
+              data: { growerTrialUsedAt: new Date() },
+            });
           }
           break;
         }

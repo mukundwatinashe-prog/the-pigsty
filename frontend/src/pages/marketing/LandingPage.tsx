@@ -79,7 +79,7 @@ const tiers = [
     name: 'Grower',
     price: sitePricing.growerMonthly,
     period: 'per month',
-    trial: '14-day free trial',
+    trial: 'Or try 14 days free (one trial per email)',
     desc: 'Best for active commercial farms that need reports and a small team.',
     includes: [
       'Everything in Smallholder',
@@ -92,7 +92,7 @@ const tiers = [
       'Up to 5 users per farm',
       'Single-farm billing (upgrade per farm)',
     ],
-    cta: 'Start free, upgrade in app',
+    cta: 'Create account & choose plan',
     href: '/register',
     highlight: true,
   },
@@ -109,10 +109,9 @@ const tiers = [
     ],
     limitations: [
       'Billed per farm (contact us for group deals)',
-      'Checkout via sales (not self-serve Stripe yet)',
     ],
-    cta: 'Contact sales',
-    href: '/contact',
+    cta: 'Create account & choose plan',
+    href: '/register',
     highlight: false,
     external: false,
   },
@@ -292,7 +291,7 @@ export default function LandingPage() {
                 className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg hover:bg-primary-700 sm:w-auto"
                 onClick={() => track('cta_register_click', { placement: 'hero' })}
               >
-                Start Free Trial
+                Create free account
               </Link>
             </div>
             <div className="mx-auto mt-8 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-2 border-t border-gray-100 pt-8 text-xs font-medium text-gray-500 sm:text-sm">

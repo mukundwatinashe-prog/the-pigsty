@@ -64,6 +64,8 @@ export interface FarmBillingInfo {
   canUseMassImport?: boolean;
   canManageTeam?: boolean;
   memberLimit?: number | null;
+  growerTrialUsed?: boolean;
+  canStartGrowerTrial?: boolean;
 }
 
 export interface FarmMember {

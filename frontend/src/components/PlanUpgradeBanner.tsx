@@ -9,7 +9,7 @@ type Props = {
 
 export function PlanUpgradeBanner({
   title = 'Upgrade to unlock this feature',
-  message = 'Grower and Enterprise plans include full reports, financials, bulk Excel import, and team members.',
+  message = 'Start a 14-day Grower trial, subscribe to Grower (£19/mo), or Enterprise (£49/mo) from Billing.',
   className = '',
 }: Props) {
   return (

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, ExternalLink, Loader2, Sparkles, MessageCircle } from 'lucide-react';
@@ -12,11 +12,14 @@ function canManageSubscription(role: string) {
   return role === 'OWNER' || role === 'FARM_MANAGER';
 }
 
+type CheckoutTarget = { plan: 'GROWER' | 'ENTERPRISE'; startTrial?: boolean } | null;
+
 export default function BillingPage() {
   const { currentFarm } = useFarm();
   const farmId = currentFarm?.id;
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [checkoutTarget, setCheckoutTarget] = useState<CheckoutTarget>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['farm-billing', farmId],
@@ -44,13 +47,16 @@ export default function BillingPage() {
   }, [searchParams, setSearchParams, queryClient, farmId]);
 
   const checkoutMutation = useMutation({
-    mutationFn: (plan: 'GROWER' | 'ENTERPRISE') => farmService.billingCheckout(farmId!, plan),
+    mutationFn: (target: NonNullable<CheckoutTarget>) =>
+      farmService.billingCheckout(farmId!, target.plan, { startTrial: target.startTrial }),
     onSuccess: ({ url }) => {
       track('checkout_started');
+      setCheckoutTarget(null);
       if (url) window.location.href = url;
       else toast.error('No checkout URL returned');
     },
     onError: (err: { response?: { data?: { message?: string }; status?: number } }) => {
+      setCheckoutTarget(null);
       toast.error(err.response?.data?.message ?? 'Could not start checkout');
     },
   });
@@ -65,6 +71,18 @@ export default function BillingPage() {
       toast.error(err.response?.data?.message ?? 'Could not open billing portal');
     },
   });
+
+  function startCheckout(target: NonNullable<CheckoutTarget>) {
+    setCheckoutTarget(target);
+    checkoutMutation.mutate(target);
+  }
+
+  function isCheckingOut(target: NonNullable<CheckoutTarget>) {
+    if (!checkoutMutation.isPending || !checkoutTarget) return false;
+    return (
+      checkoutTarget.plan === target.plan && Boolean(checkoutTarget.startTrial) === Boolean(target.startTrial)
+    );
+  }
 
   if (!farmId) {
     return (
@@ -94,7 +112,9 @@ export default function BillingPage() {
   const limitLabel = data.pigLimit == null ? 'Unlimited' : String(data.pigLimit);
   const isGrower = data.plan === 'GROWER';
   const isEnterprise = data.plan === 'ENTERPRISE';
-  const currentPlanLabel = data.planLabel ?? (data.plan === 'FREE' ? 'Smallholder' : data.plan === 'GROWER' ? 'Grower' : 'Enterprise');
+  const isFree = data.plan === 'FREE';
+  const currentPlanLabel =
+    data.planLabel ?? (isFree ? 'Smallholder' : isGrower ? 'Grower' : 'Enterprise');
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -117,15 +137,15 @@ export default function BillingPage() {
               {data.pigLimit != null ? (
                 <>
                   {' '}
-                  (limit <span className="font-medium">{limitLabel}</span> on Free)
+                  (limit <span className="font-medium">{limitLabel}</span> on Smallholder)
                 </>
               ) : (
                 ' with no plan limit.'
               )}
             </p>
-            {data.plan === 'FREE' && data.nearLimit && !data.atLimit && (
+            {isFree && data.nearLimit && !data.atLimit && (
               <p className="mt-2 text-sm text-amber-700">
-                You are approaching the Smallholder tier limit. Upgrade to Grower to continue scaling.
+                You are approaching the Smallholder tier limit. Upgrade to continue scaling.
               </p>
             )}
             {data.atLimit && (
@@ -137,88 +157,158 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {!isGrower && !isEnterprise && (
-        <div className="rounded-2xl border border-primary-200 bg-primary-50/80 p-6">
-          <div className="flex items-start gap-3">
-            <Sparkles className="size-6 shrink-0 text-primary-600" aria-hidden />
-            <div>
-              <h2 className="font-semibold text-gray-900">Grower — {sitePricing.growerMonthly}/month</h2>
-              <p className="mt-1 text-sm text-gray-700">
-                Up to 500 pigs, all reports, mass import, and up to 5 users. Includes a 14-day free trial.
-              </p>
-              {!manage && (
-                <p className="mt-3 text-sm text-gray-600">Ask a farm owner or manager to upgrade this farm.</p>
-              )}
-              {manage && !data.stripeConfigured && (
-                <p className="mt-3 text-sm text-gray-600">
-                  Online checkout is not configured on this server. Contact your administrator to enable Stripe
-                  (see backend environment variables).
+      {isFree && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Upgrade this farm</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Choose a free trial, subscribe to Grower at {sitePricing.growerMonthly}/month, or go straight to
+              Enterprise at {sitePricing.enterpriseMonthly}/month.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-primary-200 bg-primary-50/80 p-6">
+            <div className="flex items-start gap-3">
+              <Sparkles className="size-6 shrink-0 text-primary-600" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-gray-900">14-day Grower free trial</h3>
+                <p className="mt-1 text-sm text-gray-700">
+                  Try Grower features free for 14 days — reports, imports, and up to 5 users. A card is required;
+                  after the trial it becomes {sitePricing.growerMonthly}/month unless you cancel.
                 </p>
-              )}
-              {manage && data.stripeConfigured && (
-                <button
-                  type="button"
-                  disabled={checkoutMutation.isPending}
-                  onClick={() => checkoutMutation.mutate('GROWER')}
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-                >
-                  {checkoutMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="size-4" />
-                  )}
-                  Upgrade with Stripe
-                </button>
-              )}
-              {manage && (
-                <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
-                  <MessageCircle className="size-4 shrink-0 text-emerald-600" aria-hidden />
-                  <span>
-                    No card or Stripe in your country? Contact us for{' '}
-                    <strong className="font-medium text-gray-800">bank transfer, mobile money, or group billing</strong>
-                    {' '}
-                    at{' '}
-                    <a href={`mailto:${siteConfig.supportEmail}`} className="font-medium text-primary-700 hover:underline">
-                      {siteConfig.supportEmail}
-                    </a>
-                    {whatsappHelpUrl() ? (
-                      <>
-                        {' '}
-                        or{' '}
-                        <a
-                          href={whatsappHelpUrl()!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-primary-700 hover:underline"
-                        >
-                          WhatsApp
-                        </a>
-                      </>
-                    ) : null}
-                    .
-                  </span>
-                </p>
-              )}
+                {data.growerTrialUsed ? (
+                  <p className="mt-3 text-sm text-amber-800">
+                    Your account email has already used its one free trial. Subscribe to Grower or Enterprise below.
+                  </p>
+                ) : (
+                  <p className="mt-3 text-sm text-gray-600">One free trial per account email address.</p>
+                )}
+                {manage && data.stripeConfigured && data.canStartGrowerTrial && (
+                  <button
+                    type="button"
+                    disabled={checkoutMutation.isPending}
+                    onClick={() => startCheckout({ plan: 'GROWER', startTrial: true })}
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                  >
+                    {isCheckingOut({ plan: 'GROWER', startTrial: true }) ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <ExternalLink className="size-4" />
+                    )}
+                    Start 14-day free trial
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 className="font-semibold text-gray-900">Grower — {sitePricing.growerMonthly}/month</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              Up to 500 pigs, all reports, mass import, and up to 5 users. Billed monthly from day one — no trial.
+            </p>
+            {manage && data.stripeConfigured && (
+              <button
+                type="button"
+                disabled={checkoutMutation.isPending}
+                onClick={() => startCheckout({ plan: 'GROWER', startTrial: false })}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary-300 bg-white px-4 py-2.5 text-sm font-medium text-primary-800 hover:bg-primary-50 disabled:opacity-50"
+              >
+                {isCheckingOut({ plan: 'GROWER', startTrial: false }) ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="size-4" />
+                )}
+                Subscribe to Grower
+              </button>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 className="font-semibold text-gray-900">Enterprise — {sitePricing.enterpriseMonthly}/month</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              Unlimited pigs, unlimited users, and priority support for larger operations.
+            </p>
+            {manage && data.stripeConfigured && (
+              <button
+                type="button"
+                disabled={checkoutMutation.isPending}
+                onClick={() => startCheckout({ plan: 'ENTERPRISE' })}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {isCheckingOut({ plan: 'ENTERPRISE' }) ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="size-4" />
+                )}
+                Subscribe to Enterprise
+              </button>
+            )}
+          </div>
+
+          {!manage && (
+            <p className="text-sm text-gray-600">Ask a farm owner or manager to upgrade this farm.</p>
+          )}
+          {manage && !data.stripeConfigured && (
+            <p className="text-sm text-gray-600">
+              Online checkout is not configured on this server. Contact your administrator to enable Stripe.
+            </p>
+          )}
+          {manage && (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
+              <MessageCircle className="size-4 shrink-0 text-emerald-600" aria-hidden />
+              <span>
+                No card or Stripe in your country? Contact us for{' '}
+                <strong className="font-medium text-gray-800">bank transfer, mobile money, or group billing</strong>{' '}
+                at{' '}
+                <a href={`mailto:${siteConfig.supportEmail}`} className="font-medium text-primary-700 hover:underline">
+                  {siteConfig.supportEmail}
+                </a>
+                {whatsappHelpUrl() ? (
+                  <>
+                    {' '}
+                    or{' '}
+                    <a
+                      href={whatsappHelpUrl()!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-primary-700 hover:underline"
+                    >
+                      WhatsApp
+                    </a>
+                  </>
+                ) : null}
+                .
+              </span>
+            </p>
+          )}
         </div>
       )}
 
-      {!isEnterprise && (
+      {isGrower && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-900">Enterprise — {sitePricing.enterpriseMonthly}/month</h2>
+          <h2 className="font-semibold text-gray-900">Upgrade to Enterprise — {sitePricing.enterpriseMonthly}/month</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Unlimited pigs, unlimited users, and multi-farm support for larger operations.
+            Unlimited pigs and users. Your existing subscription will be upgraded with prorated billing.
           </p>
-          <p className="mt-2 text-sm text-gray-600">
-            Contact sales for enterprise onboarding and deployment support.
-          </p>
-          <a
-            href={`mailto:${siteConfig.supportEmail}?subject=${encodeURIComponent('Enterprise plan request')}`}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
-          >
-            Contact sales
-          </a>
+          {manage && data.stripeConfigured && (
+            <button
+              type="button"
+              disabled={checkoutMutation.isPending}
+              onClick={() => startCheckout({ plan: 'ENTERPRISE' })}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+            >
+              {isCheckingOut({ plan: 'ENTERPRISE' }) ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <ExternalLink className="size-4" />
+              )}
+              Upgrade to Enterprise
+            </button>
+          )}
+          {!manage && (
+            <p className="mt-3 text-sm text-gray-600">Ask a farm owner or manager to upgrade this farm.</p>
+          )}
         </div>
       )}
 

@@ -112,6 +112,8 @@ model User {
   googleId     String?  @unique
   /** Incremented on logout / password reset to invalidate outstanding access JWTs. */
   tokenVersion Int      @default(0) @map("token_version")
+  /** Set when the account starts a Grower free trial — one trial per email. */
+  growerTrialUsedAt DateTime? @map("grower_trial_used_at")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
