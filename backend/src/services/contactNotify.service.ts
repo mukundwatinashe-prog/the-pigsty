@@ -1,11 +1,20 @@
 /**
- * Contact form deliveries go to CONTACT_INBOX_EMAIL (default pigfarm@the-pigsty.org).
- * If SMTP_HOST is set, sends email via nodemailer; otherwise logs the payload (DB still stores the row).
+ * Contact form deliveries go to CONTACT_INBOX_EMAIL (default pigfarm@the-pigsty.org)
+ * via the Cloudflare email Worker → Resend.
  */
+import { sendUserEmail } from './email/emailSender';
+import { contactInboxEmail } from './email/templates';
+
 const DEFAULT_INBOX = 'pigfarm@the-pigsty.org';
+const DEFAULT_CONTACT_PAGE_INBOX = 'mukundwatinashe@gmail.com';
 
 export function contactInboxAddress(): string {
   return (process.env.CONTACT_INBOX_EMAIL || DEFAULT_INBOX).trim();
+}
+
+/** Submissions from the dedicated Contact page are delivered here. */
+export function contactPageInboxAddress(): string {
+  return (process.env.CONTACT_PAGE_INBOX_EMAIL || DEFAULT_CONTACT_PAGE_INBOX).trim();
 }
 
 export type ContactPayload = {
@@ -37,48 +46,16 @@ export function formatContactEmailBody(p: ContactPayload): string {
   return lines.filter((x) => x != null).join('\n');
 }
 
-/** Shared SMTP path for contact + signup alerts (same inbox as CONTACT_INBOX_EMAIL). */
-export async function deliverInboxEmail(opts: {
-  subject: string;
-  text: string;
-  logTag: string;
-}): Promise<void> {
-  const to = contactInboxAddress();
-  const { subject, text, logTag } = opts;
-
-  const host = process.env.SMTP_HOST?.trim();
-  if (!host) {
-    console.info(`[${logTag}] SMTP_HOST not set — inbox=${to}`, text.replace(/\n/g, ' | '));
-    return;
-  }
-
-  const from = process.env.SMTP_FROM?.trim();
-  if (!from) {
-    console.warn(`[${logTag}] SMTP_FROM is not set — skipping email send.`);
-    return;
-  }
-
-  try {
-    const nodemailer = await import('nodemailer');
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth:
-        process.env.SMTP_USER && process.env.SMTP_PASS
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-          : undefined,
-    });
-    await transporter.sendMail({ from, to, subject, text });
-  } catch (e) {
-    console.error(`[${logTag}] Failed to send email:`, e);
-  }
-}
-
-export async function notifyContactInbox(p: ContactPayload): Promise<void> {
-  const subject = `[The Pigsty] ${p.subject?.trim() || 'Contact'} — ${p.firstName} ${p.lastName}`;
-  const text = formatContactEmailBody(p);
-  await deliverInboxEmail({ subject, text, logTag: 'contact' });
+export async function notifyContactInbox(p: ContactPayload, toOverride?: string): Promise<void> {
+  const to = toOverride?.trim() || contactInboxAddress();
+  const tmpl = contactInboxEmail({
+    firstName: p.firstName,
+    lastName: p.lastName,
+    email: p.email,
+    phone: p.phone,
+    subject: p.subject,
+    message: p.message,
+    source: p.source,
+  });
+  await sendUserEmail({ to, ...tmpl, replyTo: p.email.trim() });
 }

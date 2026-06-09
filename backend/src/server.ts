@@ -13,6 +13,7 @@ import weightRoutes from './routes/weight.routes';
 import reportRoutes from './routes/report.routes';
 import feedRoutes from './routes/feed.routes';
 import publicRoutes from './routes/public.routes';
+import publicChatRoutes from './routes/publicChat.routes';
 import contactRoutes from './routes/contact.routes';
 import chatRoutes from './routes/chat.routes';
 import { errorHandler } from './middleware/error.middleware';
@@ -44,12 +45,22 @@ app.use(
   }),
 );
 
+const chatLimiter = rateLimit({
+  windowMs: env.AI_RATE_LIMIT_WINDOW_MS,
+  max: env.AI_RATE_LIMIT_MAX_REQUESTS,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
 });
+// Public "Piggy" help chat — registered before the general public mount so it
+// uses the AI rate limiter rather than the stricter contact-form limiter.
+app.use('/api/public/chat', chatLimiter, express.json({ limit: '32kb' }), publicChatRoutes);
 app.use('/api/public', publicLimiter, express.json({ limit: '32kb' }), publicRoutes);
 
 app.use(express.json({ limit: '10mb' }));
@@ -62,13 +73,6 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api/auth', limiter);
-
-const chatLimiter = rateLimit({
-  windowMs: env.AI_RATE_LIMIT_WINDOW_MS,
-  max: env.AI_RATE_LIMIT_MAX_REQUESTS,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/contact', limiter, express.json({ limit: '32kb' }), contactRoutes);

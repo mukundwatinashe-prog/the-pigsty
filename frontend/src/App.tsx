@@ -12,6 +12,7 @@ const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
 const CompleteProfilePage = lazy(() => import('./pages/auth/CompleteProfilePage'));
 const InviteAcceptPage = lazy(() => import('./pages/invite/InviteAcceptPage'));
 const LandingPage = lazy(() => import('./pages/marketing/LandingPage'));
+const ContactPage = lazy(() => import('./pages/marketing/ContactPage'));
 const PrivacyPage = lazy(() => import('./pages/marketing/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/marketing/TermsPage'));
 const FarmSelectPage = lazy(() => import('./pages/farms/FarmSelectPage'));
@@ -52,6 +53,7 @@ export default function App() {
             <Suspense fallback={<div className="p-4 text-center text-sm text-slate-600">Loading...</div>}>
               <Routes>
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/contact" element={<ContactPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/login" element={<LoginPage />} />

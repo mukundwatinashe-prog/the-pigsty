@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           </p>
           <h2 className="mt-8 text-lg font-semibold text-gray-900">Analytics</h2>
           <p className="mt-2 text-gray-700">
-            We may use privacy-friendly or first-party analytics to understand product usage. You can configure Google Analytics by setting <code className="rounded bg-gray-100 px-1">VITE_GA_MEASUREMENT_ID</code> in your deployment.
+            We may use privacy-friendly analytics to understand how the product is used (for example page views and feature usage). We do not use analytics to sell your farm data.
           </p>
           <h2 className="mt-8 text-lg font-semibold text-gray-900">Payments</h2>
           <p className="mt-2 text-gray-700">

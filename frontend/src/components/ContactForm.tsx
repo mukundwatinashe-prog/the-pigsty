@@ -19,7 +19,7 @@ const schema = z.object({
 export type ContactFormValues = z.infer<typeof schema>;
 
 type Props = {
-  variant: 'landing' | 'settings';
+  variant: 'landing' | 'settings' | 'contact';
   /** Required when variant is settings */
   farmId?: string;
   defaultFirstName?: string;
@@ -72,7 +72,9 @@ export function ContactForm({
         message: data.message?.trim() || undefined,
       };
       if (variant === 'landing') {
-        await submitPublicContact(payload);
+        await submitPublicContact(payload, 'landing');
+      } else if (variant === 'contact') {
+        await submitPublicContact(payload, 'contact');
       } else {
         await submitAuthedContact(farmId!, payload);
       }

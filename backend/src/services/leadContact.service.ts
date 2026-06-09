@@ -17,7 +17,7 @@ export async function recordContact(row: ContactPayload): Promise<void> {
   });
 }
 
-export async function recordAndNotifyContact(row: ContactPayload): Promise<void> {
+export async function recordAndNotifyContact(row: ContactPayload, toOverride?: string): Promise<void> {
   await recordContact(row);
-  await notifyContactInbox(row);
+  await notifyContactInbox(row, toOverride);
 }

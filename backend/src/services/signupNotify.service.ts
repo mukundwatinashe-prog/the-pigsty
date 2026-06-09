@@ -1,4 +1,5 @@
-import { deliverInboxEmail } from './contactNotify.service';
+import { contactInboxAddress, notifyContactInbox, type ContactPayload } from './contactNotify.service';
+import { sendUserEmail } from './email/emailSender';
 
 export async function notifyNewUserSignup(p: {
   userId: string;
@@ -7,6 +8,7 @@ export async function notifyNewUserSignup(p: {
   method: 'password' | 'google';
 }): Promise<void> {
   const methodLabel = p.method === 'password' ? 'Email & password' : 'Google';
+  const subject = `[The Pigsty] New signup — ${p.email}`;
   const text = [
     'A new user signed up for The Pigsty.',
     '',
@@ -17,9 +19,11 @@ export async function notifyNewUserSignup(p: {
     `Time (UTC): ${new Date().toISOString()}`,
   ].join('\n');
 
-  await deliverInboxEmail({
-    subject: `[The Pigsty] New signup — ${p.email}`,
+  await sendUserEmail({
+    to: contactInboxAddress(),
+    subject,
+    html: `<pre style="font-family:monospace;font-size:14px;">${text.replace(/</g, '&lt;')}</pre>`,
     text,
-    logTag: 'signup',
+    replyTo: p.email,
   });
 }

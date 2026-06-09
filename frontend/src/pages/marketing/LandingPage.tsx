@@ -18,8 +18,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { BrandLogo } from '../../components/BrandLogo';
 import { track } from '../../lib/analytics';
-import { mailtoSupport, siteConfig, sitePricing, whatsappHelpUrl } from '../../lib/siteConfig';
-import { ContactForm } from '../../components/ContactForm';
+import { sitePricing, whatsappHelpUrl } from '../../lib/siteConfig';
 
 const benefits = [
   {
@@ -113,7 +112,7 @@ const tiers = [
       'Checkout via sales (not self-serve Stripe yet)',
     ],
     cta: 'Contact sales',
-    href: '#contact',
+    href: '/contact',
     highlight: false,
     external: false,
   },
@@ -165,15 +164,9 @@ export default function LandingPage() {
                 <a href="#pricing" className="text-gray-600 hover:text-primary-700">
                   Pricing
                 </a>
-                <a href="#contact" className="text-gray-600 hover:text-primary-700">
-                  Contact
-                </a>
-                <a
-                  href={mailtoSupport('The Pigsty — question', '')}
-                  className="hidden text-gray-600 hover:text-primary-700 lg:inline"
-                >
-                  {siteConfig.supportEmail}
-                </a>
+                <Link to="/contact" className="text-gray-600 hover:text-primary-700">
+                  Contact Us
+                </Link>
                 {waUrl && (
                   <a
                     href={waUrl}
@@ -233,20 +226,13 @@ export default function LandingPage() {
               >
                 Pricing
               </a>
-              <a
-                href="#contact"
+              <Link
+                to="/contact"
                 className="min-h-[44px] rounded-lg px-3 py-3 text-sm font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-800"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Contact
-              </a>
-              <a
-                href={mailtoSupport('The Pigsty — question', '')}
-                className="min-h-[44px] rounded-lg px-3 py-3 text-sm font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-800"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {siteConfig.supportEmail}
-              </a>
+                Contact Us
+              </Link>
               {waUrl && (
                 <a
                   href={waUrl}
@@ -367,6 +353,11 @@ export default function LandingPage() {
                 I&apos;m not physically there. This app is my bridge between two worlds, a testament to the fact that you can hold onto home
                 with both hands, no matter how far away you are.
               </p>
+              <p>
+                I&apos;m also a pig farmer myself, so I know first-hand the everyday challenges this work brings — the late nights, the
+                health scares, the constant juggling of feed, breeding, weights, and finances. Every feature here comes from that lived
+                experience and the real problems I needed solved on my own farm.
+              </p>
               <p className="border-t border-gray-200/80 pt-6 text-gray-800">
                 I want to thank you for deciding to join the growing members. Whether it is for a free or paid. Each one of you is very
                 important to us at The Pigsty.
@@ -454,46 +445,36 @@ export default function LandingPage() {
         </section>
 
         <section
-          id="contact"
           className="scroll-mt-24 border-t border-gray-100 bg-primary-600 py-14 text-white"
           aria-labelledby="contact-heading"
         >
-          <div className="mx-auto max-w-xl px-4">
-            <h2 id="contact-heading" className="text-center text-2xl font-bold">
-              Contact us
+          <div className="mx-auto max-w-xl px-4 text-center">
+            <h2 id="contact-heading" className="text-2xl font-bold">
+              Questions? We&apos;re here to help
             </h2>
-            <p className="mt-2 text-center text-primary-100">
-              First name, last name, and email are required. Everything else is optional. Messages go to our team at{' '}
-              <a
-                href={mailtoSupport('The Pigsty — message from website', '')}
-                className="font-medium text-white underline decoration-white/50 hover:decoration-white"
-              >
-                {siteConfig.supportEmail}
-              </a>
-              .
+            <p className="mt-2 text-primary-100">
+              Send us a message or get instant answers from Piggy, our app assistant.
             </p>
             <div className="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+              <Link
+                to="/contact"
+                className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 font-semibold text-primary-700 hover:bg-primary-50 sm:w-auto"
+                onClick={() => track('cta_contact_click', { placement: 'contact_section' })}
+              >
+                <MessageCircle className="size-5" aria-hidden />
+                Go to Contact
+              </Link>
               {waUrl && (
                 <a
                   href={waUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 font-semibold text-emerald-700 hover:bg-emerald-50 sm:w-auto"
+                  className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl border border-white/40 px-6 py-3 font-semibold text-white hover:bg-white/10 sm:w-auto"
                   onClick={() => track('whatsapp_click', { placement: 'contact_section' })}
                 >
-                  <MessageCircle className="size-5" aria-hidden />
                   Chat on WhatsApp
                 </a>
               )}
-              <a
-                href={mailtoSupport('The Pigsty — question from website', '')}
-                className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl border border-white/40 px-6 py-3 font-semibold text-white hover:bg-white/10 sm:w-auto"
-              >
-                Open email
-              </a>
-            </div>
-            <div className="mt-8">
-              <ContactForm variant="landing" onSubmitted={() => track('contact_submit', { source: 'landing' })} />
             </div>
           </div>
         </section>
@@ -512,15 +493,9 @@ export default function LandingPage() {
             <Link to="/login" className="hover:text-primary-700">
               Sign in
             </Link>
-            <Link to="/#contact" className="hover:text-primary-700">
-              Contact
+            <Link to="/contact" className="hover:text-primary-700">
+              Contact Us
             </Link>
-            <a
-              href={mailtoSupport('The Pigsty — question', '')}
-              className="hover:text-primary-700"
-            >
-              {siteConfig.supportEmail}
-            </a>
             {waUrl && (
               <a href={waUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary-700">
                 WhatsApp

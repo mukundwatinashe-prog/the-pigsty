@@ -9,8 +9,15 @@ export type ContactFormPayload = {
   message?: string;
 };
 
-/** Landing-page contact — stored in DB and emailed to CONTACT_INBOX_EMAIL (pigfarm@the-pigsty.org) via the API. */
-export async function submitPublicContact(payload: ContactFormPayload): Promise<void> {
+/**
+ * Public contact — stored in DB and emailed via the API.
+ * `landing` goes to the support inbox; `contact` (dedicated Contact page) is
+ * delivered to the contact-page inbox (mukundwatinashe@gmail.com by default).
+ */
+export async function submitPublicContact(
+  payload: ContactFormPayload,
+  source: 'landing' | 'contact' = 'landing',
+): Promise<void> {
   const res = await fetch(withBase('/public/contact'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -21,7 +28,7 @@ export async function submitPublicContact(payload: ContactFormPayload): Promise<
       phone: payload.phone?.trim() || undefined,
       subject: payload.subject?.trim() || undefined,
       message: payload.message?.trim() || undefined,
-      source: 'landing',
+      source,
     }),
   });
 

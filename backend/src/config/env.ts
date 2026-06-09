@@ -37,3 +37,41 @@ export const env = {
 export const stripeConfigured = Boolean(
   env.STRIPE_SECRET_KEY && (env.STRIPE_PRICE_ID_GROWER || env.STRIPE_PRODUCT_ID_GROWER),
 );
+
+/**
+ * Fail fast if critical auth/database secrets are missing or weak.
+ * Missing secrets in production abort startup (never run an insecure API);
+ * weak secrets and missing secrets in development emit warnings only.
+ */
+function validateCriticalSecrets() {
+  const isProd = env.NODE_ENV === 'production';
+  const MIN_SECRET_LENGTH = 32;
+
+  const missing: string[] = [];
+  if (!process.env.DATABASE_URL) missing.push('DATABASE_URL');
+  if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
+  if (!process.env.JWT_REFRESH_SECRET) missing.push('JWT_REFRESH_SECRET');
+
+  if (missing.length) {
+    const message = `Missing required environment variable(s): ${missing.join(', ')}`;
+    if (isProd) throw new Error(`[startup] ${message}. Refusing to start.`);
+    console.warn(`[startup] ${message}. The API will not work correctly until these are set.`);
+  }
+
+  const weak: string[] = [];
+  if (env.JWT_SECRET && env.JWT_SECRET.length < MIN_SECRET_LENGTH) weak.push('JWT_SECRET');
+  if (env.JWT_REFRESH_SECRET && env.JWT_REFRESH_SECRET.length < MIN_SECRET_LENGTH) {
+    weak.push('JWT_REFRESH_SECRET');
+  }
+  if (env.JWT_SECRET && env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
+    weak.push('JWT_SECRET and JWT_REFRESH_SECRET must not be identical');
+  }
+  if (weak.length) {
+    console.warn(
+      `[startup] Weak auth secret(s) detected (${weak.join('; ')}). ` +
+        `Use unique, random values of at least ${MIN_SECRET_LENGTH} characters.`,
+    );
+  }
+}
+
+validateCriticalSecrets();
