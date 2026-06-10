@@ -1,11 +1,8 @@
-import path from 'path';
-import fs from 'fs/promises';
 import { FeedType, Prisma } from '@prisma/client';
 import prisma from '../config/database';
 import { AppError } from '../middleware/error.middleware';
 import { bucketsToKg } from '../lib/feedConversion';
-
-const RECEIPT_SUBDIR = 'feed-receipts';
+import { ObjectStorageService } from './objectStorage.service';
 
 export const FEED_TYPES: FeedType[] = [
   'MAIZE_CRECHE',
@@ -68,14 +65,6 @@ export type DailyUsageBucketsRow = {
   lactatingBuckets: Prisma.Decimal;
   weanerBuckets: Prisma.Decimal;
 };
-
-export function getUploadsRoot(): string {
-  return path.join(process.cwd(), 'uploads');
-}
-
-export function receiptPathForKey(receiptKey: string): string {
-  return path.join(getUploadsRoot(), receiptKey);
-}
 
 export function bucketsForType(row: DailyUsageBucketsRow, type: FeedType): Prisma.Decimal {
   switch (type) {
@@ -228,37 +217,11 @@ export async function saveReceiptFile(
   buffer: Buffer,
   originalName: string,
 ): Promise<{ receiptKey: string; mime: string }> {
-  const ext = path.extname(originalName).toLowerCase();
-  const allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
-  const safeExt = allowed.includes(ext) ? ext : '.bin';
-  const receiptKey = path.join(RECEIPT_SUBDIR, farmId, `${purchaseId}${safeExt}`);
-  const full = receiptPathForKey(receiptKey);
-  await fs.mkdir(path.dirname(full), { recursive: true });
-  await fs.writeFile(full, buffer);
-  const mime =
-    safeExt === '.pdf'
-      ? 'application/pdf'
-      : safeExt === '.png'
-        ? 'image/png'
-        : safeExt === '.webp'
-          ? 'image/webp'
-          : 'image/jpeg';
-  return { receiptKey, mime };
+  return ObjectStorageService.saveReceipt(farmId, purchaseId, buffer, originalName);
 }
 
 export async function readReceiptFile(receiptKey: string): Promise<{ buffer: Buffer; mime: string }> {
-  const full = receiptPathForKey(receiptKey);
-  const buffer = await fs.readFile(full);
-  const ext = path.extname(full).toLowerCase();
-  const mime =
-    ext === '.pdf'
-      ? 'application/pdf'
-      : ext === '.png'
-        ? 'image/png'
-        : ext === '.webp'
-          ? 'image/webp'
-          : 'image/jpeg';
-  return { buffer, mime };
+  return ObjectStorageService.readReceipt(receiptKey);
 }
 
 /** Aggregate feed purchase spend and kg by type. Omit `purchasedAt` for all-time (no date filter). */

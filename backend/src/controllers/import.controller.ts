@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
+import { HealthStatus, PigBreed, PigStage, PigStatus } from '@prisma/client';
 import prisma from '../config/database';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
@@ -8,11 +9,31 @@ import { AuditService } from '../services/audit.service';
 import { allowsMassImport, pigLimitForPlan, wouldExceedFreeTier } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { formatBreakdown, notifyFarmLeads } from '../services/farmNotify.service';
+import { SecurityService } from '../services/security.service';
+import { getClientIp } from '../utils/requestIp';
+import {
+  BREED_MAP,
+  IMPORT_BREEDS,
+  IMPORT_HEALTH,
+  IMPORT_STAGES,
+  IMPORT_STATUSES,
+  STAGE_MAP,
+  RowError,
+  ValidatedImportRow,
+  extractPenCellFromRow,
+  findPenColumnIndex,
+  isValidPenName,
+  normalizeEnum,
+  normalizePenName,
+  parseImportDate,
+  penNameFromImportData,
+  validateImportRowFromData,
+} from '../lib/importValidation';
 
-const BREEDS = ['LARGE_WHITE', 'LANDRACE', 'DUROC', 'PIETRAIN', 'BERKSHIRE', 'HAMPSHIRE', 'CHESTER_WHITE', 'YORKSHIRE', 'TAMWORTH', 'MUKOTA', 'KOLBROEK', 'WINDSNYER', 'SA_LANDRACE', 'INDIGENOUS', 'CROSSBREED', 'OTHER'];
-const STAGES = ['BOAR', 'SOW', 'GILT', 'WEANER', 'PIGLET', 'PORKER', 'GROWER', 'FINISHER'];
-const STATUSES = ['ACTIVE', 'SOLD', 'DECEASED', 'QUARANTINE'];
-const HEALTH = ['HEALTHY', 'SICK', 'UNDER_TREATMENT', 'RECOVERED'];
+const BREEDS = [...IMPORT_BREEDS];
+const STAGES = [...IMPORT_STAGES];
+const STATUSES = [...IMPORT_STATUSES];
+const HEALTH = [...IMPORT_HEALTH];
 
 const BREED_LABELS: Record<string, string> = {
   'LARGE_WHITE': 'Large White', 'LANDRACE': 'Landrace', 'DUROC': 'Duroc',
@@ -23,128 +44,7 @@ const BREED_LABELS: Record<string, string> = {
   'CROSSBREED': 'Crossbreed', 'OTHER': 'Other',
 };
 
-const BREED_MAP: Record<string, string> = {
-  'large white': 'LARGE_WHITE', 'landrace': 'LANDRACE', 'duroc': 'DUROC',
-  'pietrain': 'PIETRAIN', 'berkshire': 'BERKSHIRE', 'hampshire': 'HAMPSHIRE',
-  'chester white': 'CHESTER_WHITE', 'yorkshire': 'YORKSHIRE', 'tamworth': 'TAMWORTH',
-  'mukota': 'MUKOTA', 'kolbroek': 'KOLBROEK', 'windsnyer': 'WINDSNYER',
-  'sa landrace': 'SA_LANDRACE', 'indigenous': 'INDIGENOUS',
-  'cross-breed': 'CROSSBREED', 'crossbreed': 'CROSSBREED', 'other': 'OTHER',
-};
-
-const STAGE_MAP: Record<string, string> = {
-  boar: 'BOAR',
-  sow: 'SOW',
-  gilt: 'GILT',
-  weaner: 'WEANER',
-  piglet: 'PIGLET',
-  porker: 'PORKER',
-  grower: 'GROWER',
-  finisher: 'FINISHER',
-};
-
-function normalizeEnum(value: string, allowed: string[], map?: Record<string, string>): string | null {
-  const upper = value.trim().toUpperCase().replace(/[\s-]+/g, '_');
-  if (allowed.includes(upper)) return upper;
-  if (map) {
-    const mapped = map[value.trim().toLowerCase()];
-    if (mapped && allowed.includes(mapped)) return mapped;
-  }
-  return null;
-}
-
-const PEN_NAME_MAX = 100;
-
-/** Excel may return pen as number; trim and stringify for consistent DB matching. */
-function normalizePenName(raw: unknown): string | null {
-  if (raw === undefined || raw === null) return null;
-  const s = String(raw).trim();
-  return s.length === 0 ? null : s;
-}
-
-/** Pen / Location: letters and/or digits, optional spaces, hyphen, underscore, period (e.g. A, 12, Pen A). */
-function isValidPenName(name: string): boolean {
-  if (name.length > PEN_NAME_MAX) return false;
-  return /^[a-zA-Z0-9](?:[a-zA-Z0-9\s\-_.]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/.test(name);
-}
-
-/** Match header labels across Excel versions, NBSP, slash variants, BOM. */
-function normalizeSheetHeader(value: unknown): string {
-  return String(value ?? '')
-    .replace(/^\ufeff/, '')
-    .trim()
-    .toLowerCase()
-    .replace(/\u00a0/g, ' ')
-    .replace(/\s*[/\\]\s*/g, '/')
-    .replace(/\s+/g, ' ');
-}
-
-function findPenColumnIndex(headerRow: unknown[]): number {
-  if (!Array.isArray(headerRow)) return -1;
-  for (let c = 0; c < headerRow.length; c++) {
-    const n = normalizeSheetHeader(headerRow[c]);
-    if (
-      n === 'pen / location' ||
-      n === 'pen/location' ||
-      n === 'pen location' ||
-      n === 'pen'
-    ) {
-      return c;
-    }
-  }
-  return -1;
-}
-
-/** Resolve pen cell when object keys differ (Excel, re-saved files, other tools). */
-function extractPenCellFromRow(row: Record<string, any>): unknown {
-  const directKeys = ['Pen / Location', 'Pen/Location', 'Pen Location', 'Pen'];
-  for (const pk of directKeys) {
-    const v = row[pk];
-    if (v !== undefined && v !== null && String(v).trim() !== '') return v;
-  }
-  for (const key of Object.keys(row)) {
-    const n = normalizeSheetHeader(key);
-    if (
-      n === 'pen / location' ||
-      n === 'pen/location' ||
-      n === 'pen location' ||
-      n === 'pen'
-    ) {
-      return row[key];
-    }
-  }
-  return undefined;
-}
-
-/** Pen name from preview payload (validate + confirm); tolerates alternate JSON keys. */
-function penNameFromImportData(data: Record<string, any>): string | null {
-  return normalizePenName(
-    data.penName ??
-      data.pen ??
-      data.Pen ??
-      data['Pen / Location'] ??
-      data.pen_name,
-  );
-}
-
-function parseDate(val: any): Date | null {
-  if (!val) return null;
-  if (val instanceof Date) return val;
-  if (typeof val === 'number') {
-    const d = XLSX.SSF.parse_date_code(val);
-    return new Date(d.y, d.m - 1, d.d);
-  }
-  const str = String(val).trim();
-  const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (ddmmyyyy) {
-    return new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
-  }
-  const iso = new Date(str);
-  return isNaN(iso.getTime()) ? null : iso;
-}
-
-interface RowError { row: number; field: string; message: string; }
-interface PreviewRow { row: number; data: Record<string, any>; errors: RowError[]; valid: boolean; }
+interface PreviewRow { row: number; data: Record<string, any>; errors: { row: number; field: string; message: string }[]; valid: boolean; }
 
 /** Same workbook as the authenticated farm template; used for public marketing download. */
 export async function createPigImportTemplateBuffer(): Promise<Buffer> {
@@ -390,7 +290,7 @@ export class ImportController {
         if (!stageRaw) errors.push({ row: rowNum, field: 'Stage', message: 'Required' });
         else if (!stage) errors.push({ row: rowNum, field: 'Stage', message: `Invalid stage "${stageRaw}"` });
 
-        const acqDate = parseDate(row['Acquisition Date']);
+        const acqDate = parseImportDate(row['Acquisition Date']);
         if (!acqDate) errors.push({ row: rowNum, field: 'Acquisition Date', message: 'Required valid date (DD/MM/YYYY)' });
         else if (acqDate > new Date()) errors.push({ row: rowNum, field: 'Acquisition Date', message: 'Cannot be in the future' });
 
@@ -405,14 +305,14 @@ export class ImportController {
         const health = healthRaw ? normalizeEnum(healthRaw, HEALTH) : 'HEALTHY';
         if (healthRaw && !health) errors.push({ row: rowNum, field: 'Health Status', message: `Invalid "${healthRaw}"` });
 
-        const dob = parseDate(row['Date of Birth']);
+        const dob = parseImportDate(row['Date of Birth']);
         if (row['Date of Birth'] && !dob) errors.push({ row: rowNum, field: 'Date of Birth', message: 'Invalid date' });
         if (dob && dob > new Date()) errors.push({ row: rowNum, field: 'Date of Birth', message: 'Cannot be in the future' });
 
         const servicedRaw = String(row['Serviced'] || '').trim().toLowerCase();
         const serviced = servicedRaw === 'yes' || servicedRaw === 'true' || servicedRaw === '1';
-        const servicedDate = parseDate(row['Serviced Date']);
-        const weanedDate = parseDate(row['Weaned Date']);
+        const servicedDate = parseImportDate(row['Serviced Date']);
+        const weanedDate = parseImportDate(row['Weaned Date']);
         if (row['Weaned Date'] && !weanedDate) {
           errors.push({ row: rowNum, field: 'Weaned Date', message: 'Invalid date' });
         }
@@ -443,9 +343,9 @@ export class ImportController {
             damTag: row['Mother Tag (Dam)'] || null,
             sireTag: row['Father Tag (Sire)'] || null,
             vax1Name: row['Vaccination 1 Name'] || null,
-            vax1Date: parseDate(row['Vaccination 1 Date'])?.toISOString() || null,
+            vax1Date: parseImportDate(row['Vaccination 1 Date'])?.toISOString() || null,
             vax2Name: row['Vaccination 2 Name'] || null,
-            vax2Date: parseDate(row['Vaccination 2 Date'])?.toISOString() || null,
+            vax2Date: parseImportDate(row['Vaccination 2 Date'])?.toISOString() || null,
             notes: row['Notes'] || null,
           },
           errors,
@@ -466,14 +366,36 @@ export class ImportController {
     try {
       const { preview } = req.body as { preview: PreviewRow[] };
       if (!preview || !Array.isArray(preview)) return next(new AppError('Preview data required', 400));
+      if (preview.length > 5000) return next(new AppError('Maximum 5,000 records per import', 400));
 
-      const validRows = preview.filter(r => r.valid);
-      if (validRows.length === 0) return next(new AppError('No valid rows to import', 400));
+      const existingTags = new Set(
+        (await prisma.pig.findMany({
+          where: { farmId: req.farmId! },
+          select: { tagNumber: true },
+        })).map((p) => p.tagNumber),
+      );
+      const seenTags = new Set<string>();
+      const revalidated: ValidatedImportRow[] = preview.map((row) =>
+        validateImportRowFromData(row.row, row.data as Record<string, unknown>, { existingTags, seenTags }),
+      );
 
-      for (const row of validRows) {
-        const p = penNameFromImportData(row.data);
-        if (p && !isValidPenName(p)) return next(new AppError('Invalid Pen / Location in preview', 400));
+      const clientMarkedValid = preview.filter((r) => r.valid).length;
+      const serverValidRows = revalidated.filter((r) => r.valid);
+      if (serverValidRows.length === 0) return next(new AppError('No valid rows to import', 400));
+
+      if (clientMarkedValid > serverValidRows.length) {
+        await SecurityService.log({
+          type: 'SUSPICIOUS_IMPORT',
+          severity: 'HIGH',
+          userId: req.userId,
+          ip: getClientIp(req),
+          path: '/pigs/import/confirm',
+          details: `Client claimed ${clientMarkedValid} valid rows but server validated ${serverValidRows.length}`,
+        });
+        return next(new AppError('Import data failed server validation. Re-upload and try again.', 400));
       }
+
+      const validRows = serverValidRows;
 
       const farmRec = await prisma.farm.findUnique({
         where: { id: req.farmId! },
@@ -561,14 +483,14 @@ export class ImportController {
             data: {
               farmId: req.farmId!,
               tagNumber: d.tagNumber,
-              breed: d.breed,
-              stage: d.stage,
+              breed: d.breed as PigBreed,
+              stage: d.stage as PigStage,
               dateOfBirth: d.dateOfBirth ? new Date(d.dateOfBirth) : null,
               acquisitionDate: new Date(d.acquisitionDate),
               entryWeight: d.entryWeight,
               currentWeight: d.entryWeight,
-              status: d.status,
-              healthStatus: d.healthStatus,
+              status: d.status as PigStatus,
+              healthStatus: d.healthStatus as HealthStatus,
               serviced: d.serviced || false,
               servicedDate: d.servicedDate ? new Date(d.servicedDate) : null,
               weanedDate: d.weanedDate ? new Date(d.weanedDate) : null,

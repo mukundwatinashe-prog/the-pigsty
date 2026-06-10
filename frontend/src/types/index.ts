@@ -28,6 +28,8 @@ export interface User {
   name: string;
   phone?: string;
   photo?: string;
+  mfaEnabled?: boolean;
+  isPlatformAdmin?: boolean;
   createdAt: string;
 }
 
@@ -86,7 +88,8 @@ export interface Invitation {
   expiresAt: string;
   createdAt: string;
   invitedBy?: { id: string; name: string } | null;
-  acceptUrl: string;
+  /** Only present immediately after createInvitation. */
+  acceptUrl?: string;
 }
 
 /** Public invitation details shown on the accept page. */

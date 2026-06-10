@@ -317,7 +317,8 @@ export default function FarmSettingsPage() {
 
   const copyInviteLink = async (invite: Invitation) => {
     try {
-      await navigator.clipboard.writeText(invite.acceptUrl);
+      const url = invite.acceptUrl ?? (await farmService.getInvitationAcceptUrl(farmId!, invite.id));
+      await navigator.clipboard.writeText(url);
       toast.success('Invite link copied');
     } catch {
       toast.error('Could not copy link');
@@ -426,6 +427,12 @@ export default function FarmSettingsPage() {
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Farm settings</h1>
         <p className="mt-1 text-gray-600">
           Manage <span className="font-medium text-gray-900">{farm.name}</span> — logo, name, location, and preferences (one page, scroll as needed).
+        </p>
+        <p className="mt-2 text-sm">
+          <Link to="/account-security" className="inline-flex items-center gap-1 font-medium text-primary-600 hover:text-primary-700">
+            <Shield className="size-4" aria-hidden />
+            Account security &amp; two-factor authentication
+          </Link>
         </p>
       </div>
 

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -38,6 +38,9 @@ const FeedUsageHistoryPage = lazyWithRetry(() => import('./pages/feed/FeedUsageH
 const FeedPurchaseHistoryPage = lazyWithRetry(() => import('./pages/feed/FeedPurchaseHistoryPage'), 'feed-purchases');
 const FeedReportsPage = lazyWithRetry(() => import('./pages/feed/FeedReportsPage'), 'feed-reports');
 const HelpPage = lazyWithRetry(() => import('./pages/help/HelpPage'), 'help');
+const MfaVerifyPage = lazyWithRetry(() => import('./pages/auth/MfaVerifyPage'), 'mfa-verify');
+const SecurityDashboardPage = lazyWithRetry(() => import('./pages/security/SecurityDashboardPage'), 'security');
+const AccountSecurityPage = lazyWithRetry(() => import('./pages/account/AccountSecurityPage'), 'account-security');
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +73,7 @@ export default function App() {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/mfa-verify" element={<MfaVerifyPage />} />
                 <Route path="/invite/:token" element={<InviteAcceptPage />} />
                 <Route path="/farms" element={<FarmSelectPage />} />
                 <Route element={<AppLayout />}>
@@ -94,6 +98,8 @@ export default function App() {
                   <Route path="/financials" element={<FinancialsPage />} />
                   <Route path="/audit-log" element={<AuditLogPage />} />
                   <Route path="/settings" element={<FarmSettingsPage />} />
+                  <Route path="/account-security" element={<AccountSecurityPage />} />
+                  <Route path="/security" element={<SecurityDashboardPage />} />
                   <Route path="/billing" element={<BillingPage />} />
                   <Route path="/help" element={<HelpPage />} />
                 </Route>

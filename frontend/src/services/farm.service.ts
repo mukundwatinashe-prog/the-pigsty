@@ -118,6 +118,9 @@ export const farmService = {
   listInvitations: (farmId: string) =>
     api.get<Invitation[]>(`/farms/${farmId}/invitations`).then(r => r.data),
 
+  getInvitationAcceptUrl: (farmId: string, invitationId: string) =>
+    api.get<{ acceptUrl: string }>(`/farms/${farmId}/invitations/${invitationId}/accept-url`).then(r => r.data.acceptUrl),
+
   revokeInvitation: (farmId: string, invitationId: string) =>
     api.delete(`/farms/${farmId}/invitations/${invitationId}`).then(r => r.data),
 

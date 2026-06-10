@@ -1,7 +1,7 @@
 import { NavLink, Link } from 'react-router-dom';
 import {
   LayoutDashboard, PiggyBank, Warehouse, Weight, FileSpreadsheet,
-  FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet, Wheat, LifeBuoy,
+  FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet, Wheat, LifeBuoy, Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -35,6 +35,10 @@ export default function Sidebar({ mobileNavOpen = false, onNavigate }: SidebarPr
   const { currentFarm } = useFarm();
 
   const showNavText = mobileNavOpen || !collapsed;
+  const adminNav = user?.isPlatformAdmin
+    ? [{ to: '/security', icon: Shield, label: 'Security' }]
+    : [];
+  const allNavItems = [...navItems.slice(0, -1), ...adminNav, navItems[navItems.length - 1]];
   const warmRoute = (to: string) => {
     prefetchRoute(to);
     if (to === '/feed') {
@@ -102,7 +106,7 @@ export default function Sidebar({ mobileNavOpen = false, onNavigate }: SidebarPr
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto overscroll-contain px-2 py-3">
-        {navItems.map(({ to, icon: Icon, label }) => (
+        {allNavItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}

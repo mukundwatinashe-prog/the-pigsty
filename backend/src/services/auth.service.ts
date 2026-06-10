@@ -9,6 +9,18 @@ import { notifyNewUserSignup } from './signupNotify.service';
 import { sendPasswordResetCodeEmail, sendPasswordResetCodeSms } from './passwordResetDelivery.service';
 import { sendUserEmail } from './email/emailSender';
 import { welcomeEmail } from './email/templates';
+import { MfaService } from './mfa.service';
+import { isPlatformAdminEmail, SecurityService } from './security.service';
+
+const RESET_CODE_LENGTH = 8;
+
+function generateResetCode(): string {
+  return String(crypto.randomInt(10 ** (RESET_CODE_LENGTH - 1), 10 ** RESET_CODE_LENGTH));
+}
+
+export type AuthResult =
+  | { user: Record<string, unknown>; accessToken: string; refreshToken: string }
+  | { mfaRequired: true; mfaChallenge: string };
 
 export class AuthService {
   static async register(name: string, email: string, password: string, phone: string) {
@@ -33,7 +45,7 @@ export class AuthService {
         phone: phone.trim(),
         phoneNormalized,
       },
-      select: { id: true, email: true, name: true, phone: true, photo: true, createdAt: true },
+      select: { id: true, email: true, name: true, phone: true, photo: true, mfaEnabled: true, createdAt: true },
     });
 
     void notifyNewUserSignup({
@@ -52,19 +64,54 @@ export class AuthService {
     return { user, ...tokens };
   }
 
-  static async login(email: string, password: string) {
-    const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
-    if (!user || !user.passwordHash) throw new AppError('Invalid email or password', 401);
+  static async login(email: string, password: string, ip?: string): Promise<AuthResult> {
+    const emailNorm = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: emailNorm } });
+    if (!user || !user.passwordHash) {
+      await SecurityService.log({
+        type: 'FAILED_LOGIN',
+        severity: 'LOW',
+        email: emailNorm,
+        ip,
+        details: 'Unknown email or no password',
+      });
+      throw new AppError('Invalid email or password', 401);
+    }
+
+    if (user.loginLockedUntil && user.loginLockedUntil > new Date()) {
+      throw new AppError('Account temporarily locked due to failed sign-in attempts. Try again later.', 429);
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw new AppError('Invalid email or password', 401);
+    if (!valid) {
+      await SecurityService.log({
+        type: 'FAILED_LOGIN',
+        severity: 'MEDIUM',
+        userId: user.id,
+        email: user.email,
+        ip,
+        details: 'Invalid password',
+      });
+      await SecurityService.maybeLockLogin(user.id, user.email, ip);
+      throw new AppError('Invalid email or password', 401);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { loginLockedUntil: null },
+    });
+
+    if (user.mfaEnabled) {
+      const mfaChallenge = await MfaService.createChallenge(user.id);
+      return { mfaRequired: true, mfaChallenge };
+    }
 
     const tokens = await this.generateTokens(user.id);
-    const { passwordHash: _, ...safeUser } = user;
+    const { passwordHash: _, mfaSecret: __, ...safeUser } = user;
     return { user: safeUser, ...tokens };
   }
 
-  static async googleAuth(googleId: string, email: string, name: string, photo?: string) {
+  static async googleAuth(googleId: string, email: string, name: string, photo?: string, ip?: string): Promise<AuthResult> {
     const emailNorm = email.trim().toLowerCase();
     let user = await prisma.user.findUnique({ where: { googleId } });
     let createdNewUser = false;
@@ -98,9 +145,27 @@ export class AuthService {
       );
     }
 
+    if (user.mfaEnabled) {
+      const mfaChallenge = await MfaService.createChallenge(user.id);
+      return { mfaRequired: true, mfaChallenge };
+    }
+
     const tokens = await this.generateTokens(user.id);
-    const { passwordHash: _, ...safeUser } = user;
+    const { passwordHash: _, mfaSecret: __, ...safeUser } = user;
     return { user: safeUser, ...tokens };
+  }
+
+  static async completeMfaLogin(challenge: string, code: string, ip?: string) {
+    const { userId } = await MfaService.verifyChallenge(challenge, code, ip);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, email: true, name: true, phone: true, photo: true, mfaEnabled: true, createdAt: true,
+      },
+    });
+    if (!user) throw new AppError('User not found', 404);
+    const tokens = await this.generateTokens(userId);
+    return { user, ...tokens };
   }
 
   static async revokeRefreshToken(token: string | undefined) {
@@ -132,7 +197,11 @@ export class AuthService {
       throw new AppError('Invalid or expired refresh token', 401);
     }
 
-    if (stored.token.startsWith('pwdotp_') || stored.token.startsWith('reset_')) {
+    if (
+      stored.token.startsWith('pwdotp_') ||
+      stored.token.startsWith('reset_') ||
+      stored.token.startsWith('mfachal_')
+    ) {
       await prisma.refreshToken.delete({ where: { id: stored.id } });
       throw new AppError('Invalid or expired refresh token', 401);
     }
@@ -159,7 +228,7 @@ export class AuthService {
       },
     });
     if (!user) throw new AppError('User not found', 404);
-    return user;
+    return { ...user, isPlatformAdmin: isPlatformAdminEmail(user.email) };
   }
 
   static async updateProfile(
@@ -197,20 +266,26 @@ export class AuthService {
     const user = await prisma.user.update({
       where: { id: userId },
       data: updateData,
-      select: { id: true, email: true, name: true, phone: true, photo: true, createdAt: true },
+      select: { id: true, email: true, name: true, phone: true, photo: true, mfaEnabled: true, createdAt: true },
     });
     return user;
   }
 
-  /** Request 6-digit code via email or SMS (never reveals whether account exists). */
-  static async forgotPassword(params: { email?: string; phone?: string }) {
-    let user: { id: string; email: string; phone: string | null; passwordHash: string | null } | null = null;
+  static async forgotPassword(params: { email?: string; phone?: string }, ip?: string) {
+    let user: {
+      id: string;
+      email: string;
+      phone: string | null;
+      passwordHash: string | null;
+      passwordResetLockedUntil: Date | null;
+    } | null = null;
     let smsDigits: string | null = null;
 
     if (params.email) {
+      const emailNorm = params.email.trim().toLowerCase();
       user = await prisma.user.findUnique({
-        where: { email: params.email.trim().toLowerCase() },
-        select: { id: true, email: true, phone: true, passwordHash: true },
+        where: { email: emailNorm },
+        select: { id: true, email: true, phone: true, passwordHash: true, passwordResetLockedUntil: true },
       });
     } else if (params.phone) {
       const pn = normalizePhone(params.phone);
@@ -218,11 +293,23 @@ export class AuthService {
       smsDigits = pn;
       user = await prisma.user.findUnique({
         where: { phoneNormalized: pn },
-        select: { id: true, email: true, phone: true, passwordHash: true },
+        select: { id: true, email: true, phone: true, passwordHash: true, passwordResetLockedUntil: true },
       });
     }
 
     if (!user?.passwordHash) return;
+
+    if (user.passwordResetLockedUntil && user.passwordResetLockedUntil > new Date()) {
+      await SecurityService.log({
+        type: 'SUSPICIOUS_ACTIVITY',
+        severity: 'MEDIUM',
+        userId: user.id,
+        email: user.email,
+        ip,
+        details: 'Password reset requested while account reset is locked',
+      });
+      return;
+    }
 
     await prisma.refreshToken.deleteMany({
       where: {
@@ -231,7 +318,7 @@ export class AuthService {
       },
     });
 
-    const code = String(crypto.randomInt(100000, 1000000));
+    const code = generateResetCode();
     const otpHash = await bcrypt.hash(code, 10);
 
     await prisma.refreshToken.create({
@@ -254,28 +341,35 @@ export class AuthService {
     password: string;
     email?: string;
     phone?: string;
+    ip?: string;
   }) {
     const digits = params.code.replace(/\D/g, '');
-    if (digits.length !== 6) throw new AppError('Enter the 6-digit code', 400);
+    if (digits.length !== RESET_CODE_LENGTH) {
+      throw new AppError(`Enter the ${RESET_CODE_LENGTH}-digit code`, 400);
+    }
 
-    let user: { id: string } | null = null;
+    let user: { id: string; email: string; passwordResetLockedUntil: Date | null } | null = null;
     if (params.email) {
       user = await prisma.user.findUnique({
         where: { email: params.email.trim().toLowerCase() },
-        select: { id: true },
+        select: { id: true, email: true, passwordResetLockedUntil: true },
       });
     } else if (params.phone) {
       const phoneNormalized = normalizePhone(params.phone);
       if (!phoneNormalized) throw new AppError('Invalid phone', 400);
       user = await prisma.user.findUnique({
         where: { phoneNormalized },
-        select: { id: true },
+        select: { id: true, email: true, passwordResetLockedUntil: true },
       });
     } else {
       throw new AppError('Provide email or phone used when requesting the code', 400);
     }
 
     if (!user) throw new AppError('Invalid or expired code', 400);
+
+    if (user.passwordResetLockedUntil && user.passwordResetLockedUntil > new Date()) {
+      throw new AppError('Too many failed reset attempts. Try again in an hour.', 429);
+    }
 
     const records = await prisma.refreshToken.findMany({
       where: {
@@ -295,12 +389,23 @@ export class AuthService {
       }
     }
 
-    if (!matchedRecord) throw new AppError('Invalid or expired code', 400);
+    if (!matchedRecord) {
+      await SecurityService.log({
+        type: 'FAILED_PASSWORD_RESET',
+        severity: 'MEDIUM',
+        userId: user.id,
+        email: user.email,
+        ip: params.ip,
+        details: 'Invalid reset code',
+      });
+      await SecurityService.maybeLockPasswordReset(user.id, user.email, params.ip);
+      throw new AppError('Invalid or expired code', 400);
+    }
 
     const passwordHash = await bcrypt.hash(params.password, 12);
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash },
+      data: { passwordHash, passwordResetLockedUntil: null },
     });
 
     await prisma.$transaction([

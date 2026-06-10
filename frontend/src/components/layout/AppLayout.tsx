@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { FeedLowStockNotifier } from '../FeedLowStockNotifier';
 import { HelpAssistant } from '../HelpAssistant';
 import Sidebar from './Sidebar';
+import { SecurityThreatBanner } from '../SecurityThreatBanner';
 
 export default function AppLayout() {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-accent-50">
+      {user.isPlatformAdmin && <SecurityThreatBanner />}
       <FeedLowStockNotifier />
       <button
         type="button"

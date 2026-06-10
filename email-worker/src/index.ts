@@ -25,6 +25,41 @@ interface EmailPayload {
   replyTo?: string;
 }
 
+/** In-memory sliding window rate limits (per isolate; sufficient for abuse deterrence). */
+const globalSendLog: number[] = [];
+const recipientLog = new Map<string, number[]>();
+
+const GLOBAL_MAX_PER_HOUR = 120;
+const RECIPIENT_MAX_PER_HOUR = 8;
+const HOUR_MS = 60 * 60 * 1000;
+
+function pruneOld(log: number[], now: number): number[] {
+  return log.filter((t) => now - t < HOUR_MS);
+}
+
+function isRateLimited(to: string): boolean {
+  const now = Date.now();
+  const trimmed = globalSendLog.length;
+  for (let i = trimmed - 1; i >= 0; i--) {
+    if (now - globalSendLog[i] >= HOUR_MS) globalSendLog.splice(i, 1);
+  }
+  if (globalSendLog.length >= GLOBAL_MAX_PER_HOUR) return true;
+
+  const key = to.trim().toLowerCase();
+  const prev = recipientLog.get(key) ?? [];
+  const fresh = pruneOld(prev, now);
+  recipientLog.set(key, fresh);
+  return fresh.length >= RECIPIENT_MAX_PER_HOUR;
+}
+
+function recordSend(to: string): void {
+  const now = Date.now();
+  globalSendLog.push(now);
+  const key = to.trim().toLowerCase();
+  const prev = recipientLog.get(key) ?? [];
+  recipientLog.set(key, pruneOld([...prev, now], now));
+}
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -55,6 +90,10 @@ export default {
       return json({ error: 'Missing required fields: to, subject, and html or text' }, 400);
     }
 
+    if (isRateLimited(body.to)) {
+      return json({ error: 'Rate limit exceeded for email sending' }, 429);
+    }
+
     if (!env.RESEND_API_KEY || !env.EMAIL_FROM) {
       return json({ error: 'Email sending is not configured on the Worker' }, 500);
     }
@@ -80,6 +119,7 @@ export default {
       return json({ error: 'Email provider rejected the message', detail }, 502);
     }
 
+    recordSend(body.to);
     const result = (await resendResponse.json().catch(() => ({}))) as { id?: string };
     return json({ ok: true, id: result.id ?? null });
   },

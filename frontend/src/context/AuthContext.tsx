@@ -2,13 +2,15 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { clearStoredFarm } from './FarmContext';
+import { mfaService } from '../services/security.service';
 import type { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<User>;
-  loginWithGoogle: (idToken: string) => Promise<User>;
+  login: (email: string, password: string) => Promise<User | { mfaRequired: true; mfaChallenge: string }>;
+  loginWithGoogle: (idToken: string) => Promise<User | { mfaRequired: true; mfaChallenge: string }>;
+  completeMfaLogin: (mfaChallenge: string, code: string) => Promise<User>;
   register: (name: string, email: string, password: string, phone: string) => Promise<User>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
@@ -18,6 +20,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function invalidateAppData(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries();
+}
+
+type LoginResponse = { user: User } | { mfaRequired: true; mfaChallenge: string };
+
+function parseLoginResponse(data: LoginResponse): User | { mfaRequired: true; mfaChallenge: string } {
+  if ('mfaRequired' in data && data.mfaRequired) {
+    return { mfaRequired: true, mfaChallenge: data.mfaChallenge };
+  }
+  return (data as { user: User }).user;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -34,17 +45,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { data } = await api.post('/auth/login', { email, password });
-    setUser(data.user);
+    const { data } = await api.post<LoginResponse>('/auth/login', { email, password });
+    const result = parseLoginResponse(data);
+    if ('mfaRequired' in result) return result;
+    setUser(result);
     invalidateAppData(qc);
-    return data.user as User;
+    return result;
   };
 
   const loginWithGoogle = async (idToken: string) => {
-    const { data } = await api.post('/auth/google', { idToken });
-    setUser(data.user);
+    const { data } = await api.post<LoginResponse>('/auth/google', { idToken });
+    const result = parseLoginResponse(data);
+    if ('mfaRequired' in result) return result;
+    setUser(result);
     invalidateAppData(qc);
-    return data.user as User;
+    return result;
+  };
+
+  const completeMfaLogin = async (mfaChallenge: string, code: string) => {
+    const { user: u } = await mfaService.verifyLogin(mfaChallenge, code);
+    setUser(u);
+    invalidateAppData(qc);
+    return u;
   };
 
   const register = async (name: string, email: string, password: string, phone: string) => {
@@ -71,14 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, register, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, loginWithGoogle, completeMfaLogin, register, logout, updateUser }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-/** Colocated hook + provider — standard React pattern for small apps. */
-// eslint-disable-next-line react-refresh/only-export-components -- see above
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');

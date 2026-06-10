@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
               <BrandLogo size="xl" linkToHome />
               <h1 className="-mt-2 text-2xl font-bold text-gray-900 sm:-mt-2.5">Reset your password</h1>
             </div>
-            <p className="mt-1 text-gray-500">We’ll send a 6-digit code to your email or phone</p>
+            <p className="mt-1 text-gray-500">We’ll send an 8-digit code to your email or phone</p>
           </div>
 
           <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-xl">

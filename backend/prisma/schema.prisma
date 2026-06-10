@@ -99,6 +99,27 @@ enum FeedType {
   WEANER
 }
 
+enum SecurityEventType {
+  FAILED_LOGIN
+  LOGIN_LOCKOUT
+  FAILED_PASSWORD_RESET
+  PASSWORD_RESET_LOCKOUT
+  RATE_LIMIT_EXCEEDED
+  MFA_FAILED
+  MFA_ENABLED
+  MFA_DISABLED
+  SUSPICIOUS_IMPORT
+  SUSPICIOUS_ACTIVITY
+  BRUTE_FORCE_DETECTED
+}
+
+enum SecuritySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model User {
   id                String   @id @default(uuid())
   email             String   @unique
@@ -109,6 +130,12 @@ model User {
   phoneNormalized   String?  @unique @map("phone_normalized")
   photo             String?
   mfaEnabled   Boolean  @default(false)
+  /** Base32 TOTP secret; only set when MFA is enabled. */
+  mfaSecret    String?  @map("mfa_secret")
+  /** Temporary lock after repeated failed logins. */
+  loginLockedUntil DateTime? @map("login_locked_until")
+  /** Temporary lock after repeated failed password-reset attempts. */
+  passwordResetLockedUntil DateTime? @map("password_reset_locked_until")
   googleId     String?  @unique
   /** Incremented on logout / password reset to invalidate outstanding access JWTs. */
   tokenVersion Int      @default(0) @map("token_version")
@@ -128,8 +155,29 @@ model User {
   pigObservations    PigObservation[]
   aiConversations    AiConversation[]
   aiUsageLogs        AiUsageLog[]
+  securityEvents     SecurityEvent[]
 
   @@map("users")
+}
+
+model SecurityEvent {
+  id           String             @id @default(uuid())
+  type         SecurityEventType
+  severity     SecuritySeverity
+  ip           String?
+  userId       String?
+  email        String?
+  path         String?
+  details      String?
+  acknowledged Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([severity, acknowledged])
+  @@index([type, createdAt])
+  @@map("security_events")
 }
 
 enum AiMessageRole {

@@ -37,10 +37,16 @@ export default function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const u = await login(data.email, data.password);
+      const result = await login(data.email, data.password);
+      if ('mfaRequired' in result) {
+        navigate('/mfa-verify', {
+          state: { mfaChallenge: result.mfaChallenge, redirect: safeRedirect ?? undefined },
+        });
+        return;
+      }
       track('login', { method: 'email' });
       toast.success('Welcome back!');
-      navigate(destinationFor(Boolean(u.phone?.trim())));
+      navigate(destinationFor(Boolean(result.phone?.trim())));
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Login failed'));
     }
@@ -49,10 +55,16 @@ export default function LoginPage() {
   const handleGoogleCredential = async (idToken: string) => {
     setGoogleLoading(true);
     try {
-      const u = await loginWithGoogle(idToken);
+      const result = await loginWithGoogle(idToken);
+      if ('mfaRequired' in result) {
+        navigate('/mfa-verify', {
+          state: { mfaChallenge: result.mfaChallenge, redirect: safeRedirect ?? undefined },
+        });
+        return;
+      }
       track('login', { method: 'google' });
       toast.success('Welcome back!');
-      navigate(destinationFor(Boolean(u.phone?.trim())));
+      navigate(destinationFor(Boolean(result.phone?.trim())));
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Google sign-in failed'));
     } finally {

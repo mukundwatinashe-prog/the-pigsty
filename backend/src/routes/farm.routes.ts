@@ -22,6 +22,7 @@ router.delete('/:farmId', requireFarmAccess('farm:delete'), FarmController.delet
 router.post('/:farmId/invite', requireFarmAccess('users:manage'), FarmController.invite);
 router.post('/:farmId/invitations', requireFarmAccess('users:manage'), InvitationController.create);
 router.get('/:farmId/invitations', requireFarmAccess('users:manage'), InvitationController.list);
+router.get('/:farmId/invitations/:invitationId/accept-url', requireFarmAccess('users:manage'), InvitationController.getAcceptUrl);
 router.delete('/:farmId/invitations/:invitationId', requireFarmAccess('users:manage'), InvitationController.revoke);
 router.delete('/:farmId/members/:memberId', requireFarmAccess('users:manage'), FarmController.removeMember);
 

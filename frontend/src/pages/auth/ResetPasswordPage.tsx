@@ -22,7 +22,7 @@ const schema = z
     channel: z.enum(['email', 'phone']),
     email: z.string().optional(),
     phone: z.string().optional(),
-    code: z.string().min(6, 'Enter the 6-digit code').max(12),
+    code: z.string().min(8, 'Enter the 8-digit code').max(12),
     password: passwordField,
     confirmPassword: z.string(),
   })
@@ -104,7 +104,7 @@ export default function ResetPasswordPage() {
               <BrandLogo size="xl" linkToHome />
               <h1 className="-mt-2 text-2xl font-bold text-gray-900 sm:-mt-2.5">Enter your code</h1>
             </div>
-            <p className="mt-1 text-gray-500">Use the 6-digit code we sent, then choose a new password</p>
+            <p className="mt-1 text-gray-500">Use the 8-digit code we sent, then choose a new password</p>
           </div>
 
           <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-xl">
@@ -146,7 +146,7 @@ export default function ResetPasswordPage() {
               )}
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">6-digit code</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">8-digit code</label>
                 <input
                   {...register('code')}
                   inputMode="numeric"

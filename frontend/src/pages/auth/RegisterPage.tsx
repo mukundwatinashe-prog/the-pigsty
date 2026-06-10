@@ -63,10 +63,16 @@ export default function RegisterPage() {
   const handleGoogleCredential = async (idToken: string) => {
     setGoogleLoading(true);
     try {
-      const u = await loginWithGoogle(idToken);
+      const result = await loginWithGoogle(idToken);
+      if ('mfaRequired' in result) {
+        navigate('/mfa-verify', {
+          state: { mfaChallenge: result.mfaChallenge, redirect: safeRedirect ?? undefined },
+        });
+        return;
+      }
       track('sign_up', { method: 'google' });
       toast.success('Welcome to The Pigsty!');
-      navigate(!u.phone?.trim() ? '/complete-profile' : (safeRedirect ?? '/farms'));
+      navigate(!result.phone?.trim() ? '/complete-profile' : (safeRedirect ?? '/farms'));
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Google sign-in failed'));
     } finally {

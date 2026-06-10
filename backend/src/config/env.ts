@@ -32,6 +32,14 @@ export const env = {
   CLOUDFLARE_EMAIL_WORKER_URL: process.env.CLOUDFLARE_EMAIL_WORKER_URL || '',
   EMAIL_WORKER_TOKEN: process.env.EMAIL_WORKER_TOKEN || '',
   EMAIL_FROM: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'The Pigsty <noreply@the-pigsty.org>',
+  /** Comma-separated platform admin emails — security alerts and /security dashboard access. */
+  PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS || process.env.CONTACT_INBOX_EMAIL || '',
+  CONTACT_INBOX_EMAIL: process.env.CONTACT_INBOX_EMAIL || 'pigfarm@the-pigsty.org',
+  /** Cloudflare R2 (S3-compatible) for durable feed receipt storage. */
+  R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '',
+  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || '',
+  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || '',
+  R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || '',
 };
 
 export const stripeConfigured = Boolean(

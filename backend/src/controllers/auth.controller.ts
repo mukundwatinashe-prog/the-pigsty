@@ -6,6 +6,8 @@ import { AppError } from '../middleware/error.middleware';
 import { strongPasswordSchema } from '../validation/password';
 import { setAuthCookies, clearAuthCookies, COOKIE_REFRESH } from '../utils/auth.cookies';
 import { verifyGoogleIdToken } from '../utils/googleVerify';
+import { getClientIp } from '../utils/requestIp';
+import { MfaService } from '../services/mfa.service';
 
 const registerSchema = z.object({
   name: z.string().min(2).max(100),
@@ -21,6 +23,20 @@ const loginSchema = z.object({
 
 const googleAuthSchema = z.object({
   idToken: z.string().min(1),
+});
+
+const mfaVerifySchema = z.object({
+  mfaChallenge: z.string().min(1),
+  code: z.string().min(6).max(8),
+});
+
+const mfaEnableSchema = z.object({
+  secret: z.string().min(16).max(64),
+  code: z.string().min(6).max(8),
+});
+
+const mfaDisableSchema = z.object({
+  code: z.string().min(6).max(8),
 });
 
 const profileUpdateSchema = z
@@ -54,7 +70,7 @@ const resetSchema = z
   .object({
     email: z.string().email().optional(),
     phone: z.string().min(8).max(24).optional(),
-    code: z.string().min(6).max(12),
+    code: z.string().min(8).max(12),
     password: strongPasswordSchema,
   })
   .superRefine((d, ctx) => {
@@ -70,6 +86,15 @@ const resetSchema = z
       });
     }
   });
+
+function sendAuthResult(res: Response, result: Awaited<ReturnType<typeof AuthService.login>>) {
+  if ('mfaRequired' in result) {
+    res.json({ mfaRequired: true, mfaChallenge: result.mfaChallenge });
+    return;
+  }
+  setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
+  res.json({ user: result.user });
+}
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction) {
@@ -89,9 +114,8 @@ export class AuthController {
   static async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { email, password } = loginSchema.parse(req.body);
-      const result = await AuthService.login(email, password);
-      setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
-      res.json({ user: result.user });
+      const result = await AuthService.login(email, password, getClientIp(req));
+      sendAuthResult(res, result);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));
@@ -109,9 +133,58 @@ export class AuthController {
         profile.email,
         profile.name,
         profile.photo,
+        getClientIp(req),
       );
+      sendAuthResult(res, result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return next(new AppError(error.errors[0].message, 400));
+      }
+      next(error);
+    }
+  }
+
+  static async verifyMfa(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { mfaChallenge, code } = mfaVerifySchema.parse(req.body);
+      const result = await AuthService.completeMfaLogin(mfaChallenge, code, getClientIp(req));
       setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
       res.json({ user: result.user });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return next(new AppError(error.errors[0].message, 400));
+      }
+      next(error);
+    }
+  }
+
+  static async mfaSetup(_req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { secret, otpauthUrl } = MfaService.generateSecret();
+      res.json({ secret, otpauthUrl });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async mfaEnable(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { secret, code } = mfaEnableSchema.parse(req.body);
+      await MfaService.enableMfa(req.userId!, secret, code, getClientIp(req));
+      res.json({ mfaEnabled: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return next(new AppError(error.errors[0].message, 400));
+      }
+      next(error);
+    }
+  }
+
+  static async mfaDisable(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { code } = mfaDisableSchema.parse(req.body);
+      await MfaService.disableMfa(req.userId!, code, getClientIp(req));
+      res.json({ mfaEnabled: false });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));
@@ -177,10 +250,10 @@ export class AuthController {
       const parsed = forgotSchema.parse(req.body);
       const email = parsed.email?.trim() ? parsed.email.trim().toLowerCase() : undefined;
       const phone = parsed.phone?.trim() ? parsed.phone.trim() : undefined;
-      await AuthService.forgotPassword(email ? { email } : { phone: phone! });
+      await AuthService.forgotPassword(email ? { email } : { phone: phone! }, getClientIp(req));
       res.json({
         message:
-          'If an account exists with that email or phone, we sent a 6-digit code (email or SMS). It expires in 15 minutes.',
+          'If an account exists with that email or phone, we sent an 8-digit code (email or SMS). It expires in 15 minutes.',
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -200,6 +273,7 @@ export class AuthController {
         password: parsed.password,
         email,
         phone,
+        ip: getClientIp(req),
       });
       res.json({ message: 'Password reset successfully. You can sign in with your new password.' });
     } catch (error) {

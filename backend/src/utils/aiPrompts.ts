@@ -25,7 +25,7 @@ On mobile, the sidebar opens via the hamburger menu (top-left).
 - Passwords must be at least 12 characters and include uppercase, lowercase, a number, and a symbol.
 - Log in at /login with email + password or "Continue with Google".
 - A mobile number is required; users without one are sent to "Complete profile".
-- Forgot password (/forgot-password): request a 6-digit code by email OR phone. The code expires in 15 minutes. Enter it at /reset-password with a new password.
+- Forgot password (/forgot-password): request an 8-digit code by email OR phone. The code expires in 15 minutes. Enter it at /reset-password with a new password.
 - Sign out from the bottom of the sidebar.
 
 # Farms

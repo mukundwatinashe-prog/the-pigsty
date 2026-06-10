@@ -142,22 +142,30 @@ export class InvitationController {
           status: true,
           expiresAt: true,
           createdAt: true,
-          token: true,
           invitedBy: { select: { id: true, name: true } },
         },
       });
-      res.json(
-        invitations.map((inv) => ({
-          id: inv.id,
-          email: inv.email,
-          role: inv.role,
-          status: inv.status,
-          expiresAt: inv.expiresAt,
-          createdAt: inv.createdAt,
-          invitedBy: inv.invitedBy,
-          acceptUrl: acceptUrlFor(inv.token),
-        })),
-      );
+      res.json(invitations);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** Return accept URL for a single pending invitation (for copy-link; not exposed in list). */
+  static async getAcceptUrl(req: FarmRequest, res: Response, next: NextFunction) {
+    try {
+      const invitationId = req.params.invitationId as string;
+      const invitation = await prisma.invitation.findUnique({
+        where: { id: invitationId },
+        select: { farmId: true, token: true, status: true, expiresAt: true },
+      });
+      if (!invitation || invitation.farmId !== req.farmId!) {
+        return next(new AppError('Invitation not found', 404));
+      }
+      if (invitation.status !== InvitationStatus.PENDING || invitation.expiresAt < new Date()) {
+        return next(new AppError('Invitation is no longer valid', 410));
+      }
+      res.json({ acceptUrl: acceptUrlFor(invitation.token) });
     } catch (error) {
       next(error);
     }
