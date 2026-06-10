@@ -28,38 +28,32 @@ const features = [
   {
     icon: PiggyBank,
     title: 'Every pig, one record',
-    text: 'Tag numbers, breeds, stages, health, and pen assignments — no more lost notebooks.',
-    className: 'lg:col-span-2',
+    text: 'Tags, breeds, stages, health, and pens — no more lost notebooks.',
   },
   {
     icon: Scale,
     title: 'Weights & growth',
-    text: 'Log weights, track ADG, and spot slow growers before they cost you.',
-    className: '',
+    text: 'Log weights, track ADG, and spot slow growers early.',
   },
   {
     icon: Upload,
     title: 'Excel import',
-    text: 'Bring hundreds of pigs in from a spreadsheet when you upgrade.',
-    className: '',
+    text: 'Bring your herd in from a spreadsheet when you upgrade.',
   },
   {
     icon: Users,
     title: 'Team roles',
-    text: 'Owners, managers, and workers see what they need — nothing more.',
-    className: '',
+    text: 'Owners, managers, and workers see only what they need.',
   },
   {
     icon: BarChart3,
     title: 'Reports & financials',
-    text: 'Herd inventory, sales, feed costs, and exports to PDF or Excel.',
-    className: 'lg:col-span-2',
+    text: 'Herd inventory, sales, feed costs, and PDF exports.',
   },
   {
     icon: Globe2,
     title: 'Farm here, manage anywhere',
-    text: 'Built for on-farm teams and diaspora owners who need the same live picture.',
-    className: 'lg:col-span-3',
+    text: 'On-farm teams and diaspora owners share one live picture.',
   },
 ];
 
@@ -353,17 +347,17 @@ export default function LandingPage() {
               Practical tools shaped by real farm work — not generic farm software bolted onto pigs.
             </p>
           </div>
-          <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map(({ icon: Icon, title, text, className }) => (
+          <ul className="mt-12 grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map(({ icon: Icon, title, text }) => (
               <li
                 key={title}
-                className={`group rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm transition hover:border-primary-300 hover:shadow-md ${className}`}
+                className="group flex h-full min-h-[11.5rem] flex-col rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition hover:border-primary-300 hover:shadow-md sm:min-h-[10.5rem]"
               >
-                <div className="flex size-11 items-center justify-center rounded-xl bg-primary-100 text-primary-700 transition group-hover:bg-primary-700 group-hover:text-white">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700 transition group-hover:bg-primary-700 group-hover:text-white">
                   <Icon className="size-5" aria-hidden />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-gray-900">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-600">{text}</p>
+                <h3 className="mt-3 text-base font-semibold text-gray-900">{title}</h3>
+                <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-gray-600">{text}</p>
               </li>
             ))}
           </ul>
