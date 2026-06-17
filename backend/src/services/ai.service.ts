@@ -9,6 +9,32 @@ export type AiResponse = {
   provider: string;
 };
 
+function friendlyProviderError(provider: string, status: number, body: string): string {
+  let parsed: { error?: { message?: string; type?: string } } = {};
+  try {
+    parsed = JSON.parse(body) as typeof parsed;
+  } catch {
+    /* raw text body */
+  }
+  const msg = parsed.error?.message?.toLowerCase() ?? body.toLowerCase();
+
+  if (msg.includes('credit balance') || msg.includes('billing') || msg.includes('purchase credits')) {
+    return (
+      `${provider} API credits are exhausted for the API key configured on the server. ` +
+      'API billing is separate from claude.ai subscriptions — credits must be added at console.anthropic.com ' +
+      'in the same workspace that owns the API key. Check the workspace switcher (top-left) and create a new key from the credited workspace if needed.'
+    );
+  }
+  if (status === 401 || msg.includes('invalid') && msg.includes('api key')) {
+    return `${provider} API key is invalid or missing. Check server environment variables.`;
+  }
+  if (status === 429 || msg.includes('rate limit')) {
+    return `${provider} rate limit reached. Try again in a few minutes.`;
+  }
+  if (parsed.error?.message) return `${provider}: ${parsed.error.message}`;
+  return `${provider} request failed (${status})`;
+}
+
 class AiService {
   private provider = env.AI_PROVIDER;
 
@@ -63,7 +89,7 @@ class AiService {
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new AppError(`OpenAI request failed (${response.status}): ${body || response.statusText}`, 502);
+      throw new AppError(friendlyProviderError('OpenAI', response.status, body), 502);
     }
     const data = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
@@ -96,7 +122,7 @@ class AiService {
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new AppError(`Claude request failed (${response.status}): ${body || response.statusText}`, 502);
+      throw new AppError(friendlyProviderError('Claude', response.status, body), 502);
     }
     const data = (await response.json()) as {
       content?: Array<{ type: string; text?: string }>;
@@ -131,7 +157,7 @@ class AiService {
     );
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new AppError(`Gemini request failed (${response.status}): ${body || response.statusText}`, 502);
+      throw new AppError(friendlyProviderError('Gemini', response.status, body), 502);
     }
     const data = (await response.json()) as {
       candidates?: Array<{

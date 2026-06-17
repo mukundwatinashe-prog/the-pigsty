@@ -42,12 +42,23 @@ export default function ForgotPasswordPage() {
         data.channel === 'email'
           ? { email: (data.email ?? '').trim().toLowerCase() }
           : { phone: (data.phone ?? '').trim() };
-      await api.post('/auth/forgot-password', body);
+      const { data: res } = await api.post<{ sentAt?: string; expiresInSeconds?: number }>(
+        '/auth/forgot-password',
+        body,
+      );
       toast.success('If an account exists, a code was sent');
       const state =
         data.channel === 'email'
-          ? { email: (data.email ?? '').trim().toLowerCase() }
-          : { phone: (data.phone ?? '').trim() };
+          ? {
+              email: (data.email ?? '').trim().toLowerCase(),
+              codeSentAt: res.sentAt ?? new Date().toISOString(),
+              expiresInSeconds: res.expiresInSeconds ?? 300,
+            }
+          : {
+              phone: (data.phone ?? '').trim(),
+              codeSentAt: res.sentAt ?? new Date().toISOString(),
+              expiresInSeconds: res.expiresInSeconds ?? 300,
+            };
       navigate('/reset-password', { state, replace: true });
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, 'Request failed'));
@@ -58,7 +69,7 @@ export default function ForgotPasswordPage() {
     <div className="relative min-h-dvh min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50 px-safe pb-safe">
       <Link
         to="/"
-        className="absolute left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] z-10 text-sm font-medium text-primary-700 hover:text-primary-800"
+        className="absolute left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] z-10 inline-flex min-h-11 items-center px-2 text-sm font-medium text-primary-700 hover:text-primary-800"
       >
         ← Back to home
       </Link>
@@ -69,7 +80,7 @@ export default function ForgotPasswordPage() {
               <BrandLogo size="xl" linkToHome />
               <h1 className="-mt-2 text-2xl font-bold text-gray-900 sm:-mt-2.5">Reset your password</h1>
             </div>
-            <p className="mt-1 text-gray-500">We’ll send an 8-digit code to your email or phone</p>
+            <p className="mt-1 text-gray-500">We’ll send an 8-digit code that expires in 5 minutes</p>
           </div>
 
           <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-xl">

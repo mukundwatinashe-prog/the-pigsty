@@ -1,32 +1,34 @@
 import { env } from '../config/env';
+import { toSmsE164 } from '../lib/phone';
 import { sendUserEmail } from './email/emailSender';
 import { passwordResetEmail } from './email/templates';
 
 const FRONTEND = env.FRONTEND_URL.replace(/\/$/, '');
+export const RESET_CODE_EXPIRY_MINUTES = 5;
 
-export async function sendPasswordResetCodeEmail(toEmail: string, code: string): Promise<void> {
+export async function sendPasswordResetCodeEmail(toEmail: string, code: string): Promise<boolean> {
   const resetUrl = `${FRONTEND}/reset-password`;
   const tmpl = passwordResetEmail(code, resetUrl);
-  await sendUserEmail({ to: toEmail, ...tmpl, replyTo: undefined });
+  return sendUserEmail({ to: toEmail, ...tmpl, replyTo: undefined });
 }
 
 /**
  * Twilio SMS when TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM_NUMBER are set.
  * `toDigits` should be numeric only; + prefix added for Twilio if missing.
  */
-export async function sendPasswordResetCodeSms(toDigits: string, code: string): Promise<void> {
-  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
-  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
-  const fromNum = process.env.TWILIO_FROM_NUMBER?.trim();
+export async function sendPasswordResetCodeSms(toDigits: string, code: string): Promise<boolean> {
+  const sid = env.TWILIO_ACCOUNT_SID.trim();
+  const token = env.TWILIO_AUTH_TOKEN.trim();
+  const fromNum = env.TWILIO_FROM_NUMBER.trim();
 
-  const body = `The Pigsty password reset code: ${code}. Expires in 15 minutes.`;
+  const body = `The Pigsty password reset code: ${code}. Expires in ${RESET_CODE_EXPIRY_MINUTES} minutes.`;
 
   if (!sid || !token || !fromNum) {
-    console.info(`[password-reset-sms] Twilio not configured — to=${toDigits} code=${code}`);
-    return;
+    console.warn(`[password-reset-sms] Twilio not configured — cannot SMS ${toDigits}`);
+    return false;
   }
 
-  const to = toDigits.startsWith('+') ? toDigits : `+${toDigits}`;
+  const to = toDigits.startsWith('+') ? toDigits : toSmsE164(toDigits);
   const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
 
@@ -42,8 +44,11 @@ export async function sendPasswordResetCodeSms(toDigits: string, code: string): 
     if (!res.ok) {
       const t = await res.text();
       console.error('[password-reset-sms] Twilio error:', res.status, t);
+      return false;
     }
+    return true;
   } catch (e) {
     console.error('[password-reset-sms] request failed:', e);
+    return false;
   }
 }

@@ -2,11 +2,13 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, KeyRound, ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { Eye, EyeOff, KeyRound, ArrowLeft, Clock } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api, { apiErrorMessage } from '../../services/api';
 import { BrandLogo } from '../../components/BrandLogo';
+
+const CODE_EXPIRY_SECONDS = 300;
 
 const passwordField = z
   .string()
@@ -44,17 +46,39 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-type LocationState = { email?: string; phone?: string } | null;
+type LocationState = {
+  email?: string;
+  phone?: string;
+  codeSentAt?: string;
+  expiresInSeconds?: number;
+} | null;
+
+function formatCountdown(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function secondsRemaining(sentAtMs: number, expiresInSeconds: number): number {
+  const elapsed = Math.floor((Date.now() - sentAtMs) / 1000);
+  return Math.max(0, expiresInSeconds - elapsed);
+}
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state as LocationState) ?? null;
   const [showPassword, setShowPassword] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
+  const expiresInSeconds = state?.expiresInSeconds ?? CODE_EXPIRY_SECONDS;
+  const initialSentAtMs = state?.codeSentAt ? new Date(state.codeSentAt).getTime() : Date.now();
+  const [sentAtMs, setSentAtMs] = useState(initialSentAtMs);
+  const [secondsLeft, setSecondsLeft] = useState(() => secondsRemaining(initialSentAtMs, expiresInSeconds));
 
   const defaultChannel = state?.email ? 'email' : state?.phone ? 'phone' : 'email';
 
-  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, control, getValues, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       channel: defaultChannel,
@@ -67,7 +91,41 @@ export default function ResetPasswordPage() {
   });
   const channel = useWatch({ control, name: 'channel' });
 
+  useEffect(() => {
+    const tick = () => setSecondsLeft(secondsRemaining(sentAtMs, expiresInSeconds));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [sentAtMs, expiresInSeconds]);
+
+  const resendCode = useCallback(async () => {
+    const data = getValues();
+    setIsResending(true);
+    try {
+      const body =
+        data.channel === 'email'
+          ? { email: (data.email ?? '').trim().toLowerCase() }
+          : { phone: (data.phone ?? '').trim() };
+      const { data: res } = await api.post<{ sentAt?: string; expiresInSeconds?: number }>(
+        '/auth/forgot-password',
+        body,
+      );
+      const nextSentAt = res.sentAt ? new Date(res.sentAt).getTime() : Date.now();
+      setSentAtMs(nextSentAt);
+      setSecondsLeft(res.expiresInSeconds ?? CODE_EXPIRY_SECONDS);
+      toast.success('If an account exists, a new code was sent');
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, 'Could not resend code'));
+    } finally {
+      setIsResending(false);
+    }
+  }, [getValues]);
+
   const onSubmit = async (data: FormData) => {
+    if (secondsLeft <= 0) {
+      toast.error('Your code has expired. Request a new one.');
+      return;
+    }
     try {
       const body =
         data.channel === 'email'
@@ -89,11 +147,13 @@ export default function ResetPasswordPage() {
     }
   };
 
+  const codeExpired = secondsLeft <= 0;
+
   return (
     <div className="relative min-h-dvh min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50 px-safe pb-safe">
       <Link
         to="/"
-        className="absolute left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] z-10 text-sm font-medium text-primary-700 hover:text-primary-800"
+        className="absolute left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] z-10 inline-flex min-h-11 items-center px-2 text-sm font-medium text-primary-700 hover:text-primary-800"
       >
         ← Back to home
       </Link>
@@ -108,6 +168,25 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-xl">
+            <div
+              className={`mb-5 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                codeExpired
+                  ? 'bg-red-50 text-red-700'
+                  : secondsLeft <= 60
+                    ? 'bg-amber-50 text-amber-800'
+                    : 'bg-primary-50 text-primary-800'
+              }`}
+              role="status"
+              aria-live="polite"
+            >
+              <Clock className="size-4 shrink-0" aria-hidden />
+              {codeExpired ? (
+                <span>Code expired — request a new one below</span>
+              ) : (
+                <span>Code expires in {formatCountdown(secondsLeft)}</span>
+              )}
+            </div>
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <fieldset>
                 <legend className="sr-only">Account</legend>
@@ -152,7 +231,7 @@ export default function ResetPasswordPage() {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-mono text-lg tracking-widest outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
-                  placeholder="000000"
+                  placeholder="00000000"
                 />
                 {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code.message}</p>}
               </div>
@@ -190,7 +269,7 @@ export default function ResetPasswordPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || codeExpired}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 py-2.5 font-medium text-white transition hover:bg-primary-700 focus:ring-4 focus:ring-primary-200 disabled:opacity-50"
               >
                 <KeyRound size={18} />
@@ -198,8 +277,20 @@ export default function ResetPasswordPage() {
               </button>
 
               <div className="flex flex-col gap-2 text-center text-sm text-gray-500">
-                <Link to="/forgot-password" className="text-primary-600 hover:underline">
-                  Request a new code
+                <button
+                  type="button"
+                  onClick={() => void resendCode()}
+                  disabled={!codeExpired || isResending}
+                  className="text-primary-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
+                >
+                  {isResending
+                    ? 'Sending…'
+                    : codeExpired
+                      ? 'Send a new code'
+                      : `Resend code in ${formatCountdown(secondsLeft)}`}
+                </button>
+                <Link to="/forgot-password" className="hover:text-gray-700">
+                  Use a different email or phone
                 </Link>
                 <Link to="/login" className="hover:text-gray-700">
                   <ArrowLeft size={14} className="mr-1 inline" /> Back to login

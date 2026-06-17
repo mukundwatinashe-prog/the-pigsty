@@ -6,6 +6,8 @@ import { recordAndNotifyContact } from '../services/leadContact.service';
 import { contactPageInboxAddress } from '../services/contactNotify.service';
 import { aiService } from '../services/ai.service';
 import { getAiSystemPrompt } from '../utils/aiPrompts';
+import { assertHumanRequest } from '../services/turnstile.service';
+import { getClientIp } from '../utils/requestIp';
 
 const contactPublicSchema = z.object({
   firstName: z.string().min(1).max(80).trim(),
@@ -27,6 +29,9 @@ const publicChatSchema = z.object({
     )
     .min(1)
     .max(24),
+  turnstileToken: z.string().trim().min(1).optional(),
+  /** Honeypot — must stay empty; bots that fill it are rejected. */
+  website: z.string().max(0).optional(),
 });
 
 export class PublicController {
@@ -71,7 +76,13 @@ export class PublicController {
   /** Stateless help chat for the public Contact page ("Piggy"). No account or persistence. */
   static async chat(req: Request, res: Response, next: NextFunction) {
     try {
-      const { messages } = publicChatSchema.parse(req.body ?? {});
+      const body = publicChatSchema.parse(req.body ?? {});
+      await assertHumanRequest({
+        turnstileToken: body.turnstileToken,
+        honeypot: body.website,
+        ip: getClientIp(req),
+      });
+      const { messages } = body;
       const aiResponse = await aiService.generateResponse(messages, getAiSystemPrompt('Piggy'));
       if (!aiResponse.content.trim()) {
         throw new AppError('AI provider returned an empty response', 502);

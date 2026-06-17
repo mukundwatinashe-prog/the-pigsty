@@ -60,7 +60,24 @@
   }
 }
 
+html {
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   @apply bg-accent-50 text-gray-900 antialiased;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: clip;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer utilities {
+  .touch-target {
+    @apply inline-flex min-h-11 min-w-11 items-center justify-center;
+  }
+
+  .mobile-input {
+    @apply min-h-11 text-base sm:text-sm;
+  }
 }

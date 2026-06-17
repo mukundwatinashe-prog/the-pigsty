@@ -45,11 +45,13 @@ export const chatService = {
       .then((r) => r.data);
   },
 
-  sendMessage(conversationId: string, message: string) {
+  sendMessage(conversationId: string, message: string, options?: { turnstileToken?: string; website?: string }) {
     return api
       .post<ChatMessage>('/chat/message', {
         conversationId,
         message: message.trim(),
+        turnstileToken: options?.turnstileToken,
+        website: options?.website ?? '',
       })
       .then((r) => r.data);
   },

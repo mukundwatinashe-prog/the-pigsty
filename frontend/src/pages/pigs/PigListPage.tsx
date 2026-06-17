@@ -437,14 +437,14 @@ export default function PigListPage() {
         <div className="flex flex-wrap gap-2">
           <Link
             to="/import"
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 sm:flex-none"
           >
             <Upload className="w-4 h-4" />
             Import
           </Link>
           <Link
             to="/pigs/new"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary-700 transition"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-primary-700 sm:flex-none"
           >
             <Plus className="w-4 h-4" />
             Add Pig
@@ -481,7 +481,7 @@ export default function PigListPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search tag number…"
-              className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition"
+              className="mobile-input w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-3 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
             />
           </div>
           <select
@@ -490,7 +490,7 @@ export default function PigListPage() {
               setBreedFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 bg-white"
+            className="mobile-input rounded-xl border border-gray-200 bg-white px-3 py-2.5 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
           >
             <option value="">All breeds</option>
             {BREED_OPTIONS.map((o) => (
@@ -505,7 +505,7 @@ export default function PigListPage() {
               setStageFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 bg-white"
+            className="mobile-input rounded-xl border border-gray-200 bg-white px-3 py-2.5 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
           >
             <option value="">All stages</option>
             {STAGE_OPTIONS.map((o) => (
@@ -520,7 +520,7 @@ export default function PigListPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 bg-white"
+            className="mobile-input rounded-xl border border-gray-200 bg-white px-3 py-2.5 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
           >
             <option value="">On hand (excludes sold &amp; deceased)</option>
             {STATUS_OPTIONS.map((o) => (
@@ -536,7 +536,7 @@ export default function PigListPage() {
               setHealthFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 bg-white"
+            className="mobile-input rounded-xl border border-gray-200 bg-white px-3 py-2.5 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
           >
             <option value="">All health</option>
             {HEALTH_OPTIONS.map((o) => (
@@ -596,7 +596,79 @@ export default function PigListPage() {
 
         {!isLoading && !isError && pigs.length > 0 && (
           <>
-            <div className="overflow-x-auto">
+            <ul className="divide-y divide-gray-100 md:hidden">
+              {pigs.map((pig) => (
+                <li key={pig.id} className="p-4">
+                  <button
+                    type="button"
+                    onClick={() => handleRowClick(pig.id)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-mono text-base font-semibold text-gray-900">{pig.tagNumber}</p>
+                        <p className="mt-0.5 text-sm text-gray-600">
+                          {breedLabel(pig.breed)} · {stageLabel(pig.stage)}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {pig.currentWeight != null ? `${pig.currentWeight} ${weightUnit}` : '—'}
+                          {pig.pen?.name ? ` · ${pig.pen.name}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${statusBadgeClass(pig.status)}`}
+                        >
+                          {STATUS_OPTIONS.find((s) => s.value === pig.status)?.label ?? pig.status}
+                        </span>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${healthBadgeClass(pig.healthStatus)}`}
+                        >
+                          {HEALTH_OPTIONS.find((h) => h.value === pig.healthStatus)?.label ?? pig.healthStatus}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                  <div className="mt-3 flex flex-wrap gap-1 border-t border-gray-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => openObservationModal(pig)}
+                      className="touch-target rounded-lg text-gray-500 hover:bg-primary-50 hover:text-primary-700"
+                      title="Log health observation"
+                    >
+                      <Stethoscope className="size-5" />
+                    </button>
+                    {pig.status === 'ACTIVE' && (
+                      <button
+                        type="button"
+                        onClick={() => openSaleModal(pig)}
+                        className="touch-target rounded-lg text-gray-500 hover:bg-emerald-50 hover:text-emerald-600"
+                        title="Record Sale / Slaughter"
+                      >
+                        <DollarSign className="size-5" />
+                      </button>
+                    )}
+                    <Link
+                      to={`/pigs/${pig.id}/edit`}
+                      className="touch-target rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary-600"
+                      title="Edit"
+                    >
+                      <Pencil className="size-5" />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(pig)}
+                      className="touch-target rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600"
+                      title="Delete"
+                    >
+                      <Trash2 className="size-5" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -688,7 +760,7 @@ export default function PigListPage() {
                           <button
                             type="button"
                             onClick={() => openObservationModal(pig)}
-                            className="p-2 rounded-lg text-gray-500 hover:bg-primary-50 hover:text-primary-700 transition"
+                            className="touch-target rounded-lg text-gray-500 transition hover:bg-primary-50 hover:text-primary-700"
                             title="Log health observation"
                           >
                             <Stethoscope className="w-4 h-4" />
@@ -697,7 +769,7 @@ export default function PigListPage() {
                             <button
                               type="button"
                               onClick={() => openSaleModal(pig)}
-                              className="p-2 rounded-lg text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 transition"
+                              className="touch-target rounded-lg text-gray-500 transition hover:bg-emerald-50 hover:text-emerald-600"
                               title="Record Sale / Slaughter"
                             >
                               <DollarSign className="w-4 h-4" />
@@ -705,7 +777,7 @@ export default function PigListPage() {
                           )}
                           <Link
                             to={`/pigs/${pig.id}/edit`}
-                            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary-600 transition"
+                            className="touch-target rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-primary-600"
                             title="Edit"
                           >
                             <Pencil className="w-4 h-4" />
@@ -713,7 +785,7 @@ export default function PigListPage() {
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(pig)}
-                            className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition"
+                            className="touch-target rounded-lg text-gray-500 transition hover:bg-red-50 hover:text-red-600"
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -738,7 +810,7 @@ export default function PigListPage() {
                   type="button"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none"
+                  className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-40"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Previous
@@ -747,7 +819,7 @@ export default function PigListPage() {
                   type="button"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none"
+                  className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-40"
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />

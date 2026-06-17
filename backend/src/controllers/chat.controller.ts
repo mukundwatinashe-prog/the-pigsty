@@ -5,6 +5,8 @@ import { AppError } from '../middleware/error.middleware';
 import { ChatService } from '../services/chat.service';
 import { aiService } from '../services/ai.service';
 import { getAiSystemPrompt } from '../utils/aiPrompts';
+import { assertHumanRequest } from '../services/turnstile.service';
+import { getClientIp } from '../utils/requestIp';
 
 const createConversationSchema = z.object({
   title: z.string().trim().min(1).max(255).optional(),
@@ -13,6 +15,8 @@ const createConversationSchema = z.object({
 const sendMessageSchema = z.object({
   conversationId: z.string().uuid(),
   message: z.string().trim().min(1).max(5000),
+  turnstileToken: z.string().trim().min(1).optional(),
+  website: z.string().max(0).optional(),
 });
 
 const listConversationsSchema = z.object({
@@ -101,6 +105,11 @@ export class ChatController {
     try {
       if (!req.userId) throw new AppError('Authentication required', 401);
       const body = sendMessageSchema.parse(req.body ?? {});
+      await assertHumanRequest({
+        turnstileToken: body.turnstileToken,
+        honeypot: body.website,
+        ip: getClientIp(req),
+      });
       await ChatService.getConversationById(body.conversationId, req.userId);
 
       await ChatService.addMessage(body.conversationId, 'user', body.message);

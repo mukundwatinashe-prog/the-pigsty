@@ -13,6 +13,8 @@ import { MfaService } from './mfa.service';
 import { isPlatformAdminEmail, SecurityService } from './security.service';
 
 const RESET_CODE_LENGTH = 8;
+export const RESET_CODE_EXPIRY_MS = 5 * 60 * 1000;
+export const RESET_CODE_EXPIRY_SECONDS = RESET_CODE_EXPIRY_MS / 1000;
 
 function generateResetCode(): string {
   return String(crypto.randomInt(10 ** (RESET_CODE_LENGTH - 1), 10 ** RESET_CODE_LENGTH));
@@ -325,14 +327,26 @@ export class AuthService {
       data: {
         token: `pwdotp_${otpHash}`,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        expiresAt: new Date(Date.now() + RESET_CODE_EXPIRY_MS),
       },
     });
 
+    let delivered = false;
     if (params.email) {
-      void sendPasswordResetCodeEmail(user.email, code).catch((e) => console.error('[forgot-password] email:', e));
+      delivered = await sendPasswordResetCodeEmail(user.email, code);
     } else if (smsDigits) {
-      void sendPasswordResetCodeSms(smsDigits, code).catch((e) => console.error('[forgot-password] sms:', e));
+      delivered = await sendPasswordResetCodeSms(smsDigits, code);
+      if (!delivered && user.email) {
+        console.warn('[forgot-password] SMS delivery failed — falling back to email');
+        delivered = await sendPasswordResetCodeEmail(user.email, code);
+      }
+    }
+
+    if (!delivered) {
+      await prisma.refreshToken.deleteMany({
+        where: { userId: user.id, token: { startsWith: 'pwdotp_' } },
+      });
+      console.error('[forgot-password] code delivery failed for user', user.id);
     }
   }
 

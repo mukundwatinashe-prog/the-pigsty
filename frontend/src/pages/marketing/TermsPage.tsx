@@ -4,12 +4,15 @@ import { siteConfig } from '../../lib/siteConfig';
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="mx-auto max-w-2xl">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700">
-          <ArrowLeft className="size-4" /> Back to home
+    <div className="min-h-dvh bg-gray-50 px-safe pb-safe pt-safe">
+      <div className="mx-auto max-w-2xl py-8 sm:py-12">
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-primary-600 hover:text-primary-700"
+        >
+          <ArrowLeft className="size-4" aria-hidden /> Back to home
         </Link>
-        <article className="mt-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm prose prose-gray max-w-none">
+        <article className="prose prose-gray mt-6 max-w-none rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:mt-8 sm:p-8">
           <h1 className="text-2xl font-bold text-gray-900">Terms of service</h1>
           <p className="mt-2 text-sm text-gray-500">Last updated: {new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           <p className="mt-6 text-gray-700">

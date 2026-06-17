@@ -40,6 +40,7 @@ const FeedReportsPage = lazyWithRetry(() => import('./pages/feed/FeedReportsPage
 const HelpPage = lazyWithRetry(() => import('./pages/help/HelpPage'), 'help');
 const MfaVerifyPage = lazyWithRetry(() => import('./pages/auth/MfaVerifyPage'), 'mfa-verify');
 const SecurityDashboardPage = lazyWithRetry(() => import('./pages/security/SecurityDashboardPage'), 'security');
+const AdminUsersPage = lazyWithRetry(() => import('./pages/admin/AdminUsersPage'), 'admin-users');
 const AccountSecurityPage = lazyWithRetry(() => import('./pages/account/AccountSecurityPage'), 'account-security');
 
 const queryClient = new QueryClient({
@@ -100,6 +101,7 @@ export default function App() {
                   <Route path="/settings" element={<FarmSettingsPage />} />
                   <Route path="/account-security" element={<AccountSecurityPage />} />
                   <Route path="/security" element={<SecurityDashboardPage />} />
+                  <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/billing" element={<BillingPage />} />
                   <Route path="/help" element={<HelpPage />} />
                 </Route>

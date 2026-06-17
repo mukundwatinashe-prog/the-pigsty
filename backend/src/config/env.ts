@@ -22,7 +22,7 @@ export const env = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   CLAUDE_API_KEY: process.env.CLAUDE_API_KEY || '',
-  CLAUDE_MODEL: process.env.CLAUDE_MODEL || 'claude-3-5-haiku-latest',
+  CLAUDE_MODEL: process.env.CLAUDE_MODEL || 'claude-haiku-4-5',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
   AI_RATE_LIMIT_WINDOW_MS: parseInt(process.env.AI_RATE_LIMIT_WINDOW_MS || '900000', 10),
@@ -31,7 +31,13 @@ export const env = {
   /** Cloudflare email Worker that relays transactional mail to Resend. */
   CLOUDFLARE_EMAIL_WORKER_URL: process.env.CLOUDFLARE_EMAIL_WORKER_URL || '',
   EMAIL_WORKER_TOKEN: process.env.EMAIL_WORKER_TOKEN || '',
+  /** Direct Resend API key — used when the email Worker URL is not configured. */
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   EMAIL_FROM: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'The Pigsty <noreply@the-pigsty.org>',
+  /** Twilio Programmable SMS for password-reset codes. */
+  TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || '',
+  TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || '',
+  TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER || '',
   /** Comma-separated platform admin emails — security alerts and /security dashboard access. */
   PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS || process.env.CONTACT_INBOX_EMAIL || '',
   CONTACT_INBOX_EMAIL: process.env.CONTACT_INBOX_EMAIL || 'pigfarm@the-pigsty.org',
@@ -40,11 +46,19 @@ export const env = {
   R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || '',
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || '',
   R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || '',
+  /** Cloudflare Turnstile secret — verifies chat requests are from humans. */
+  TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY || '',
 };
 
 export const stripeConfigured = Boolean(
   env.STRIPE_SECRET_KEY && (env.STRIPE_PRICE_ID_GROWER || env.STRIPE_PRODUCT_ID_GROWER),
 );
+
+export const twilioConfigured = Boolean(
+  env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM_NUMBER,
+);
+
+export const turnstileConfigured = Boolean(env.TURNSTILE_SECRET_KEY);
 
 /**
  * Fail fast if critical auth/database secrets are missing or weak.

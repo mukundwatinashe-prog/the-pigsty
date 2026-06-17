@@ -166,7 +166,7 @@ export default function FarmSelectPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
-      <div className="mx-auto max-w-5xl px-4 pb-28 pt-8 sm:py-14">
+      <div className="mx-auto max-w-5xl px-safe pb-28 pt-8 sm:py-14">
         <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <HomeBrandLink size="lg" className="mb-3" />

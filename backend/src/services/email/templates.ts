@@ -1,12 +1,15 @@
 /**
  * Plain, dependency-free HTML/text email templates for The Pigsty.
- * Kept intentionally simple (inline styles, no external assets) so they render
- * well across email clients.
+ * Logo is loaded from the public site so it renders in email clients.
  */
+
+import { env } from '../../config/env';
 
 const BRAND = 'The Pigsty';
 /** Public support inbox — shown in email footers and site contact UI. */
 export const SUPPORT_EMAIL = 'pigfarm@the-pigsty.org';
+
+const brandLogoUrl = `${env.FRONTEND_URL.replace(/\/$/, '')}/logo.png`;
 
 function layout(opts: { heading: string; bodyHtml: string; cta?: { label: string; url: string } }): string {
   const button = opts.cta
@@ -20,7 +23,9 @@ function layout(opts: { heading: string; bodyHtml: string; cta?: { label: string
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0;">
       <tr><td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;border:1px solid #e5e7eb;padding:32px;">
-          <tr><td style="font-size:20px;font-weight:700;color:#15803d;padding-bottom:16px;">${BRAND}</td></tr>
+          <tr><td style="padding-bottom:20px;text-align:center;">
+            <img src="${brandLogoUrl}" alt="${BRAND}" width="120" height="120" style="display:block;margin:0 auto;max-width:120px;height:auto;border:0;" />
+          </td></tr>
           <tr><td style="font-size:18px;font-weight:600;padding-bottom:12px;">${opts.heading}</td></tr>
           <tr><td style="font-size:15px;line-height:1.6;color:#374151;">${opts.bodyHtml}</td></tr>
           ${button}
@@ -63,18 +68,19 @@ export function welcomeEmail(name: string): EmailTemplate {
 }
 
 export function passwordResetEmail(code: string, resetUrl: string): EmailTemplate {
+  const expiryMinutes = 5;
   const subject = 'Your password reset code';
   const bodyHtml = `
     <p>You requested a password reset for ${BRAND}.</p>
     <p style="font-size:28px;font-weight:700;letter-spacing:0.2em;color:#15803d;margin:16px 0;">${code}</p>
-    <p>Enter this code on the reset page. It expires in <strong>15 minutes</strong>.</p>
+    <p>Enter this code on the reset page. It expires in <strong>${expiryMinutes} minutes</strong>.</p>
     <p>If you did not request this, you can ignore this email.</p>`;
   const text = [
     `You requested a password reset for ${BRAND}.`,
     '',
     `Your verification code is: ${code}`,
     '',
-    'It expires in 15 minutes. If you did not request this, ignore this email.',
+    `It expires in ${expiryMinutes} minutes. If you did not request this, ignore this email.`,
     '',
     `Reset page: ${resetUrl}`,
   ].join('\n');

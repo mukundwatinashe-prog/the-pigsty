@@ -15,6 +15,8 @@ import { HomeBrandLink } from '../../components/HomeBrandLink';
 import { track } from '../../lib/analytics';
 import { mailtoContactPage, whatsappHelpUrl } from '../../lib/siteConfig';
 import { sendPublicChat, type PublicChatMessage } from '../../services/publicChat.service';
+import { ChatHoneypot, TurnstileMount } from '../../components/ChatHumanVerification';
+import { useTurnstile } from '../../hooks/useTurnstile';
 
 type UiMessage = {
   id: string;
@@ -46,8 +48,10 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
   const [messages, setMessages] = useState<UiMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const { containerRef: turnstileRef, getToken: getTurnstileToken } = useTurnstile(open);
 
   useEffect(() => {
     if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -72,7 +76,8 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
       const payload: PublicChatMessage[] = [...history, userMsg]
         .filter((m) => m.id !== 'welcome' && m.content.trim())
         .map((m) => ({ role: m.role, content: m.content }));
-      const reply = await sendPublicChat(payload);
+      const turnstileToken = await getTurnstileToken();
+      const reply = await sendPublicChat(payload, { turnstileToken, website: honeypot });
       setMessages((prev) =>
         prev.map((m) =>
           m.id === pendingId
@@ -129,7 +134,7 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
           type="button"
           onClick={onClose}
           aria-label="Close Piggy chat"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          className="flex size-11 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
         >
           <X className="size-5" />
         </button>
@@ -167,7 +172,7 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
                 key={q}
                 type="button"
                 onClick={() => void handleSend(q)}
-                className="block w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:border-primary-300 hover:bg-primary-50"
+                className="block w-full min-h-11 rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm text-gray-700 transition-colors hover:border-primary-300 hover:bg-primary-50"
               >
                 {q}
               </button>
@@ -178,8 +183,10 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
 
       <form
         onSubmit={onSubmit}
-        className="border-t border-gray-100 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="relative border-t border-gray-100 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
+        <ChatHoneypot value={honeypot} onChange={setHoneypot} />
+        <TurnstileMount containerRef={turnstileRef} />
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
@@ -278,7 +285,7 @@ export default function ContactPage() {
           <HomeBrandLink size="md" />
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-100"
           >
             <ArrowLeft className="size-4" aria-hidden />
             Back home

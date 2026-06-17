@@ -69,7 +69,11 @@ export default function AppLayout() {
         />
       )}
 
-      <main className="min-h-screen border-gray-100/80 px-safe pb-safe pt-[4.75rem] md:ml-64 md:border-l md:px-6 md:py-6 md:pt-6">
+      <main
+        className={`min-h-screen border-gray-100/80 px-safe pb-20 md:ml-64 md:border-l md:px-6 md:py-6 md:pb-safe ${
+          user.isPlatformAdmin ? 'pt-[7.5rem]' : 'pt-[4.75rem]'
+        } md:pt-6`}
+      >
         <Outlet />
       </main>
 

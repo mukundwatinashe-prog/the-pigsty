@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { AuthService } from '../services/auth.service';
+import { AuthService, RESET_CODE_EXPIRY_SECONDS } from '../services/auth.service';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { strongPasswordSchema } from '../validation/password';
@@ -253,7 +253,9 @@ export class AuthController {
       await AuthService.forgotPassword(email ? { email } : { phone: phone! }, getClientIp(req));
       res.json({
         message:
-          'If an account exists with that email or phone, we sent an 8-digit code (email or SMS). It expires in 15 minutes.',
+          'If an account exists with that email or phone, we sent an 8-digit code (email or SMS). It expires in 5 minutes.',
+        sentAt: new Date().toISOString(),
+        expiresInSeconds: RESET_CODE_EXPIRY_SECONDS,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

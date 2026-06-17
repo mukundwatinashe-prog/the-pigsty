@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Sparkles, X, Send, Loader2 } from 'lucide-react';
 import { chatService, type ChatMessage } from '../services/chat.service';
 import { apiErrorMessage } from '../services/api';
+import { ChatHoneypot, TurnstileMount } from './ChatHumanVerification';
+import { useTurnstile } from '../hooks/useTurnstile';
 
 type UiMessage = {
   id: string;
@@ -37,10 +39,12 @@ export function HelpAssistant() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
 
   const conversationIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const { containerRef: turnstileRef, getToken: getTurnstileToken } = useTurnstile(open);
 
   useEffect(() => {
     conversationIdRef.current = sessionStorage.getItem(CONVERSATION_STORAGE_KEY);
@@ -105,7 +109,11 @@ export function HelpAssistant() {
 
     try {
       const conversationId = await ensureConversation();
-      const reply = await chatService.sendMessage(conversationId, text);
+      const turnstileToken = await getTurnstileToken();
+      const reply = await chatService.sendMessage(conversationId, text, {
+        turnstileToken,
+        website: honeypot,
+      });
       setMessages((prev) =>
         prev.map((m) =>
           m.id === pendingId
@@ -176,7 +184,7 @@ export function HelpAssistant() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close help assistant"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex size-11 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <X className="size-5" />
             </button>
@@ -217,7 +225,7 @@ export function HelpAssistant() {
                     key={q}
                     type="button"
                     onClick={() => void handleSend(q)}
-                    className="block w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:border-primary-300 hover:bg-primary-50"
+                    className="block w-full min-h-11 rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm text-gray-700 transition-colors hover:border-primary-300 hover:bg-primary-50"
                   >
                     {q}
                   </button>
@@ -228,8 +236,10 @@ export function HelpAssistant() {
 
           <form
             onSubmit={onSubmit}
-            className="border-t border-gray-100 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            className="relative border-t border-gray-100 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           >
+            <ChatHoneypot value={honeypot} onChange={setHoneypot} />
+            <TurnstileMount containerRef={turnstileRef} />
             <div className="flex items-end gap-2">
               <textarea
                 ref={inputRef}

@@ -431,7 +431,7 @@ export default function LandingPage() {
               {tiers.map((t) => (
                 <article
                   key={t.name}
-                  className={`flex h-full min-h-[520px] flex-col rounded-2xl p-6 ${
+                  className={`flex h-full min-h-0 flex-col rounded-2xl p-5 sm:p-6 lg:min-h-[520px] ${
                     t.highlight
                       ? 'relative border-2 border-primary-600 bg-primary-900 text-white shadow-xl'
                       : 'border border-gray-200 bg-[#f7f6f2] shadow-sm'
@@ -546,21 +546,26 @@ export default function LandingPage() {
             <HomeBrandLink size="sm" />
             <p className="text-sm text-gray-500">© {new Date().getFullYear()} The Pigsty · Farmer-focused herd software</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-4 text-sm font-medium text-gray-600 sm:gap-6">
-            <Link to="/privacy" className="hover:text-primary-700">
+          <div className="flex flex-wrap justify-center gap-1 text-sm font-medium text-gray-600 sm:gap-2">
+            <Link to="/privacy" className="inline-flex min-h-11 items-center px-3 hover:text-primary-700">
               Privacy
             </Link>
-            <Link to="/terms" className="hover:text-primary-700">
+            <Link to="/terms" className="inline-flex min-h-11 items-center px-3 hover:text-primary-700">
               Terms
             </Link>
-            <Link to="/login" className="hover:text-primary-700">
+            <Link to="/login" className="inline-flex min-h-11 items-center px-3 hover:text-primary-700">
               Sign in
             </Link>
-            <Link to="/contact" className="hover:text-primary-700">
+            <Link to="/contact" className="inline-flex min-h-11 items-center px-3 hover:text-primary-700">
               Contact
             </Link>
             {waUrl ? (
-              <a href={waUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary-700">
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center px-3 hover:text-primary-700"
+              >
                 WhatsApp
               </a>
             ) : null}

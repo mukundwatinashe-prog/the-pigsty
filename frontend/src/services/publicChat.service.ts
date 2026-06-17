@@ -7,11 +7,18 @@ export type PublicChatMessage = { role: 'user' | 'assistant'; content: string };
  * Sends the running message history and returns the assistant's reply.
  * No account or server-side persistence.
  */
-export async function sendPublicChat(messages: PublicChatMessage[]): Promise<string> {
+export async function sendPublicChat(
+  messages: PublicChatMessage[],
+  options?: { turnstileToken?: string; website?: string },
+): Promise<string> {
   const res = await fetch(withBase('/public/chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({
+      messages,
+      turnstileToken: options?.turnstileToken,
+      website: options?.website ?? '',
+    }),
   });
 
   if (!res.ok) {

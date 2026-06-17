@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_WHATSAPP_E164?: string;
   /** Same Web client ID as backend GOOGLE_CLIENT_ID (Google Cloud Console → APIs & Services → Credentials). */
   readonly VITE_GOOGLE_CLIENT_ID?: string;
+  /** Cloudflare Turnstile site key — required in production for chat human verification. */
+  readonly VITE_TURNSTILE_SITE_KEY?: string;
 }
 
 interface ImportMeta {

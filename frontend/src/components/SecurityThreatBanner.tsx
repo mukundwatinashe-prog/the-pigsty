@@ -30,14 +30,14 @@ export function SecurityThreatBanner() {
 
   return (
     <div
-      className={`relative border-b px-4 py-3 ${
+      className={`relative border-b px-safe pt-safe ${
         critical
           ? 'border-red-300 bg-red-50 text-red-900'
           : 'border-amber-300 bg-amber-50 text-amber-900'
       }`}
       role="alert"
     >
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 py-3">
         <div className="flex min-w-0 items-start gap-2">
           {critical ? (
             <ShieldAlert className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden />
@@ -57,10 +57,10 @@ export function SecurityThreatBanner() {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Link
             to="/security"
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+            className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium ${
               critical ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-amber-600 text-white hover:bg-amber-700'
             }`}
           >
@@ -70,7 +70,7 @@ export function SecurityThreatBanner() {
             type="button"
             onClick={() => ackAll.mutate()}
             disabled={ackAll.isPending}
-            className="rounded-lg border border-current/30 px-3 py-1.5 text-sm font-medium hover:bg-black/5"
+            className="inline-flex min-h-11 items-center rounded-lg border border-current/30 px-4 text-sm font-medium hover:bg-black/5"
           >
             Dismiss all
           </button>

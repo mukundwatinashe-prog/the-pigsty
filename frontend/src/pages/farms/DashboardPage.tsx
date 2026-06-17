@@ -167,9 +167,9 @@ export default function DashboardPage() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-4">
         {kpis.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition">
+          <div key={label} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-gray-500">{label}</span>
               <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center`}>
