@@ -38,8 +38,8 @@ export const env = {
   TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || '',
   TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || '',
   TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER || '',
-  /** Comma-separated platform admin emails — security alerts and /security dashboard access. */
-  PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS || process.env.CONTACT_INBOX_EMAIL || '',
+  /** Comma-separated platform admin emails — /api/admin/*, /api/security/*, and admin UI in the app. */
+  PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS || '',
   CONTACT_INBOX_EMAIL: process.env.CONTACT_INBOX_EMAIL || 'pigfarm@the-pigsty.org',
   /** Cloudflare R2 (S3-compatible) for durable feed receipt storage. */
   R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '',

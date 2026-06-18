@@ -20,8 +20,7 @@ const LOCKOUT_THRESHOLD = 5;
 const LOCKOUT_DURATION_MS = 60 * 60 * 1000;
 
 function adminEmails(): string[] {
-  const raw = env.PLATFORM_ADMIN_EMAILS || env.CONTACT_INBOX_EMAIL || '';
-  return raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  return env.PLATFORM_ADMIN_EMAILS.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
 export function isPlatformAdminEmail(email: string): boolean {

@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { FarmProvider } from './context/FarmContext';
 import AppLayout from './components/layout/AppLayout';
+import PlatformAdminRoute from './components/PlatformAdminRoute';
 import MarketingLayout from './components/layout/MarketingLayout';
 import { ScrollToTop } from './components/ScrollToTop';
 import LoginPage from './pages/auth/LoginPage';
@@ -100,8 +101,8 @@ export default function App() {
                   <Route path="/audit-log" element={<AuditLogPage />} />
                   <Route path="/settings" element={<FarmSettingsPage />} />
                   <Route path="/account-security" element={<AccountSecurityPage />} />
-                  <Route path="/security" element={<SecurityDashboardPage />} />
-                  <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route path="/security" element={<PlatformAdminRoute><SecurityDashboardPage /></PlatformAdminRoute>} />
+                  <Route path="/admin/users" element={<PlatformAdminRoute><AdminUsersPage /></PlatformAdminRoute>} />
                   <Route path="/billing" element={<BillingPage />} />
                   <Route path="/help" element={<HelpPage />} />
                 </Route>
