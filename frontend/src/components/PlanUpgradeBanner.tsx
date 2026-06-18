@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
+import { sitePricing } from '../lib/siteConfig';
 
 type Props = {
   title?: string;
@@ -9,7 +10,7 @@ type Props = {
 
 export function PlanUpgradeBanner({
   title = 'Upgrade to unlock this feature',
-  message = 'Start a 14-day Grower trial, subscribe to Grower (£19/mo), or Enterprise (£49/mo) from Billing.',
+  message = `Start a ${sitePricing.growerTrialDays}-day Grower trial, subscribe to Grower (${sitePricing.growerMonthly}/mo), or Enterprise (${sitePricing.enterpriseMonthly}/mo) from Billing.`,
   className = '',
 }: Props) {
   return (

@@ -9,13 +9,100 @@ function stripeClient(): Stripe | null {
   return new Stripe(env.STRIPE_SECRET_KEY);
 }
 
+function emptyTrial(): TrialInfo {
+  return { isOnTrial: false, trialEndsAt: null, daysLeft: null };
+}
+
+function trialFromEnd(trialEnd: Date): TrialInfo {
+  const ms = trialEnd.getTime() - Date.now();
+  if (ms <= 0) return emptyTrial();
+  return {
+    isOnTrial: true,
+    trialEndsAt: trialEnd.toISOString(),
+    daysLeft: Math.ceil(ms / (24 * 60 * 60 * 1000)),
+  };
+}
+
+function trialForFarm(farmId: string, trialMap: Map<string, Date>): TrialInfo {
+  const end = trialMap.get(farmId);
+  return end ? trialFromEnd(end) : emptyTrial();
+}
+
+function activeTrialForUser(farms: AdminUserFarm[]): TrialInfo | null {
+  const onTrial = farms.filter((f) => f.role === 'OWNER' && f.trial.isOnTrial);
+  if (onTrial.length === 0) return null;
+  return onTrial.reduce((soonest, f) => {
+    if (!soonest) return f.trial;
+    const a = soonest.daysLeft ?? 999;
+    const b = f.trial.daysLeft ?? 999;
+    return b < a ? f.trial : soonest;
+  }, null as TrialInfo | null);
+}
+
+/** Active Grower free trials from Stripe (status=trialing). Keyed by farm id. */
+async function fetchActiveTrialsByFarmId(): Promise<Map<string, Date>> {
+  const map = new Map<string, Date>();
+  const stripe = stripeClient();
+  if (!stripe) return map;
+
+  const subsMissingFarmId: { subId: string; trialEnd: Date }[] = [];
+  let startingAfter: string | undefined;
+
+  for (;;) {
+    const page = await stripe.subscriptions.list({
+      status: 'trialing',
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+
+    for (const sub of page.data) {
+      if (!sub.trial_end) continue;
+      const trialEnd = new Date(sub.trial_end * 1000);
+      const farmId = sub.metadata?.farmId;
+      if (farmId) {
+        map.set(farmId, trialEnd);
+      } else if (sub.id) {
+        subsMissingFarmId.push({ subId: sub.id, trialEnd });
+      }
+    }
+
+    if (!page.has_more) break;
+    startingAfter = page.data[page.data.length - 1]?.id;
+  }
+
+  if (subsMissingFarmId.length > 0) {
+    const farms = await prisma.farm.findMany({
+      where: {
+        isDeleted: false,
+        stripeSubscriptionId: { in: subsMissingFarmId.map((s) => s.subId) },
+      },
+      select: { id: true, stripeSubscriptionId: true },
+    });
+    const endBySubId = new Map(subsMissingFarmId.map((s) => [s.subId, s.trialEnd]));
+    for (const farm of farms) {
+      if (farm.stripeSubscriptionId) {
+        const end = endBySubId.get(farm.stripeSubscriptionId);
+        if (end) map.set(farm.id, end);
+      }
+    }
+  }
+
+  return map;
+}
+
 const PLAN_RANK: Record<FarmPlan, number> = {
   FREE: 0,
   GROWER: 1,
   ENTERPRISE: 2,
 };
 
-export type AdminPlanFilter = 'ALL' | FarmPlan;
+export type AdminPlanFilter = 'ALL' | 'TRIAL' | FarmPlan;
+
+export type TrialInfo = {
+  isOnTrial: boolean;
+  trialEndsAt: string | null;
+  daysLeft: number | null;
+};
 
 export type AdminUserFarm = {
   farmId: string;
@@ -26,6 +113,7 @@ export type AdminUserFarm = {
   pigCount: number;
   hasStripe: boolean;
   isDeleted: boolean;
+  trial: TrialInfo;
 };
 
 export type AdminFarmRow = {
@@ -38,6 +126,7 @@ export type AdminFarmRow = {
   hasStripe: boolean;
   createdAt: Date;
   owner: { id: string; name: string; email: string } | null;
+  trial: TrialInfo;
 };
 
 export type SetFarmPlanResult = {
@@ -63,6 +152,7 @@ export type AdminUserRow = {
   ownedFarmCount: number;
   highestOwnedPlan: FarmPlan;
   isPaying: boolean;
+  activeTrial: TrialInfo | null;
   farms: AdminUserFarm[];
 };
 
@@ -96,7 +186,7 @@ const userSelect = {
 
 type UserWithFarms = Prisma.UserGetPayload<{ select: typeof userSelect }>;
 
-function mapUser(user: UserWithFarms): AdminUserRow {
+function mapUser(user: UserWithFarms, trialMap: Map<string, Date>): AdminUserRow {
   const farms: AdminUserFarm[] = user.farmMemberships
     .filter((m) => !m.farm.isDeleted)
     .map((m) => ({
@@ -108,6 +198,7 @@ function mapUser(user: UserWithFarms): AdminUserRow {
       pigCount: m.farm._count.pigs,
       hasStripe: !!m.farm.stripeSubscriptionId,
       isDeleted: m.farm.isDeleted,
+      trial: trialForFarm(m.farm.id, trialMap),
     }));
 
   const owned = farms.filter((f) => f.role === 'OWNER');
@@ -131,11 +222,25 @@ function mapUser(user: UserWithFarms): AdminUserRow {
     ownedFarmCount: owned.length,
     highestOwnedPlan,
     isPaying,
+    activeTrial: activeTrialForUser(farms),
     farms,
   };
 }
 
-function planFilterWhere(plan: AdminPlanFilter): Prisma.UserWhereInput | undefined {
+function planFilterWhere(plan: AdminPlanFilter, trialFarmIds?: string[]): Prisma.UserWhereInput | undefined {
+  if (plan === 'TRIAL') {
+    if (!trialFarmIds?.length) {
+      return { id: { in: [] } };
+    }
+    return {
+      farmMemberships: {
+        some: {
+          role: Role.OWNER,
+          farm: { id: { in: trialFarmIds }, isDeleted: false },
+        },
+      },
+    };
+  }
   if (plan === 'ALL') return undefined;
   if (plan === FarmPlan.FREE) {
     return {
@@ -161,6 +266,7 @@ function planFilterWhere(plan: AdminPlanFilter): Prisma.UserWhereInput | undefin
 
 export class AdminService {
   static async getSummary() {
+    const trialMap = await fetchActiveTrialsByFarmId();
     const [totalUsers, farmsByPlan, payingOwners] = await Promise.all([
       prisma.user.count(),
       prisma.farm.groupBy({
@@ -195,6 +301,7 @@ export class AdminService {
       farmsByPlan: planCounts,
       payingOwners,
       freeOwners: totalUsers - payingOwners,
+      activeTrials: trialMap.size,
     };
   }
 
@@ -205,8 +312,10 @@ export class AdminService {
     search?: string;
   }) {
     const { page, pageSize, plan = 'ALL', search } = opts;
+    const trialMap = await fetchActiveTrialsByFarmId();
+    const trialFarmIds = plan === 'TRIAL' ? [...trialMap.keys()] : undefined;
     const where: Prisma.UserWhereInput = {
-      ...planFilterWhere(plan),
+      ...planFilterWhere(plan, trialFarmIds),
       ...(search
         ? {
             OR: [
@@ -229,7 +338,7 @@ export class AdminService {
     ]);
 
     return {
-      users: users.map(mapUser),
+      users: users.map((u) => mapUser(u, trialMap)),
       total,
       page,
       pageSize,
@@ -238,9 +347,10 @@ export class AdminService {
   }
 
   static async getUser(userId: string) {
+    const trialMap = await fetchActiveTrialsByFarmId();
     const user = await prisma.user.findUnique({ where: { id: userId }, select: userSelect });
     if (!user) return null;
-    return mapUser(user);
+    return mapUser(user, trialMap);
   }
 
   static async unlockUser(userId: string) {
@@ -347,9 +457,16 @@ export class AdminService {
     search?: string;
   }) {
     const { page, pageSize, plan = 'ALL', search } = opts;
+    const trialMap = await fetchActiveTrialsByFarmId();
+    const trialFarmIds = plan === 'TRIAL' ? [...trialMap.keys()] : undefined;
+
     const where: Prisma.FarmWhereInput = {
       isDeleted: false,
-      ...(plan !== 'ALL' ? { plan } : {}),
+      ...(plan === 'TRIAL'
+        ? { id: { in: trialFarmIds?.length ? trialFarmIds : ['__none__'] } }
+        : plan !== 'ALL'
+          ? { plan }
+          : {}),
       ...(search
         ? {
             OR: [
@@ -408,6 +525,7 @@ export class AdminService {
       hasStripe: !!f.stripeSubscriptionId,
       createdAt: f.createdAt,
       owner: f.members[0]?.user ?? null,
+      trial: trialForFarm(f.id, trialMap),
     }));
 
     return {
@@ -479,8 +597,10 @@ export class AdminService {
 
   static async exportUsersCsv(opts: { plan?: AdminPlanFilter; search?: string }) {
     const { plan = 'ALL', search } = opts;
+    const trialMap = await fetchActiveTrialsByFarmId();
+    const trialFarmIds = plan === 'TRIAL' ? [...trialMap.keys()] : undefined;
     const where: Prisma.UserWhereInput = {
-      ...planFilterWhere(plan),
+      ...planFilterWhere(plan, trialFarmIds),
       ...(search
         ? {
             OR: [
@@ -498,7 +618,7 @@ export class AdminService {
       take: 10_000,
     });
 
-    const rows = users.map(mapUser);
+    const rows = users.map((u) => mapUser(u, trialMap));
     const header = [
       'Email',
       'Name',
@@ -506,6 +626,9 @@ export class AdminService {
       'Joined',
       'Highest Plan',
       'Paying',
+      'On Trial',
+      'Trial Days Left',
+      'Trial Ends',
       'Owned Farms',
       'Total Farms',
       'MFA Enabled',
@@ -521,7 +644,7 @@ export class AdminService {
           (u.loginLockedUntil != null && u.loginLockedUntil.getTime() > Date.now()) ||
           (u.passwordResetLockedUntil != null && u.passwordResetLockedUntil.getTime() > Date.now());
         const farms = u.farms
-          .map((f) => `${f.farmName} (${f.role}/${f.plan}${f.hasStripe ? '/Stripe' : ''})`)
+          .map((f) => `${f.farmName} (${f.role}/${f.plan}${f.hasStripe ? '/Stripe' : ''}${f.trial.isOnTrial ? '/Trial' : ''})`)
           .join('; ');
         return [
           csvEscape(u.email),
@@ -530,6 +653,9 @@ export class AdminService {
           csvEscape(u.createdAt.toISOString()),
           csvEscape(u.highestOwnedPlan),
           csvEscape(u.isPaying ? 'yes' : 'no'),
+          csvEscape(u.activeTrial?.isOnTrial ? 'yes' : 'no'),
+          csvEscape(u.activeTrial?.daysLeft ?? ''),
+          csvEscape(u.activeTrial?.trialEndsAt ?? ''),
           csvEscape(u.ownedFarmCount),
           csvEscape(u.farms.length),
           csvEscape(u.mfaEnabled ? 'yes' : 'no'),

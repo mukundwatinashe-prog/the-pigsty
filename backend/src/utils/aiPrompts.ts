@@ -43,7 +43,7 @@ On mobile, the sidebar opens via the hamburger menu (top-left).
 - Free (Smallholder): up to 50 on-hand pigs, 1 user. Core tracking + activity/audit log.
 - Grower (~£19/mo): up to 500 pigs, 5 users; unlocks all Reports, Financials, bulk Import, and Team management.
 - Enterprise (~£49/mo): unlimited pigs and users.
-- From Billing, free farms can choose: a 14-day Grower free trial (one per account email), subscribe to Grower at £19/mo with no trial, or subscribe to Enterprise at £49/mo. Grower farms can upgrade to Enterprise in-app.
+- From Billing, free farms can choose: a 7-day Grower free trial (one per account email), subscribe to Grower at £19/mo with no trial, or subscribe to Enterprise at £49/mo. Grower farms can upgrade to Enterprise in-app.
 - The pig limit counts on-hand pigs (not Sold/Deceased). Upgrading requires Owner or Manager. "Manage subscription" opens the Stripe portal for payment changes.
 
 # Pigs (Pig Inventory /pigs)

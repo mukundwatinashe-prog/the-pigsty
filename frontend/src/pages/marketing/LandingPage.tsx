@@ -79,7 +79,7 @@ const tiers = [
     name: 'Grower',
     price: sitePricing.growerMonthly,
     period: '/ month',
-    trial: '14-day free trial available',
+    trial: `${sitePricing.growerTrialDays}-day free trial available`,
     desc: 'Reports, imports, and a small team for active commercial farms.',
     includes: ['Everything in Smallholder', 'All reports & exports', 'Mass Excel import', 'Up to 5 team members'],
     limits: ['Up to 500 pigs', 'Billed per farm'],

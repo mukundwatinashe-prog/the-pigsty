@@ -2,6 +2,12 @@ import api from './api';
 
 export type FarmPlan = 'FREE' | 'GROWER' | 'ENTERPRISE';
 
+export type TrialInfo = {
+  isOnTrial: boolean;
+  trialEndsAt: string | null;
+  daysLeft: number | null;
+};
+
 export type AdminUserFarm = {
   farmId: string;
   farmName: string;
@@ -11,6 +17,7 @@ export type AdminUserFarm = {
   pigCount: number;
   hasStripe: boolean;
   isDeleted: boolean;
+  trial: TrialInfo;
 };
 
 export type AdminUser = {
@@ -27,6 +34,7 @@ export type AdminUser = {
   ownedFarmCount: number;
   highestOwnedPlan: FarmPlan;
   isPaying: boolean;
+  activeTrial: TrialInfo | null;
   farms: AdminUserFarm[];
 };
 
@@ -36,6 +44,7 @@ export type AdminSummary = {
   farmsByPlan: Record<FarmPlan, number>;
   payingOwners: number;
   freeOwners: number;
+  activeTrials: number;
 };
 
 export type AdminUsersResponse = {
@@ -46,7 +55,7 @@ export type AdminUsersResponse = {
   totalPages: number;
 };
 
-export type AdminPlanFilter = 'ALL' | FarmPlan;
+export type AdminPlanFilter = 'ALL' | 'TRIAL' | FarmPlan;
 
 export type SetFarmPlanResult = {
   id: string;
@@ -67,6 +76,7 @@ export type AdminFarm = {
   hasStripe: boolean;
   createdAt: string;
   owner: { id: string; name: string; email: string } | null;
+  trial: TrialInfo;
 };
 
 export type AdminFarmsResponse = {

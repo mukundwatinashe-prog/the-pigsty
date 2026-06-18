@@ -8,10 +8,11 @@ import {
   type FarmPlan,
 } from '../../services/admin.service';
 import { apiErrorMessage } from '../../services/api';
-import { PlanSelect, planBadgeClass, planLabel, toastPlanChange } from './adminPlanHelpers';
+import { PlanSelect, planBadgeClass, planLabel, toastPlanChange, TrialBadge } from './adminPlanHelpers';
 
 const PLAN_FILTERS: { id: AdminPlanFilter; label: string }[] = [
   { id: 'ALL', label: 'All farms' },
+  { id: 'TRIAL', label: 'On free trial' },
   { id: 'FREE', label: 'Smallholder' },
   { id: 'GROWER', label: 'Grower' },
   { id: 'ENTERPRISE', label: 'Enterprise' },
@@ -94,6 +95,7 @@ export default function AdminSubscriptionsTab() {
                 <th className="px-4 py-2">Farm</th>
                 <th className="px-4 py-2">Owner</th>
                 <th className="px-4 py-2">Plan</th>
+                <th className="px-4 py-2">Trial</th>
                 <th className="px-4 py-2">Usage</th>
                 <th className="px-4 py-2">Billing</th>
               </tr>
@@ -101,14 +103,14 @@ export default function AdminSubscriptionsTab() {
             <tbody className="divide-y divide-gray-100">
               {isLoading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     <Loader2 className="mx-auto size-5 animate-spin" />
                   </td>
                 </tr>
               )}
               {error && !isLoading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-red-600">
+                  <td colSpan={6} className="px-4 py-8 text-center text-red-600">
                     {apiErrorMessage(error)}
                   </td>
                 </tr>
@@ -123,7 +125,7 @@ export default function AdminSubscriptionsTab() {
               ))}
               {!isLoading && !error && farms.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     No farms match your filters.
                   </td>
                 </tr>
@@ -197,6 +199,10 @@ function FarmRow({
             if (plan !== farm.plan) onPlanChange(farm.farmId, plan);
           }}
         />
+      </td>
+      <td className="px-4 py-3">
+        <TrialBadge trial={farm.trial} />
+        {!farm.trial.isOnTrial && <span className="text-xs text-gray-400">—</span>}
       </td>
       <td className="px-4 py-3 text-gray-600">
         {farm.pigCount} pigs · {farm.memberCount} members

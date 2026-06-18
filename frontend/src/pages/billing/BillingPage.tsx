@@ -171,9 +171,9 @@ export default function BillingPage() {
             <div className="flex items-start gap-3">
               <Sparkles className="size-6 shrink-0 text-primary-600" aria-hidden />
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-gray-900">14-day Grower free trial</h3>
+                <h3 className="font-semibold text-gray-900">{sitePricing.growerTrialDays}-day Grower free trial</h3>
                 <p className="mt-1 text-sm text-gray-700">
-                  Try Grower features free for 14 days — reports, imports, and up to 5 users. A card is required;
+                  Try Grower features free for {sitePricing.growerTrialDays} days — reports, imports, and up to 5 users. A card is required;
                   after the trial it becomes {sitePricing.growerMonthly}/month unless you cancel.
                 </p>
                 {data.growerTrialUsed ? (
@@ -195,7 +195,7 @@ export default function BillingPage() {
                     ) : (
                       <ExternalLink className="size-4" />
                     )}
-                    Start 14-day free trial
+                    Start {sitePricing.growerTrialDays}-day free trial
                   </button>
                 )}
               </div>

@@ -31,10 +31,12 @@ import {
   planLabel,
   primaryOwnedFarm,
   toastPlanChange,
+  TrialBadge,
 } from './adminPlanHelpers';
 
 const PLAN_FILTERS: { id: AdminPlanFilter; label: string }[] = [
   { id: 'ALL', label: 'All users' },
+  { id: 'TRIAL', label: 'On free trial' },
   { id: 'FREE', label: 'Smallholder (free)' },
   { id: 'GROWER', label: 'Grower' },
   { id: 'ENTERPRISE', label: 'Enterprise' },
@@ -132,7 +134,21 @@ function UserDetailPanel({
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-4">
-          <div className="grid gap-3 sm:grid-cols-2">
+            {user.activeTrial?.isOnTrial && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <p className="font-medium">Active Grower free trial</p>
+                <p className="mt-1">
+                  <TrialBadge trial={user.activeTrial} />
+                  {user.activeTrial.trialEndsAt && (
+                    <span className="ml-2 text-xs">
+                      Ends {new Date(user.activeTrial.trialEndsAt).toLocaleString()}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm">
               <p className="text-xs text-gray-500">Joined</p>
               <p className="font-medium text-gray-900">{new Date(user.createdAt).toLocaleString()}</p>
@@ -208,6 +224,11 @@ function UserDetailPanel({
                         {farm.role} · {farm.pigCount} pigs · {farm.memberCount} members
                         {farm.hasStripe && ' · Stripe'}
                       </p>
+                      {farm.trial.isOnTrial && (
+                        <div className="mt-1">
+                          <TrialBadge trial={farm.trial} />
+                        </div>
+                      )}
                     </div>
                     <PlanSelect
                       value={farm.plan}
@@ -378,10 +399,14 @@ export default function AdminUsersPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total users</p>
           <p className="mt-1 text-3xl font-bold text-gray-900">{summary?.totalUsers ?? 0}</p>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Active trials</p>
+          <p className="mt-1 text-3xl font-bold text-amber-900">{summary?.activeTrials ?? 0}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Paying owners</p>
@@ -493,6 +518,7 @@ export default function AdminUsersPage() {
               <tr>
                 <th className="px-4 py-2">User</th>
                 <th className="px-4 py-2">Subscription</th>
+                <th className="px-4 py-2">Trial</th>
                 <th className="px-4 py-2">Farms</th>
                 <th className="px-4 py-2">Joined</th>
                 <th className="px-4 py-2">Status</th>
@@ -502,14 +528,14 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-gray-100">
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     <Loader2 className="mx-auto size-5 animate-spin" />
                   </td>
                 </tr>
               )}
               {error && !isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-red-600">
+                  <td colSpan={7} className="px-4 py-8 text-center text-red-600">
                     {apiErrorMessage(error)}
                   </td>
                 </tr>
@@ -547,6 +573,15 @@ export default function AdminUsersPage() {
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-3">
+                    <TrialBadge trial={user.activeTrial} />
+                    {!user.activeTrial?.isOnTrial && user.growerTrialUsedAt && (
+                      <span className="text-xs text-gray-500">Trial used</span>
+                    )}
+                    {!user.activeTrial?.isOnTrial && !user.growerTrialUsedAt && (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">
                     {user.ownedFarmCount} owned · {user.farms.length} total
                   </td>
@@ -582,7 +617,7 @@ export default function AdminUsersPage() {
               })}
               {!isLoading && !error && users.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     No users match your filters.
                   </td>
                 </tr>

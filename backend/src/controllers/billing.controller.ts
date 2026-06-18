@@ -6,7 +6,7 @@ import { env, stripeConfigured } from '../config/env';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { FarmPlan } from '@prisma/client';
-import { GROWER_TIER_MAX_MEMBERS, pigLimitForPlan } from '../config/planLimits';
+import { GROWER_TIER_MAX_MEMBERS, GROWER_TRIAL_DAYS, pigLimitForPlan } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { sendUserEmail } from '../services/email/emailSender';
 import { upgradeEmail } from '../services/email/templates';
@@ -18,7 +18,7 @@ function stripeClient(): Stripe | null {
 
 const checkoutSchema = z.object({
   plan: z.enum(['GROWER', 'ENTERPRISE']).default('GROWER'),
-  /** When true, start a 14-day Grower trial (one per account email). Paid £19 checkout omits this. */
+  /** When true, start a Grower free trial (one per account email). Paid £19 checkout omits this. */
   startTrial: z.boolean().optional().default(false),
 });
 
@@ -199,7 +199,7 @@ export class BillingController {
         },
         subscription_data: {
           metadata: { farmId: farm.id, plan, startTrial: startTrial ? 'true' : 'false', userId: req.userId! },
-          ...(startTrial && plan === 'GROWER' ? { trial_period_days: 14 } : {}),
+          ...(startTrial && plan === 'GROWER' ? { trial_period_days: GROWER_TRIAL_DAYS } : {}),
         },
       });
 

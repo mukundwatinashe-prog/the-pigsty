@@ -37,6 +37,7 @@ export const sitePricing = {
   smallholder: '£0',
   growerMonthly: '£19',
   enterpriseMonthly: '£49',
+  growerTrialDays: 7,
 } as const;
 
 export const DEFAULT_FARM_CURRENCY = sitePricing.currencyCode;

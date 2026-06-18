@@ -4,7 +4,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AdminPlanFilter, AdminService } from '../services/admin.service';
 
-const VALID_PLANS: AdminPlanFilter[] = ['ALL', FarmPlan.FREE, FarmPlan.GROWER, FarmPlan.ENTERPRISE];
+const VALID_PLANS: AdminPlanFilter[] = ['ALL', 'TRIAL', FarmPlan.FREE, FarmPlan.GROWER, FarmPlan.ENTERPRISE];
 
 function parsePlanFilter(raw: unknown): AdminPlanFilter {
   const value = String(raw || 'ALL').toUpperCase();
