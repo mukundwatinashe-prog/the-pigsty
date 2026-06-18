@@ -48,6 +48,35 @@ export type AdminUsersResponse = {
 
 export type AdminPlanFilter = 'ALL' | FarmPlan;
 
+export type SetFarmPlanResult = {
+  id: string;
+  name: string;
+  previousPlan: FarmPlan;
+  plan: FarmPlan;
+  hadStripe: boolean;
+  stripeCanceled: boolean;
+};
+
+export type AdminFarm = {
+  farmId: string;
+  farmName: string;
+  plan: FarmPlan;
+  country: string;
+  pigCount: number;
+  memberCount: number;
+  hasStripe: boolean;
+  createdAt: string;
+  owner: { id: string; name: string; email: string } | null;
+};
+
+export type AdminFarmsResponse = {
+  farms: AdminFarm[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 export const adminService = {
   getSummary: () => api.get<AdminSummary>('/admin/summary').then((r) => r.data),
 
@@ -59,6 +88,16 @@ export const adminService = {
     if (params.search) qs.set('search', params.search);
     const q = qs.toString();
     return api.get<AdminUsersResponse>(`/admin/users${q ? `?${q}` : ''}`).then((r) => r.data);
+  },
+
+  listFarms: (params: { page?: number; pageSize?: number; plan?: AdminPlanFilter; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', String(params.page));
+    if (params.pageSize) qs.set('pageSize', String(params.pageSize));
+    if (params.plan && params.plan !== 'ALL') qs.set('plan', params.plan);
+    if (params.search) qs.set('search', params.search);
+    const q = qs.toString();
+    return api.get<AdminFarmsResponse>(`/admin/farms${q ? `?${q}` : ''}`).then((r) => r.data);
   },
 
   getUser: (userId: string) =>
@@ -77,7 +116,7 @@ export const adminService = {
     api.patch(`/admin/users/${userId}`, data).then((r) => r.data),
 
   setFarmPlan: (farmId: string, plan: FarmPlan) =>
-    api.patch(`/admin/farms/${farmId}/plan`, { plan }).then((r) => r.data),
+    api.patch<SetFarmPlanResult>(`/admin/farms/${farmId}/plan`, { plan }).then((r) => r.data),
 
   deleteUser: (userId: string, confirmEmail: string) =>
     api.delete(`/admin/users/${userId}`, { data: { confirmEmail } }).then((r) => r.data),

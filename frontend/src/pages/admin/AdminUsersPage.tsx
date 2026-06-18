@@ -24,6 +24,14 @@ import {
   type FarmPlan,
 } from '../../services/admin.service';
 import { apiErrorMessage } from '../../services/api';
+import AdminSubscriptionsTab from './AdminSubscriptionsTab';
+import {
+  PlanSelect,
+  planBadgeClass,
+  planLabel,
+  primaryOwnedFarm,
+  toastPlanChange,
+} from './adminPlanHelpers';
 
 const PLAN_FILTERS: { id: AdminPlanFilter; label: string }[] = [
   { id: 'ALL', label: 'All users' },
@@ -31,18 +39,6 @@ const PLAN_FILTERS: { id: AdminPlanFilter; label: string }[] = [
   { id: 'GROWER', label: 'Grower' },
   { id: 'ENTERPRISE', label: 'Enterprise' },
 ];
-
-function planLabel(plan: FarmPlan): string {
-  if (plan === 'FREE') return 'Smallholder';
-  if (plan === 'GROWER') return 'Grower';
-  return 'Enterprise';
-}
-
-function planBadgeClass(plan: FarmPlan): string {
-  if (plan === 'ENTERPRISE') return 'bg-purple-100 text-purple-800 border-purple-200';
-  if (plan === 'GROWER') return 'bg-blue-100 text-blue-800 border-blue-200';
-  return 'bg-gray-100 text-gray-700 border-gray-200';
-}
 
 function isLocked(user: AdminUser): boolean {
   const now = Date.now();
@@ -99,7 +95,10 @@ function UserDetailPanel({
   const setPlan = useMutation({
     mutationFn: ({ farmId, plan }: { farmId: string; plan: FarmPlan }) =>
       adminService.setFarmPlan(farmId, plan),
-    onSuccess: () => { invalidate(); toast.success('Farm plan updated'); },
+    onSuccess: (result) => {
+      invalidate();
+      toastPlanChange(result);
+    },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
@@ -193,7 +192,10 @@ function UserDetailPanel({
           </div>
 
           <div>
-            <h3 className="mb-2 text-sm font-semibold text-gray-900">Farms ({user.farms.length})</h3>
+            <h3 className="mb-2 text-sm font-semibold text-gray-900">Subscriptions & farms</h3>
+            <p className="mb-3 text-xs text-gray-500">
+              Change plan for any farm this user belongs to. Stripe upgrades still apply automatically when users pay.
+            </p>
             {user.farms.length === 0 ? (
               <p className="text-sm text-gray-500">No farms</p>
             ) : (
@@ -207,18 +209,13 @@ function UserDetailPanel({
                         {farm.hasStripe && ' · Stripe'}
                       </p>
                     </div>
-                    {farm.role === 'OWNER' && (
-                      <select
-                        value={farm.plan}
-                        disabled={setPlan.isPending}
-                        onChange={(e) => setPlan.mutate({ farmId: farm.farmId, plan: e.target.value as FarmPlan })}
-                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
-                      >
-                        <option value="FREE">Smallholder</option>
-                        <option value="GROWER">Grower</option>
-                        <option value="ENTERPRISE">Enterprise</option>
-                      </select>
-                    )}
+                    <PlanSelect
+                      value={farm.plan}
+                      disabled={setPlan.isPending}
+                      onChange={(plan) => {
+                        if (plan !== farm.plan) setPlan.mutate({ farmId: farm.farmId, plan });
+                      }}
+                    />
                   </li>
                 ))}
               </ul>
@@ -313,6 +310,8 @@ function UserDetailPanel({
 }
 
 export default function AdminUsersPage() {
+  const qc = useQueryClient();
+  const [tab, setTab] = useState<'users' | 'subscriptions'>('users');
   const [planFilter, setPlanFilter] = useState<AdminPlanFilter>('ALL');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -330,7 +329,19 @@ export default function AdminUsersPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-users', page, pageSize, planFilter, search],
     queryFn: () => adminService.listUsers({ page, pageSize, plan: planFilter, search: search || undefined }),
-    enabled: !!summary,
+    enabled: !!summary && tab === 'users',
+  });
+
+  const setUserPlan = useMutation({
+    mutationFn: ({ farmId, plan }: { farmId: string; plan: FarmPlan }) =>
+      adminService.setFarmPlan(farmId, plan),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ['admin-users'] });
+      void qc.invalidateQueries({ queryKey: ['admin-farms'] });
+      void qc.invalidateQueries({ queryKey: ['admin-summary'] });
+      toastPlanChange(result);
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
   if (summaryLoading) {
@@ -393,6 +404,31 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      <div className="flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit">
+        <button
+          type="button"
+          onClick={() => setTab('users')}
+          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            tab === 'users' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Users
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('subscriptions')}
+          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            tab === 'subscriptions' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Subscriptions
+        </button>
+      </div>
+
+      {tab === 'subscriptions' ? (
+        <AdminSubscriptionsTab />
+      ) : (
+        <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           {PLAN_FILTERS.map((f) => (
@@ -456,7 +492,7 @@ export default function AdminUsersPage() {
             <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
               <tr>
                 <th className="px-4 py-2">User</th>
-                <th className="px-4 py-2">Plan</th>
+                <th className="px-4 py-2">Subscription</th>
                 <th className="px-4 py-2">Farms</th>
                 <th className="px-4 py-2">Joined</th>
                 <th className="px-4 py-2">Status</th>
@@ -478,19 +514,36 @@ export default function AdminUsersPage() {
                   </td>
                 </tr>
               )}
-              {!isLoading && !error && users.map((user) => (
+              {!isLoading && !error && users.map((user) => {
+                const owned = primaryOwnedFarm(user);
+                return (
                 <tr key={user.id} className="hover:bg-gray-50/80">
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900">{user.name}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${planBadgeClass(user.highestOwnedPlan)}`}>
-                      {planLabel(user.highestOwnedPlan)}
-                    </span>
-                    {user.isPaying && (
-                      <span className="ml-1.5 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-                        Paying
+                    {owned ? (
+                      <div className="flex flex-col gap-1">
+                        <PlanSelect
+                          value={owned.plan}
+                          disabled={setUserPlan.isPending}
+                          onChange={(plan) => {
+                            if (plan !== owned.plan) setUserPlan.mutate({ farmId: owned.farmId, plan });
+                          }}
+                        />
+                        {user.ownedFarmCount > 1 && (
+                          <span className="text-xs text-gray-500">{user.ownedFarmCount} owned farms</span>
+                        )}
+                        {user.isPaying && (
+                          <span className="w-fit rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                            Stripe
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${planBadgeClass(user.highestOwnedPlan)}`}>
+                        {planLabel(user.highestOwnedPlan)}
                       </span>
                     )}
                   </td>
@@ -525,7 +578,8 @@ export default function AdminUsersPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
               {!isLoading && !error && users.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
@@ -565,6 +619,8 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+        </>
+      )}
 
       {selectedUser && (
         <UserDetailPanel

@@ -1,6 +1,13 @@
 import { FarmPlan, Prisma, Role } from '@prisma/client';
+import Stripe from 'stripe';
 import prisma from '../config/database';
+import { env } from '../config/env';
 import { AppError } from '../middleware/error.middleware';
+
+function stripeClient(): Stripe | null {
+  if (!env.STRIPE_SECRET_KEY) return null;
+  return new Stripe(env.STRIPE_SECRET_KEY);
+}
 
 const PLAN_RANK: Record<FarmPlan, number> = {
   FREE: 0,
@@ -19,6 +26,27 @@ export type AdminUserFarm = {
   pigCount: number;
   hasStripe: boolean;
   isDeleted: boolean;
+};
+
+export type AdminFarmRow = {
+  farmId: string;
+  farmName: string;
+  plan: FarmPlan;
+  country: string;
+  pigCount: number;
+  memberCount: number;
+  hasStripe: boolean;
+  createdAt: Date;
+  owner: { id: string; name: string; email: string } | null;
+};
+
+export type SetFarmPlanResult = {
+  id: string;
+  name: string;
+  previousPlan: FarmPlan;
+  plan: FarmPlan;
+  hadStripe: boolean;
+  stripeCanceled: boolean;
 };
 
 export type AdminUserRow = {
@@ -253,12 +281,142 @@ export class AdminService {
     });
   }
 
-  static async setFarmPlan(farmId: string, plan: FarmPlan) {
-    return prisma.farm.update({
+  static async setFarmPlan(farmId: string, plan: FarmPlan): Promise<SetFarmPlanResult> {
+    const farm = await prisma.farm.findUnique({
       where: { id: farmId },
-      data: { plan },
-      select: { id: true, name: true, plan: true },
+      select: {
+        id: true,
+        name: true,
+        plan: true,
+        isDeleted: true,
+        stripeSubscriptionId: true,
+      },
     });
+    if (!farm || farm.isDeleted) throw new AppError('Farm not found', 404);
+
+    const previousPlan = farm.plan;
+    if (previousPlan === plan) {
+      return {
+        id: farm.id,
+        name: farm.name,
+        previousPlan,
+        plan,
+        hadStripe: !!farm.stripeSubscriptionId,
+        stripeCanceled: false,
+      };
+    }
+
+    let stripeCanceled = false;
+    const hadStripe = !!farm.stripeSubscriptionId;
+
+    if (plan === FarmPlan.FREE && farm.stripeSubscriptionId) {
+      const stripe = stripeClient();
+      if (stripe) {
+        try {
+          await stripe.subscriptions.cancel(farm.stripeSubscriptionId);
+          stripeCanceled = true;
+        } catch (err) {
+          console.error('[admin] Stripe subscription cancel failed:', err);
+        }
+      }
+      await prisma.farm.update({
+        where: { id: farmId },
+        data: { plan, stripeSubscriptionId: null },
+      });
+    } else {
+      await prisma.farm.update({
+        where: { id: farmId },
+        data: { plan },
+      });
+    }
+
+    return {
+      id: farm.id,
+      name: farm.name,
+      previousPlan,
+      plan,
+      hadStripe,
+      stripeCanceled,
+    };
+  }
+
+  static async listFarms(opts: {
+    page: number;
+    pageSize: number;
+    plan?: AdminPlanFilter;
+    search?: string;
+  }) {
+    const { page, pageSize, plan = 'ALL', search } = opts;
+    const where: Prisma.FarmWhereInput = {
+      isDeleted: false,
+      ...(plan !== 'ALL' ? { plan } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              {
+                members: {
+                  some: {
+                    role: Role.OWNER,
+                    user: {
+                      OR: [
+                        { email: { contains: search, mode: 'insensitive' } },
+                        { name: { contains: search, mode: 'insensitive' } },
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, farms] = await Promise.all([
+      prisma.farm.count({ where }),
+      prisma.farm.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          plan: true,
+          country: true,
+          createdAt: true,
+          stripeSubscriptionId: true,
+          _count: { select: { members: true, pigs: true } },
+          members: {
+            where: { role: Role.OWNER },
+            take: 1,
+            select: {
+              user: { select: { id: true, name: true, email: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    const rows: AdminFarmRow[] = farms.map((f) => ({
+      farmId: f.id,
+      farmName: f.name,
+      plan: f.plan,
+      country: f.country,
+      pigCount: f._count.pigs,
+      memberCount: f._count.members,
+      hasStripe: !!f.stripeSubscriptionId,
+      createdAt: f.createdAt,
+      owner: f.members[0]?.user ?? null,
+    }));
+
+    return {
+      farms: rows,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
   static async deleteUser(userId: string, adminUserId: string) {

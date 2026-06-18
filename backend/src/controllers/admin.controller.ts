@@ -34,6 +34,19 @@ export class AdminController {
     }
   }
 
+  static async listFarms(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+      const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize || '25'), 10) || 25));
+      const plan = parsePlanFilter(req.query.plan);
+      const search = String(req.query.search || '').trim() || undefined;
+
+      res.json(await AdminService.listFarms({ page, pageSize, plan, search }));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getUser(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.params.userId as string;
