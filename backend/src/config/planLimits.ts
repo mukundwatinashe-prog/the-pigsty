@@ -2,6 +2,7 @@ import { FarmPlan } from '@prisma/client';
 
 export const FREE_TIER_MAX_PIGS = 50;
 export const GROWER_TIER_MAX_PIGS = 500;
+export const GROWER_TIER_MAX_MEMBERS = 5;
 export const GROWER_TRIAL_DAYS = 7;
 
 export function pigLimitForPlan(plan: FarmPlan): number | null {

@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { FarmProvider } from './context/FarmContext';
 import AppLayout from './components/layout/AppLayout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import PlatformAdminRoute from './components/PlatformAdminRoute';
 import MarketingLayout from './components/layout/MarketingLayout';
 import { ScrollToTop } from './components/ScrollToTop';
@@ -53,8 +54,9 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <FarmProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <FarmProvider>
           <BrowserRouter>
             <ScrollToTop />
             <Suspense
@@ -119,6 +121,7 @@ export default function App() {
           />
         </FarmProvider>
       </AuthProvider>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }

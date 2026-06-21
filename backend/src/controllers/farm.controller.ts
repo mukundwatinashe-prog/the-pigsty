@@ -122,50 +122,52 @@ export class FarmController {
 
   static async getById(req: FarmRequest, res: Response, next: NextFunction) {
     try {
-      const farm = await prisma.farm.findUnique({
-        where: { id: req.farmId! },
-        include: {
-          _count: {
-            select: {
-              pigs: { where: { status: { notIn: ['SOLD', 'DECEASED'] } } },
-              pens: true,
-              members: true,
+      // These reads are independent — run them concurrently to keep the
+      // "open farm" dashboard load fast (avoids serial round-trips on cold starts).
+      const [farm, stats, avgWeight, recentActivity, recentPigObservations, pigCount] =
+        await Promise.all([
+          prisma.farm.findUnique({
+            where: { id: req.farmId! },
+            include: {
+              _count: {
+                select: {
+                  pigs: { where: { status: { notIn: ['SOLD', 'DECEASED'] } } },
+                  pens: true,
+                  members: true,
+                },
+              },
+              members: { include: { user: { select: { id: true, name: true, email: true, photo: true } } } },
             },
-          },
-          members: { include: { user: { select: { id: true, name: true, email: true, photo: true } } } },
-        },
-      });
+          }),
+          prisma.pig.groupBy({
+            by: ['status'],
+            where: { farmId: req.farmId! },
+            _count: true,
+          }),
+          prisma.pig.aggregate({
+            where: { farmId: req.farmId!, status: 'ACTIVE' },
+            _avg: { currentWeight: true },
+          }),
+          prisma.auditLog.findMany({
+            where: { farmId: req.farmId! },
+            include: { user: { select: { id: true, name: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+          }),
+          prisma.pigObservation.findMany({
+            where: { pig: { farmId: req.farmId! } },
+            include: {
+              pig: { select: { id: true, tagNumber: true } },
+              user: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+          }),
+          prisma.pig.count({ where: onHandPigsWhere(req.farmId!) }),
+        ]);
+
       if (!farm || farm.isDeleted) return next(new AppError('Farm not found', 404));
 
-      const stats = await prisma.pig.groupBy({
-        by: ['status'],
-        where: { farmId: req.farmId! },
-        _count: true,
-      });
-
-      const avgWeight = await prisma.pig.aggregate({
-        where: { farmId: req.farmId!, status: 'ACTIVE' },
-        _avg: { currentWeight: true },
-      });
-
-      const recentActivity = await prisma.auditLog.findMany({
-        where: { farmId: req.farmId! },
-        include: { user: { select: { id: true, name: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      });
-
-      const recentPigObservations = await prisma.pigObservation.findMany({
-        where: { pig: { farmId: req.farmId! } },
-        include: {
-          pig: { select: { id: true, tagNumber: true } },
-          user: { select: { id: true, name: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-      });
-
-      const pigCount = await prisma.pig.count({ where: onHandPigsWhere(req.farmId!) });
       const pigLimit = pigLimitForPlan(farm.plan);
       const { stripeCustomerId: _c, stripeSubscriptionId: _s, ...farmPublic } = farm;
 

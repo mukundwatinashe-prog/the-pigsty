@@ -126,24 +126,19 @@ export default function FarmSelectPage() {
     },
   });
 
-  const onSelectFarm = async (farm: Farm) => {
-    try {
-      setSwitchingFarmId(farm.id);
-      const freshFarm = await farmService.getById(farm.id);
-      flushSync(() => {
-        setCurrentFarm(freshFarm.farm);
-      });
-      await queryClient.prefetchQuery({
-        queryKey: ['farm-dashboard', farm.id],
-        queryFn: () => farmService.getById(farm.id),
-      });
-      toast.success(`Switched to ${farm.name}`);
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Could not open farm');
-    } finally {
-      setSwitchingFarmId(null);
-    }
+  const onSelectFarm = (farm: Farm) => {
+    // Select and navigate immediately so a slow/failed dashboard fetch can never
+    // strand the user on this page. The dashboard route fetches its own detail
+    // (with a loading skeleton + retry), and this prefetch just warms that cache.
+    setSwitchingFarmId(farm.id);
+    flushSync(() => {
+      setCurrentFarm(farm);
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ['farm-dashboard', farm.id],
+      queryFn: () => farmService.getById(farm.id),
+    });
+    navigate('/dashboard');
   };
 
   if (authLoading) {
