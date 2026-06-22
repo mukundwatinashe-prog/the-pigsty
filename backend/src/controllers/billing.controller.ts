@@ -6,7 +6,7 @@ import { env, stripeConfigured } from '../config/env';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { FarmPlan } from '@prisma/client';
-import { GROWER_TIER_MAX_MEMBERS, GROWER_TRIAL_DAYS, pigLimitForPlan } from '../config/planLimits';
+import { GROWER_TIER_MAX_MEMBERS, GROWER_TRIAL_DAYS, pigLimitForPlan, allowsFinancialsExport, allowsEnterpriseAutomation } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { sendUserEmail } from '../services/email/emailSender';
 import { upgradeEmail } from '../services/email/templates';
@@ -123,6 +123,8 @@ export class BillingController {
         canAccessReports: farm.plan !== FarmPlan.FREE,
         canUseMassImport: farm.plan !== FarmPlan.FREE,
         canManageTeam: farm.plan !== FarmPlan.FREE,
+        canExportFinancials: allowsFinancialsExport(farm.plan),
+        canUseEnterpriseAutomation: allowsEnterpriseAutomation(farm.plan),
         memberLimit: farm.plan === FarmPlan.FREE ? 1 : farm.plan === FarmPlan.GROWER ? GROWER_TIER_MAX_MEMBERS : null,
         stripeConfigured,
         hasStripeCustomer: Boolean(farm.stripeCustomerId),

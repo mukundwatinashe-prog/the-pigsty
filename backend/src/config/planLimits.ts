@@ -34,3 +34,13 @@ export function memberLimitForPlan(plan: FarmPlan): number {
   if (plan === FarmPlan.ENTERPRISE) return Number.MAX_SAFE_INTEGER;
   return 1;
 }
+
+/** PDF/Excel financial exports — Enterprise only (Grower keeps on-screen summary). */
+export function allowsFinancialsExport(plan: FarmPlan): boolean {
+  return plan === FarmPlan.ENTERPRISE;
+}
+
+/** Scheduled report emails and SMS farm alerts — Enterprise only. */
+export function allowsEnterpriseAutomation(plan: FarmPlan): boolean {
+  return plan === FarmPlan.ENTERPRISE;
+}

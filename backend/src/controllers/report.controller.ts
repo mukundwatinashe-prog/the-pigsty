@@ -11,6 +11,7 @@ import {
   type FinancialsSummaryResult,
 } from '../services/financials-summary.service';
 import { compareAdgToTarget, targetAdgKgPerDay } from '../lib/weightTargets';
+import { allowsFinancialsExport } from '../config/planLimits';
 
 function imageExtFromDataUrl(dataUrl?: string | null): 'png' | 'jpeg' | null {
   if (!dataUrl) return null;
@@ -743,6 +744,15 @@ export class ReportController {
       const { format } = req.query as Record<string, string>;
       if (format !== 'pdf' && format !== 'xlsx') {
         return next(new AppError('Query format must be pdf or xlsx', 400));
+      }
+
+      const farmPlan = await prisma.farm.findUnique({
+        where: { id: req.farmId! },
+        select: { plan: true },
+      });
+      if (!farmPlan) return next(new AppError('Farm not found', 404));
+      if (!allowsFinancialsExport(farmPlan.plan)) {
+        return next(new AppError('Financial exports are available on the Enterprise plan.', 402));
       }
 
       const parsed = parseFinancialsDateQuery(req.query as Record<string, unknown>);

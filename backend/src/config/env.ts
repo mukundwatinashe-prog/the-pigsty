@@ -48,6 +48,8 @@ export const env = {
   R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || '',
   /** Cloudflare Turnstile secret — verifies chat requests are from humans. */
   TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY || '',
+  /** Bearer token for Vercel Cron → /api/cron/* (Vercel sets this automatically in production). */
+  CRON_SECRET: process.env.CRON_SECRET || '',
 };
 
 export const stripeConfigured = Boolean(

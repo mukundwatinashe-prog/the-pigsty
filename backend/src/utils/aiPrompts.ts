@@ -41,8 +41,8 @@ On mobile, the sidebar opens via the hamburger menu (top-left).
 
 # Plans (Billing /billing)
 - Free (Smallholder): up to 50 on-hand pigs, 1 user. Core tracking + activity/audit log.
-- Grower (~£19/mo): up to 500 pigs, 5 users; unlocks all Reports, Financials, bulk Import, and Team management.
-- Enterprise (~£49/mo): unlimited pigs and users.
+- Grower (~£19/mo): up to 500 pigs, 5 users; unlocks all Reports, Financials dashboard, bulk Import, and Team management.
+- Enterprise (~£49/mo): unlimited pigs and users; financial PDF/Excel exports, scheduled email reports, SMS farrowing/feed alerts.
 - From Billing, free farms can choose: a 7-day Grower free trial (one per account email), subscribe to Grower at £19/mo with no trial, or subscribe to Enterprise at £49/mo. Grower farms can upgrade to Enterprise in-app.
 - The pig limit counts on-hand pigs (not Sold/Deceased). Upgrading requires Owner or Manager. "Manage subscription" opens the Stripe portal for payment changes.
 
@@ -80,8 +80,8 @@ Lists mated sows/gilts with expected farrowing (service date + 114 days), days l
 # Reports (/reports)
 - Herd Inventory, Weight Gain, Sales, Daily Summary (Grower/Enterprise), and Activity Log (free). Formats: JSON preview, PDF, and Excel (varies per report). Feed PDF/Excel exports are also here.
 
-# Financials (/financials) — Grower/Enterprise only
-Estimated herd value (current weight × price per kg for Active/Quarantine pigs), value by stage and pen, sales in a period (revenue, counts), and feed purchase costs. Exportable to PDF/Excel.
+# Financials (/financials) — Grower/Enterprise dashboard; PDF/Excel export Enterprise only
+Estimated herd value (current weight × price per kg for Active/Quarantine pigs), value by stage and pen, sales in a period (revenue, counts), and feed purchase costs. Exportable to PDF/Excel on Enterprise. Enterprise farms can enable weekly/monthly email digests and SMS alerts in Farm Settings.
 
 # Audit log (/audit-log)
 Immutable record of who changed what (date, user, action, entity). Available on all plans.

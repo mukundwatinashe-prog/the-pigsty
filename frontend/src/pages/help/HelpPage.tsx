@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: 'What is included on the Free plan?',
-    a: 'Up to 50 pigs, one user, full pig/pen/weight tracking, feed logging, and activity log export. Reports, financials, bulk import, and team invites require Grower or Enterprise.',
+    a: 'Up to 50 pigs, one user, full pig/pen/weight tracking, feed logging, and activity log export. Reports, financials dashboard, bulk import, and team invites require Grower or Enterprise. Financial exports, scheduled emails, and SMS alerts require Enterprise.',
   },
   {
     q: 'How do I upgrade?',

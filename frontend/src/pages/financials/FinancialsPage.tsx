@@ -130,6 +130,7 @@ export default function FinancialsPage() {
   });
 
   const planLocked = farmDash?.billing?.canAccessReports === false;
+  const exportLocked = farmDash?.billing?.canExportFinancials === false;
 
   if (!currentFarm) {
     return (
@@ -145,13 +146,17 @@ export default function FinancialsPage() {
   }
 
   const handleExport = async (format: 'pdf' | 'xlsx') => {
-    if (!currentFarm || queryRange === 'INVALID') return;
+    if (!currentFarm || queryRange === 'INVALID' || exportLocked) return;
     setExporting(format);
     try {
       await reportService.financials(currentFarm.id, format, financialsParams);
       toast.success(format === 'pdf' ? 'PDF downloaded' : 'Excel downloaded');
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Export failed'));
+      if (isPlanUpgradeError(err)) {
+        toast.error(planUpgradeMessage(err, 'Financial exports require Enterprise.'));
+      } else {
+        toast.error(apiErrorMessage(err, 'Export failed'));
+      }
     } finally {
       setExporting(null);
     }
@@ -171,26 +176,34 @@ export default function FinancialsPage() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={!!exporting || customInvalid}
-              onClick={() => handleExport('xlsx')}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
-            >
-              {exporting === 'xlsx' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Download className="size-4" aria-hidden />}
-              Export Excel
-            </button>
-            <button
-              type="button"
-              disabled={!!exporting || customInvalid}
-              onClick={() => handleExport('pdf')}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
-            >
-              {exporting === 'pdf' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <FileText className="size-4" aria-hidden />}
-              Export PDF
-            </button>
-          </div>
+          {exportLocked ? (
+            <PlanUpgradeBanner
+              className="max-w-md text-left"
+              title="Financial exports require Enterprise"
+              message="Grower includes the live financials dashboard. Upgrade to Enterprise to download PDF and Excel financial reports."
+            />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={!!exporting || customInvalid}
+                onClick={() => handleExport('xlsx')}
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+              >
+                {exporting === 'xlsx' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Download className="size-4" aria-hidden />}
+                Export Excel
+              </button>
+              <button
+                type="button"
+                disabled={!!exporting || customInvalid}
+                onClick={() => handleExport('pdf')}
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+              >
+                {exporting === 'pdf' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <FileText className="size-4" aria-hidden />}
+                Export PDF
+              </button>
+            </div>
+          )}
           <Link
             to="/settings"
             className="inline-flex items-center gap-2 self-start sm:self-end rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
@@ -204,7 +217,7 @@ export default function FinancialsPage() {
       {planLocked && (
         <PlanUpgradeBanner
           title="Financials require Grower or Enterprise"
-          message="Upgrade to see herd value, sales totals, feed costs, and export financial reports."
+          message="Upgrade to see herd value, sales totals, and feed costs on the live dashboard. Enterprise adds PDF/Excel exports, scheduled email reports, and SMS alerts."
         />
       )}
 

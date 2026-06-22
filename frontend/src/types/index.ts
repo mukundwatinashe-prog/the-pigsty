@@ -1,5 +1,6 @@
 export type Role = 'OWNER' | 'FARM_MANAGER' | 'WORKER';
 export type FarmPlan = 'FREE' | 'GROWER' | 'ENTERPRISE';
+export type ReportEmailCadence = 'OFF' | 'WEEKLY' | 'MONTHLY';
 export type PigBreed = 'LARGE_WHITE' | 'LANDRACE' | 'DUROC' | 'PIETRAIN' | 'BERKSHIRE' | 'HAMPSHIRE' | 'CHESTER_WHITE' | 'YORKSHIRE' | 'TAMWORTH' | 'MUKOTA' | 'KOLBROEK' | 'WINDSNYER' | 'SA_LANDRACE' | 'INDIGENOUS' | 'CROSSBREED' | 'OTHER';
 export type PigStage =
   | 'BOAR'
@@ -50,6 +51,10 @@ export interface Farm {
   feedPurchasePriceUnit?: 'KG' | 'TONNE';
   /** Purchase price per feed type in farm currency (unit from feedPurchasePriceUnit) */
   feedPurchasePrices?: Partial<Record<FeedType, number>> | null;
+  reportEmailCadence?: ReportEmailCadence;
+  alertSmsPhone?: string | null;
+  alertSmsFarrowing?: boolean;
+  alertSmsLowStock?: boolean;
   createdAt: string;
   plan?: FarmPlan;
   _count?: { pigs: number; pens: number; members: number };
@@ -65,6 +70,8 @@ export interface FarmBillingInfo {
   canAccessReports?: boolean;
   canUseMassImport?: boolean;
   canManageTeam?: boolean;
+  canExportFinancials?: boolean;
+  canUseEnterpriseAutomation?: boolean;
   memberLimit?: number | null;
   growerTrialUsed?: boolean;
   canStartGrowerTrial?: boolean;

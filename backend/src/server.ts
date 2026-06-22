@@ -18,6 +18,7 @@ import contactRoutes from './routes/contact.routes';
 import chatRoutes from './routes/chat.routes';
 import securityRoutes from './routes/security.routes';
 import adminRoutes from './routes/admin.routes';
+import cronRoutes from './routes/cron.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { BillingController } from './controllers/billing.controller';
 import { SecurityService } from './services/security.service';
@@ -97,6 +98,7 @@ const limiter = rateLimit({
 app.use('/api/auth', limiter);
 
 app.use('/api/auth', authRoutes);
+app.use('/api/cron', cronRoutes);
 app.use('/api/contact', limiter, express.json({ limit: '32kb' }), contactRoutes);
 app.use('/api/chat', chatLimiter, chatRoutes);
 app.use('/api/security', securityRoutes);

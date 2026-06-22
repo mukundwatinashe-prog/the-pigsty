@@ -6,7 +6,8 @@ import { FarmRequest, ASSIGNABLE_ROLES } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
 import { FarmPlan, Prisma } from '@prisma/client';
-import { allowsMassImport, allowsMultiUser, allowsReports, memberLimitForPlan, pigLimitForPlan } from '../config/planLimits';
+import { allowsMassImport, allowsMultiUser, allowsReports, allowsFinancialsExport, allowsEnterpriseAutomation, memberLimitForPlan, pigLimitForPlan } from '../config/planLimits';
+import { normalizePhone } from '../lib/phone';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { farmCurrencySchema } from '../config/farmCurrencies';
 
@@ -61,6 +62,10 @@ const updateFarmSchema = z.object({
     z.string().regex(/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/, 'Invalid image data URL'),
     z.null(),
   ]).optional(),
+  reportEmailCadence: z.enum(['OFF', 'WEEKLY', 'MONTHLY']).optional(),
+  alertSmsPhone: z.string().max(20).nullable().optional(),
+  alertSmsFarrowing: z.boolean().optional(),
+  alertSmsLowStock: z.boolean().optional(),
 });
 
 export class FarmController {
@@ -183,6 +188,8 @@ export class FarmController {
           canAccessReports: allowsReports(farm.plan),
           canUseMassImport: allowsMassImport(farm.plan),
           canManageTeam: allowsMultiUser(farm.plan),
+          canExportFinancials: allowsFinancialsExport(farm.plan),
+          canUseEnterpriseAutomation: allowsEnterpriseAutomation(farm.plan),
           memberLimit: farm.plan === FarmPlan.ENTERPRISE ? null : memberLimitForPlan(farm.plan),
         },
         stats: {
@@ -200,11 +207,53 @@ export class FarmController {
   static async update(req: FarmRequest, res: Response, next: NextFunction) {
     try {
       const parsed = updateFarmSchema.parse(req.body);
-      const { feedDefaultDailyBuckets, feedPurchasePrices, ...rest } = parsed;
+      const farmBefore = await prisma.farm.findUnique({
+        where: { id: req.farmId! },
+        select: { plan: true },
+      });
+      if (!farmBefore) return next(new AppError('Farm not found', 404));
+
+      const wantsAutomation =
+        parsed.reportEmailCadence !== undefined ||
+        parsed.alertSmsPhone !== undefined ||
+        parsed.alertSmsFarrowing !== undefined ||
+        parsed.alertSmsLowStock !== undefined;
+      const automationActive =
+        (parsed.reportEmailCadence && parsed.reportEmailCadence !== 'OFF') ||
+        parsed.alertSmsFarrowing === true ||
+        parsed.alertSmsLowStock === true ||
+        (parsed.alertSmsPhone != null && String(parsed.alertSmsPhone).trim() !== '');
+
+      if (wantsAutomation && !allowsEnterpriseAutomation(farmBefore.plan)) {
+        return next(
+          new AppError('Scheduled reports and SMS alerts are available on the Enterprise plan.', 402),
+        );
+      }
+      if (automationActive && !allowsEnterpriseAutomation(farmBefore.plan)) {
+        return next(
+          new AppError('Scheduled reports and SMS alerts are available on the Enterprise plan.', 402),
+        );
+      }
+
+      let alertSmsPhone: string | null | undefined;
+      if (parsed.alertSmsPhone !== undefined) {
+        if (parsed.alertSmsPhone === null || String(parsed.alertSmsPhone).trim() === '') {
+          alertSmsPhone = null;
+        } else {
+          const normalized = normalizePhone(String(parsed.alertSmsPhone));
+          if (!normalized) {
+            return next(new AppError('Alert SMS phone must be 8–15 digits', 400));
+          }
+          alertSmsPhone = normalized;
+        }
+      }
+
+      const { feedDefaultDailyBuckets, feedPurchasePrices, alertSmsPhone: _dropPhone, ...rest } = parsed;
       const farm = await prisma.farm.update({
         where: { id: req.farmId! },
         data: {
           ...rest,
+          ...(alertSmsPhone !== undefined ? { alertSmsPhone } : {}),
           ...(feedDefaultDailyBuckets !== undefined && {
             feedDefaultDailyBuckets:
               feedDefaultDailyBuckets === null

@@ -2,6 +2,12 @@
   "installCommand": "unset npm_config_devdir NPM_CONFIG_DEVDIR && npm install",
   "buildCommand": "unset npm_config_devdir NPM_CONFIG_DEVDIR && npm run build",
   "outputDirectory": ".",
+  "crons": [
+    {
+      "path": "/api/cron/enterprise-automation",
+      "schedule": "0 7 * * *"
+    }
+  ],
   "functions": {
     "api/index.ts": {
       "maxDuration": 30

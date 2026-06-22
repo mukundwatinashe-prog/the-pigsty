@@ -92,7 +92,7 @@ const tiers = [
     price: sitePricing.enterpriseMonthly,
     period: '/ month',
     desc: 'Unlimited scale for co-ops and large operations.',
-    includes: ['Everything in Grower', 'Unlimited pigs & users', 'Priority support'],
+    includes: ['Everything in Grower', 'Unlimited pigs & users', 'Financial PDF/Excel exports', 'Scheduled email reports', 'SMS farrowing & feed alerts', 'Priority support'],
     limits: ['Billed per farm', 'Group deals on request'],
     cta: 'Get started',
     href: '/register',

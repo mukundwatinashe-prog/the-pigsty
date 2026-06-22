@@ -84,6 +84,12 @@ enum FarmPlan {
   ENTERPRISE
 }
 
+enum ReportEmailCadence {
+  OFF
+  WEEKLY
+  MONTHLY
+}
+
 enum InvitationStatus {
   PENDING
   ACCEPTED
@@ -261,6 +267,15 @@ model Farm {
   feedPurchasePriceUnit String @default("KG") @db.VarChar(10)
   /** Per-feed-type price in farm currency; unit determined by feedPurchasePriceUnit */
   feedPurchasePrices Json?
+  /** Enterprise: email digest cadence for owners/managers */
+  reportEmailCadence      ReportEmailCadence @default(OFF) @map("report_email_cadence")
+  reportEmailLastSentAt   DateTime?          @map("report_email_last_sent_at")
+  /** Enterprise: E.164-style digits for SMS alerts */
+  alertSmsPhone           String?            @map("alert_sms_phone")
+  alertSmsFarrowing       Boolean            @default(false) @map("alert_sms_farrowing")
+  alertSmsLowStock        Boolean            @default(false) @map("alert_sms_low_stock")
+  alertSmsLastFarrowingAt DateTime?          @map("alert_sms_last_farrowing_at")
+  alertSmsLastLowStockAt  DateTime?          @map("alert_sms_last_low_stock_at")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

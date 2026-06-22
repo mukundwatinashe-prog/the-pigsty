@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   AlertCircle,
+  Bell,
   Building2,
   Clock,
   Copy,
@@ -16,6 +17,7 @@ import {
   Mail,
   Save,
   Shield,
+  Smartphone,
   Trash2,
   UserPlus,
   Users,
@@ -27,7 +29,8 @@ import { useFarm } from '../../context/FarmContext';
 import { FARM_CURRENCY_OPTIONS, isFarmCurrency, type FarmCurrencyCode } from '../../constants/farmCurrencies';
 import { DEFAULT_FARM_CURRENCY } from '../../lib/siteConfig';
 import { farmService } from '../../services/farm.service';
-import type { Farm, FarmMember, FeedType, Invitation, Role } from '../../types';
+import type { Farm, FarmMember, FeedType, Invitation, ReportEmailCadence, Role } from '../../types';
+import { PlanUpgradeBanner } from '../../components/PlanUpgradeBanner';
 import { FEED_TYPE_LABELS } from '../../lib/feedUnits';
 
 function parseDefaultBucketsFromFarm(farm: Farm | undefined) {
@@ -91,6 +94,10 @@ const settingsSchema = z.object({
   feedPriceConcentrate: z.number().min(0, 'Must be 0 or more'),
   feedPriceLactating: z.number().min(0, 'Must be 0 or more'),
   feedPriceWeaner: z.number().min(0, 'Must be 0 or more'),
+  reportEmailCadence: z.enum(['OFF', 'WEEKLY', 'MONTHLY']),
+  alertSmsPhone: z.string().max(20).optional(),
+  alertSmsFarrowing: z.boolean(),
+  alertSmsLowStock: z.boolean(),
 });
 
 type SettingsForm = z.infer<typeof settingsSchema>;
@@ -177,6 +184,10 @@ export default function FarmSettingsPage() {
       feedPriceConcentrate: 0,
       feedPriceLactating: 0,
       feedPriceWeaner: 0,
+      reportEmailCadence: 'OFF' as ReportEmailCadence,
+      alertSmsPhone: '',
+      alertSmsFarrowing: false,
+      alertSmsLowStock: false,
     },
   });
   const { reset: resetSettings, control: settingsControl } = settingsForm;
@@ -204,6 +215,10 @@ export default function FarmSettingsPage() {
       ...parseDefaultBucketsFromFarm(farm),
       feedPurchasePriceUnit: farm.feedPurchasePriceUnit === 'TONNE' ? 'TONNE' : 'KG',
       ...parseFeedPurchasePricesFromFarm(farm),
+      reportEmailCadence: farm.reportEmailCadence ?? 'OFF',
+      alertSmsPhone: farm.alertSmsPhone ?? '',
+      alertSmsFarrowing: farm.alertSmsFarrowing ?? false,
+      alertSmsLowStock: farm.alertSmsLowStock ?? false,
     });
   }, [farm, resetSettings]);
 
@@ -227,10 +242,18 @@ export default function FarmSettingsPage() {
         feedPriceConcentrate,
         feedPriceLactating,
         feedPriceWeaner,
+        reportEmailCadence,
+        alertSmsPhone,
+        alertSmsFarrowing,
+        alertSmsLowStock,
         ...rest
       } = data;
       return farmService.update(farmId!, {
         ...rest,
+        reportEmailCadence,
+        alertSmsPhone: alertSmsPhone?.trim() ? alertSmsPhone.trim() : null,
+        alertSmsFarrowing,
+        alertSmsLowStock,
         feedDefaultDailyBuckets: {
           MAIZE_CRECHE: defaultMaizeBuckets,
           SOYA: defaultSoyaBuckets,
@@ -416,6 +439,7 @@ export default function FarmSettingsPage() {
   const members: FarmMember[] = farm.members ?? [];
   const billingInfo = detail?.billing;
   const teamLocked = billingInfo?.canManageTeam === false;
+  const automationLocked = billingInfo?.canUseEnterpriseAutomation === false;
   const teamMemberLimit = billingInfo?.memberLimit ?? null;
   const logoChanged = logoDataUrl !== (farm.logoUrl ?? null);
   const canSave =
@@ -653,7 +677,7 @@ export default function FarmSettingsPage() {
                   Low feed stock threshold (kg)
                 </label>
                 <p className="mt-0.5 text-xs text-gray-600">
-                  When any feed type&apos;s on-hand stock falls to or below this amount, you&apos;ll see an in-app alert (once per browser session per farm).
+                  When any feed type&apos;s on-hand stock falls to or below this amount, you&apos;ll see an in-app alert (once per browser session per farm). Enterprise farms can also receive a daily SMS when enabled below.
                 </p>
                 <input
                   id="settings-feed-low"
@@ -815,6 +839,103 @@ export default function FarmSettingsPage() {
           </div>
         </section>
       </form>
+
+      <section className="rounded-2xl border border-violet-200 bg-white p-6 shadow-sm">
+        <div className="mb-6 flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-800">
+            <Bell className="size-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold text-gray-900">Enterprise automation</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Scheduled email reports to owners/managers and optional SMS alerts for farrowing and low feed stock.
+            </p>
+          </div>
+        </div>
+
+        {automationLocked ? (
+          <PlanUpgradeBanner
+            title="Automation requires Enterprise"
+            message="Upgrade to Enterprise for weekly/monthly email digests, financial PDF/Excel exports, and SMS farm alerts."
+          />
+        ) : (
+          <form
+            className="space-y-6"
+            onSubmit={settingsForm.handleSubmit((data) => updateMutation.mutate(data))}
+          >
+            <div>
+              <label htmlFor="report-email-cadence" className="block text-sm font-medium text-gray-800">
+                Email report schedule
+              </label>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Sent to farm owners and managers. Weekly runs Monday mornings (UTC); monthly on the 1st.
+              </p>
+              <select
+                id="report-email-cadence"
+                {...settingsForm.register('reportEmailCadence')}
+                className="mt-2 w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+              >
+                <option value="OFF">Off</option>
+                <option value="WEEKLY">Weekly summary</option>
+                <option value="MONTHLY">Monthly financial digest</option>
+              </select>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+              <div className="flex items-start gap-3">
+                <Smartphone className="mt-0.5 size-5 shrink-0 text-violet-700" aria-hidden />
+                <div className="min-w-0 flex-1 space-y-4">
+                  <div>
+                    <label htmlFor="alert-sms-phone" className="block text-sm font-medium text-gray-800">
+                      SMS alert phone
+                    </label>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      Mobile number for text alerts (8–15 digits). UK numbers can start with 07…
+                    </p>
+                    <input
+                      id="alert-sms-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="e.g. 07712345678"
+                      {...settingsForm.register('alertSmsPhone')}
+                      className="mt-2 w-full max-w-sm rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                    />
+                  </div>
+                  <label className="flex cursor-pointer items-start gap-3 text-sm text-gray-800">
+                    <input
+                      type="checkbox"
+                      {...settingsForm.register('alertSmsFarrowing')}
+                      className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span>
+                      <strong className="font-medium">Farrowing reminders</strong> — text when a serviced sow is due within 7 days (once per day max).
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-3 text-sm text-gray-800">
+                    <input
+                      type="checkbox"
+                      {...settingsForm.register('alertSmsLowStock')}
+                      className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span>
+                      <strong className="font-medium">Low feed stock</strong> — text when any feed type falls below your threshold above (once per day max).
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-violet-800 disabled:opacity-50"
+            >
+              {updateMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Save automation settings
+            </button>
+          </form>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
