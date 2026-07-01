@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useFarm } from '../../context/FarmContext';
 import { farmService } from '../../services/farm.service';
 import { track } from '../../lib/analytics';
+import { isNativeApp } from '../../lib/native';
 
 function canManageSubscription(role: string) {
   return role === 'OWNER' || role === 'FARM_MANAGER';
@@ -109,6 +110,10 @@ export default function BillingPage() {
   }
 
   const manage = canManageSubscription(data.myRole);
+  // Apple/Google require their own in-app purchase system for digital subscriptions
+  // bought inside the app. We keep subscriptions web-only, so on native we hide all
+  // purchase/checkout UI and show an informational notice instead.
+  const purchasingEnabled = !isNativeApp();
   const limitLabel = data.pigLimit == null ? 'Unlimited' : String(data.pigLimit);
   const isGrower = data.plan === 'GROWER';
   const isEnterprise = data.plan === 'ENTERPRISE';
@@ -157,7 +162,18 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {isFree && (
+      {!purchasingEnabled && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-900">Manage your subscription</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Plans and payments are managed on our website. To start a trial, upgrade, or change your
+            plan, sign in at <span className="font-medium text-gray-900">the-pigsty.org</span> from a
+            web browser. Any changes will appear here automatically.
+          </p>
+        </div>
+      )}
+
+      {isFree && purchasingEnabled && (
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Upgrade this farm</h2>
@@ -285,7 +301,7 @@ export default function BillingPage() {
         </div>
       )}
 
-      {isGrower && (
+      {isGrower && purchasingEnabled && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-gray-900">Upgrade to Enterprise — {sitePricing.enterpriseMonthly}/month</h2>
           <p className="mt-1 text-sm text-gray-600">
@@ -312,7 +328,7 @@ export default function BillingPage() {
         </div>
       )}
 
-      {(isGrower || isEnterprise) && manage && data.stripeConfigured && data.hasStripeCustomer && (
+      {(isGrower || isEnterprise) && manage && data.stripeConfigured && data.hasStripeCustomer && purchasingEnabled && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-gray-900">Manage subscription</h2>
           <p className="mt-1 text-sm text-gray-600">Update payment method or cancel in the Stripe customer portal.</p>
@@ -328,7 +344,7 @@ export default function BillingPage() {
         </div>
       )}
 
-      {(isGrower || isEnterprise) && manage && data.stripeConfigured && !data.hasStripeCustomer && (
+      {(isGrower || isEnterprise) && manage && data.stripeConfigured && !data.hasStripeCustomer && purchasingEnabled && (
         <p className="text-sm text-gray-600">
           Paid plan is active. Customer portal becomes available after the first successful Stripe checkout for this farm.
         </p>
