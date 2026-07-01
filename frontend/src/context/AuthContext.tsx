@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { clearStoredFarm } from './FarmContext';
 import { mfaService } from '../services/security.service';
+import { clearAuthTokens } from '../lib/native';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -82,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Still clear client state if the network fails
     }
+    await clearAuthTokens();
     clearStoredFarm();
     setUser(null);
     qc.removeQueries();
