@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "npx prisma generate && tsc",
     "build:deploy": "npm run build:frontend && npm run build && node ../scripts/copy-frontend-to-backend-public.cjs",
     "build:frontend": "npm install --legacy-peer-deps --prefix ../frontend && npm run build --prefix ../frontend",
@@ -44,11 +46,12 @@
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^1.4.12",
-    "@types/nodemailer": "^6.4.17",
     "@types/node": "^22.13.10",
+    "@types/nodemailer": "^6.4.17",
     "@types/pdfkit": "^0.13.8",
     "prisma": "^6.5.0",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^2.1.9"
   }
 }
