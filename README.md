@@ -12,9 +12,10 @@ A full-stack pig farm management platform for tracking animals from birth to sal
 
 ## Features (Phase 1 MVP)
 
-- Email/password authentication with JWT + refresh tokens
+- Email/password authentication with JWT + refresh tokens, TOTP MFA, and account lockout
 - Google OAuth support
-- Role-based access control (Owner, Farm Manager, Veterinarian, Supervisor, Worker, Auditor)
+- Role-based access control with three roles: Owner, Farm Manager, Worker
+- Subscription plans (Free, Grower, Enterprise) with per-plan feature gating and Stripe billing
 - Multi-farm management with per-farm dashboards
 - Complete pig lifecycle management (birth/acquisition to sale)
 - Bulk pig import via Excel template (up to 5,000 records)
