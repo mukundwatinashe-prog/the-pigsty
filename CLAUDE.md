@@ -17,6 +17,8 @@ team management, subscription billing, and an AI assistant.
   Hook Form + Zod, Recharts. PWA via `vite-plugin-pwa`.
 - `email-worker/` — Cloudflare Worker relaying transactional mail to Resend.
 - `scripts/` — dev orchestration and build/copy helpers.
+- `frontend/ios/`, `frontend/android/` — Capacitor native shells wrapping the web
+  build for the App Store / Play Store. See `docs/MOBILE.md`.
 
 ## Commands
 
@@ -37,9 +39,11 @@ CI: `.github/workflows/ci.yml` runs typecheck + tests for both, plus a frontend 
 
 ## Architecture conventions (follow these)
 
-- **Auth**: JWT access/refresh tokens in httpOnly cookies (Bearer also accepted).
-  Access tokens carry a `tv` (token version) checked against `user.tokenVersion`
-  in `auth.middleware.ts` — bump the user's `tokenVersion` to revoke all sessions.
+- **Auth**: JWT access/refresh tokens in httpOnly cookies on web; the native app
+  sends `X-Client: mobile` and uses Bearer tokens (returned in the body, stored via
+  `frontend/src/lib/native.ts`). Access tokens carry a `tv` (token version) checked
+  against `user.tokenVersion` in `auth.middleware.ts` — bump the user's
+  `tokenVersion` to revoke all sessions.
 - **Authorization**: `requireFarmAccess(...permissions)` in `rbac.middleware.ts`
   resolves the caller's `FarmMember` role, checks a permission matrix, and enforces
   plan gating (returns `402` when a feature needs a higher plan). It sets

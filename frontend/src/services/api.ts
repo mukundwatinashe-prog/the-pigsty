@@ -1,4 +1,12 @@
 import axios from 'axios';
+import {
+  isNativeApp,
+  hydrateAuthTokens,
+  getAccessTokenSync,
+  getRefreshTokenSync,
+  setAuthTokens,
+  clearAuthTokens,
+} from '../lib/native';
 
 /** Production API host when the SPA is served from the-pigsty.org (API is on api.the-pigsty.org). */
 const PRODUCTION_API_BASE = 'https://api.the-pigsty.org/api';
@@ -58,8 +66,16 @@ const api = axios.create({
   timeout: 15_000,
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   config.baseURL = resolveApiBaseURL();
+  // Native shells can't rely on cookies — send a Bearer token and flag the client
+  // so the API returns fresh tokens in the response body.
+  if (isNativeApp()) {
+    await hydrateAuthTokens();
+    config.headers.set('X-Client', 'mobile');
+    const token = getAccessTokenSync();
+    if (token) config.headers.set('Authorization', `Bearer ${token}`);
+  }
   return config;
 });
 
@@ -67,9 +83,21 @@ let refreshInFlight: Promise<void> | null = null;
 
 function refreshSession(): Promise<void> {
   if (!refreshInFlight) {
+    const native = isNativeApp();
+    // Web refreshes via the httpOnly cookie; native sends the stored refresh token
+    // and persists the rotated tokens returned in the body.
+    const body = native ? { refreshToken: getRefreshTokenSync() } : {};
+    const headers = native ? { 'X-Client': 'mobile' } : undefined;
     refreshInFlight = axios
-      .post(withBase('/auth/refresh'), {}, { withCredentials: true })
-      .then(() => undefined)
+      .post(withBase('/auth/refresh'), body, { withCredentials: true, headers })
+      .then(async (res) => {
+        if (native) {
+          const d = res.data as { accessToken?: string; refreshToken?: string };
+          if (d?.accessToken && d?.refreshToken) {
+            await setAuthTokens(d.accessToken, d.refreshToken);
+          }
+        }
+      })
       .finally(() => {
         refreshInFlight = null;
       });
@@ -91,7 +119,20 @@ function shouldSkipRefreshRetry(config: { url?: string; method?: string }): bool
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // On native, persist any tokens the API returns (login/register/google/mfa)
+    // and drop them on logout.
+    if (isNativeApp()) {
+      const d = response.data as { accessToken?: string; refreshToken?: string } | undefined;
+      if (d?.accessToken && d?.refreshToken) {
+        void setAuthTokens(d.accessToken, d.refreshToken);
+      }
+      if ((response.config?.url ?? '').includes('/auth/logout')) {
+        void clearAuthTokens();
+      }
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     if (

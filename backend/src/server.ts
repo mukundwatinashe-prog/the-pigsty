@@ -36,11 +36,22 @@ app.use(helmet());
 app.use(cookieParser());
 
 const corsOriginsFromEnv = env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
+
+// Capacitor/Cordova native shells load the app from these local origins and
+// authenticate with Bearer tokens (see X-Client: mobile). Always allowed.
+const NATIVE_APP_ORIGINS = [
+  'capacitor://localhost',
+  'ionic://localhost',
+  'http://localhost',
+  'https://localhost',
+];
+
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (corsOriginsFromEnv.includes(origin)) return callback(null, true);
+      if (NATIVE_APP_ORIGINS.includes(origin)) return callback(null, true);
       if (env.NODE_ENV !== 'production') {
         if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return callback(null, true);
       }

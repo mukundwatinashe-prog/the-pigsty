@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isNativeApp } from '../lib/native';
 
 let gsiScriptPromise: Promise<void> | null = null;
 
@@ -31,7 +32,13 @@ type Props = {
 /**
  * Renders the official Google button. Requires `VITE_GOOGLE_CLIENT_ID` (same OAuth client ID as backend `GOOGLE_CLIENT_ID`).
  */
-export function GoogleSignInButton({ onCredential, text = 'continue_with', className = '' }: Props) {
+/** Google blocks OAuth inside embedded WebViews, so the button is hidden in the native app. */
+export function GoogleSignInButton(props: Props) {
+  if (isNativeApp()) return null;
+  return <GoogleSignInButtonImpl {...props} />;
+}
+
+function GoogleSignInButtonImpl({ onCredential, text = 'continue_with', className = '' }: Props) {
   const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
   const fallbackClientId = (() => {
     if (typeof window !== 'undefined') {

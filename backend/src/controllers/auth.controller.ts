@@ -87,13 +87,51 @@ const resetSchema = z
     }
   });
 
-function sendAuthResult(res: Response, result: Awaited<ReturnType<typeof AuthService.login>>) {
+function sendAuthResult(
+  req: Request,
+  res: Response,
+  result: Awaited<ReturnType<typeof AuthService.login>>,
+) {
   if ('mfaRequired' in result) {
     res.json({ mfaRequired: true, mfaChallenge: result.mfaChallenge });
     return;
   }
-  setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
-  res.json({ user: result.user });
+  sendTokens(req, res, result, { user: result.user });
+}
+
+/**
+ * Native apps (Capacitor) run on a `capacitor://localhost` origin where cross-site
+ * httpOnly cookies to the API are unreliable, so they authenticate with Bearer
+ * tokens. They opt in via `X-Client: mobile`; web clients keep the cookie-only
+ * flow (tokens are never exposed to JS on the web).
+ */
+function isMobileClient(req: Request): boolean {
+  return (req.get('x-client') || '').toLowerCase() === 'mobile';
+}
+
+/** Read a refresh token from the cookie, an `Authorization: Bearer` header, or the body. */
+function extractRefreshToken(req: Request): string | undefined {
+  const fromCookie = req.cookies?.[COOKIE_REFRESH] as string | undefined;
+  const authHeader = req.headers.authorization;
+  const fromBearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined;
+  const bodyToken = (req.body as { refreshToken?: unknown })?.refreshToken;
+  const fromBody = typeof bodyToken === 'string' ? bodyToken : undefined;
+  return fromCookie || fromBearer || fromBody;
+}
+
+/** Set auth cookies and, for mobile clients, also return the tokens in the JSON body. */
+function sendTokens(
+  req: Request,
+  res: Response,
+  tokens: { accessToken: string; refreshToken: string },
+  body: Record<string, unknown>,
+  status = 200,
+) {
+  setAuthCookies(res, tokens);
+  const payload = isMobileClient(req)
+    ? { ...body, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken }
+    : body;
+  res.status(status).json(payload);
 }
 
 export class AuthController {
@@ -101,8 +139,7 @@ export class AuthController {
     try {
       const { name, email, phone, password } = registerSchema.parse(req.body);
       const result = await AuthService.register(name, email, password, phone);
-      setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
-      res.status(201).json({ user: result.user });
+      sendTokens(req, res, result, { user: result.user }, 201);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));
@@ -115,7 +152,7 @@ export class AuthController {
     try {
       const { email, password } = loginSchema.parse(req.body);
       const result = await AuthService.login(email, password, getClientIp(req));
-      sendAuthResult(res, result);
+      sendAuthResult(req, res, result);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));
@@ -135,7 +172,7 @@ export class AuthController {
         profile.photo,
         getClientIp(req),
       );
-      sendAuthResult(res, result);
+      sendAuthResult(req, res, result);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));
@@ -148,8 +185,7 @@ export class AuthController {
     try {
       const { mfaChallenge, code } = mfaVerifySchema.parse(req.body);
       const result = await AuthService.completeMfaLogin(mfaChallenge, code, getClientIp(req));
-      setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
-      res.json({ user: result.user });
+      sendTokens(req, res, result, { user: result.user });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));
@@ -195,11 +231,10 @@ export class AuthController {
 
   static async refresh(req: Request, res: Response, next: NextFunction) {
     try {
-      const refreshToken = req.cookies?.[COOKIE_REFRESH] as string | undefined;
+      const refreshToken = extractRefreshToken(req);
       if (!refreshToken) throw new AppError('Refresh token required', 400);
       const tokens = await AuthService.refreshToken(refreshToken);
-      setAuthCookies(res, tokens);
-      res.json({ ok: true });
+      sendTokens(req, res, tokens, { ok: true });
     } catch (error) {
       next(error);
     }
@@ -207,7 +242,7 @@ export class AuthController {
 
   static async logout(req: Request, res: Response, next: NextFunction) {
     try {
-      const refreshToken = req.cookies?.[COOKIE_REFRESH] as string | undefined;
+      const refreshToken = extractRefreshToken(req);
       await AuthService.revokeRefreshToken(refreshToken);
       clearAuthCookies(res);
       res.json({ message: 'Logged out' });
