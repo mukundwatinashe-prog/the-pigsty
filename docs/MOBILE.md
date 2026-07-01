@@ -60,11 +60,35 @@ Re-run `npm run cap:sync` after any change to the web app.
 
 ## Store submission (high level)
 
-1. Set app icons and splash screens (see `@capacitor/assets`).
-2. **Android**: in Android Studio, Build → Generate Signed Bundle (AAB), then
-   upload to the Play Console.
-3. **iOS**: in Xcode, set your Team + bundle id (`org.thepigsty.app`), Product →
+1. App icons and splash screens are generated from `frontend/assets/logo.png` via
+   `@capacitor/assets` — regenerate with `npx @capacitor/assets generate`.
+2. **iOS**: in Xcode, set your Team + bundle id (`org.thepigsty.app`), Product →
    Archive, then distribute to App Store Connect.
+
+### Android release build (signed AAB)
+
+Release signing is already configured. The upload keystore lives **outside the
+repo** at `~/.pigsty-keys/pigsty-upload.jks` (password in `~/.pigsty-keys/PASSWORD.txt`),
+and Gradle reads it via `frontend/android/keystore.properties` (gitignored). None
+of these are ever committed.
+
+> ⚠️ **Back up `~/.pigsty-keys/` in a password manager.** With Play App Signing
+> (recommended, enabled during Play Console setup) a lost upload key can be reset
+> by Google, but keep it safe regardless.
+
+Build the bundle to upload to the Play Console:
+
+```bash
+cd frontend
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+npm run build && npx cap sync android
+cd android && ./gradlew bundleRelease
+# → app/build/outputs/bundle/release/app-release.aab
+```
+
+Bump `versionCode` (and `versionName`) in `frontend/android/app/build.gradle`
+before every new upload. First release is `versionCode 1`, `versionName "1.0"`.
 
 ## Known gaps / decisions still needed
 
