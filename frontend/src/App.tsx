@@ -2,8 +2,9 @@ import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { FarmProvider } from './context/FarmContext';
+import { isNativeApp } from './lib/native';
 import AppLayout from './components/layout/AppLayout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import PlatformAdminRoute from './components/PlatformAdminRoute';
@@ -51,7 +52,24 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Native app entry: skip the marketing site entirely. Returning (authenticated)
+ * users go straight to their farms; everyone else lands on the login screen.
+ */
+function NativeRoot() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-accent-50 px-4">
+        <p className="text-sm font-medium text-gray-600">Loading…</p>
+      </div>
+    );
+  }
+  return <Navigate to={user ? '/farms' : '/login'} replace />;
+}
+
 export default function App() {
+  const native = isNativeApp();
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
@@ -67,8 +85,9 @@ export default function App() {
               }
             >
               <Routes>
+                {native && <Route path="/" element={<NativeRoot />} />}
                 <Route element={<MarketingLayout />}>
-                  <Route path="/" element={<LandingPage />} />
+                  {!native && <Route path="/" element={<LandingPage />} />}
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
