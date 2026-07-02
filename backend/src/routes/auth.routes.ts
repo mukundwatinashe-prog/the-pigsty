@@ -72,6 +72,7 @@ router.post('/forgot-password', forgotPasswordLimiter, AuthController.forgotPass
 router.post('/reset-password', resetPasswordLimiter, AuthController.resetPassword);
 router.get('/me', authenticate, AuthController.me);
 router.patch('/profile', authenticate, AuthController.updateProfile);
+router.delete('/account', authenticate, AuthController.deleteAccount);
 router.post('/mfa/setup', authenticate, AuthController.mfaSetup);
 router.post('/mfa/enable', authenticate, AuthController.mfaEnable);
 router.post('/mfa/disable', authenticate, AuthController.mfaDisable);

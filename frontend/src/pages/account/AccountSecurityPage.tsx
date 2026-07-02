@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Shield, ShieldCheck, ShieldOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Shield, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { mfaService } from '../../services/security.service';
-import { apiErrorMessage } from '../../services/api';
+import api, { apiErrorMessage } from '../../services/api';
 
 export default function AccountSecurityPage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState('');
   const [setup, setSetup] = useState<{ secret: string; otpauthUrl: string } | null>(null);
   const [enableCode, setEnableCode] = useState('');
   const [disableCode, setDisableCode] = useState('');
@@ -40,6 +43,16 @@ export default function AccountSecurityPage() {
       const { data } = await import('../../services/api').then((m) => m.default.get('/auth/me'));
       updateUser(data.user);
       toast.success('Two-factor authentication disabled');
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+
+  const deleteAccount = useMutation({
+    mutationFn: () => api.delete('/auth/account'),
+    onSuccess: async () => {
+      toast.success('Your account has been deleted');
+      await logout();
+      navigate('/login', { replace: true });
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
@@ -141,6 +154,37 @@ export default function AccountSecurityPage() {
             </button>
           </div>
         )}
+      </div>
+
+      <div className="rounded-xl border border-red-200 bg-white p-6">
+        <h2 className="flex items-center gap-2 font-semibold text-red-700">
+          <Trash2 className="size-5" aria-hidden />
+          Delete account
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Permanently delete your account and personal data. Farms you solely own are
+          archived. If you own a farm that has other members, transfer ownership or remove
+          the members first. This cannot be undone.
+        </p>
+        <label className="mt-4 block text-sm font-medium text-gray-700">
+          Type <span className="font-semibold">DELETE</span> to confirm
+        </label>
+        <input
+          value={confirmDelete}
+          onChange={(e) => setConfirmDelete(e.target.value)}
+          className="mt-1 w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          placeholder="DELETE"
+          autoCapitalize="characters"
+          autoCorrect="off"
+        />
+        <button
+          type="button"
+          onClick={() => deleteAccount.mutate()}
+          disabled={confirmDelete !== 'DELETE' || deleteAccount.isPending}
+          className="mt-4 block rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+        >
+          {deleteAccount.isPending ? 'Deleting…' : 'Delete my account'}
+        </button>
       </div>
     </div>
   );
