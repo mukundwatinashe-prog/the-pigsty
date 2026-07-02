@@ -189,7 +189,7 @@ export default function BillingPage() {
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-gray-900">{sitePricing.growerTrialDays}-day Grower free trial</h3>
                 <p className="mt-1 text-sm text-gray-700">
-                  Try Grower features free for {sitePricing.growerTrialDays} days — reports, imports, and up to 5 users. A card is required;
+                  Try Grower features free for {sitePricing.growerTrialDays} days — reports, imports, the AI assistant, and up to 5 users. A card is required;
                   after the trial it becomes {sitePricing.growerMonthly}/month unless you cancel.
                 </p>
                 {data.growerTrialUsed ? (
@@ -221,7 +221,7 @@ export default function BillingPage() {
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900">Grower — {sitePricing.growerMonthly}/month</h3>
             <p className="mt-1 text-sm text-gray-600">
-              Up to 500 pigs, all reports, mass import, and up to 5 users. Billed monthly from day one — no trial.
+              Up to 500 pigs, all reports, mass import, the AI assistant, and up to 5 users. Billed monthly from day one — no trial.
             </p>
             {manage && data.stripeConfigured && (
               <button
