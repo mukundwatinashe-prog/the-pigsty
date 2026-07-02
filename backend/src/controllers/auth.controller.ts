@@ -8,6 +8,7 @@ import { setAuthCookies, clearAuthCookies, COOKIE_REFRESH } from '../utils/auth.
 import { verifyGoogleIdToken } from '../utils/googleVerify';
 import { getClientIp } from '../utils/requestIp';
 import { MfaService } from '../services/mfa.service';
+import { AdminService } from '../services/admin.service';
 
 const registerSchema = z.object({
   name: z.string().min(2).max(100),
@@ -246,6 +247,17 @@ export class AuthController {
       await AuthService.revokeRefreshToken(refreshToken);
       clearAuthCookies(res);
       res.json({ message: 'Logged out' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** Self-service account deletion (App Store / Play Store requirement). */
+  static async deleteAccount(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteAccountById(req.userId!);
+      clearAuthCookies(res);
+      res.json({ message: 'Your account has been deleted.' });
     } catch (error) {
       next(error);
     }

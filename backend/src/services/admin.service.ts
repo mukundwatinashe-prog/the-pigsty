@@ -541,7 +541,15 @@ export class AdminService {
     if (userId === adminUserId) {
       throw new AppError('Cannot delete your own account', 400);
     }
+    return this.deleteAccountById(userId);
+  }
 
+  /**
+   * Core account deletion, shared by admin delete and user self-service delete.
+   * Archives farms the user solely owns; refuses if they own a farm that still
+   * has other members (they must transfer ownership or remove members first).
+   */
+  static async deleteAccountById(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
