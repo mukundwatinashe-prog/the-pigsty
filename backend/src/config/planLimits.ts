@@ -29,6 +29,11 @@ export function allowsMultiUser(plan: FarmPlan): boolean {
   return plan !== FarmPlan.FREE;
 }
 
+/** AI assistant — first paid wall (Grower and Enterprise). */
+export function allowsAiAssistant(plan: FarmPlan): boolean {
+  return plan !== FarmPlan.FREE;
+}
+
 export function memberLimitForPlan(plan: FarmPlan): number {
   if (plan === FarmPlan.GROWER) return GROWER_TIER_MAX_MEMBERS;
   if (plan === FarmPlan.ENTERPRISE) return Number.MAX_SAFE_INTEGER;

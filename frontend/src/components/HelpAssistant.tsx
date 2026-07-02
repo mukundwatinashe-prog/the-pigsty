@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Sparkles, X, Send, Loader2 } from 'lucide-react';
 import { chatService, type ChatMessage } from '../services/chat.service';
 import { apiErrorMessage } from '../services/api';
 import { ChatHoneypot, TurnstileMount } from './ChatHumanVerification';
 import { useTurnstile } from '../hooks/useTurnstile';
+import { useFarm } from '../context/FarmContext';
 
 type UiMessage = {
   id: string;
@@ -34,6 +36,10 @@ function newId() {
 }
 
 export function HelpAssistant() {
+  const { currentFarm } = useFarm();
+  // AI assistant is behind the first paid wall. Show the chat unless the current
+  // farm is explicitly on the Free plan (the server enforces this too).
+  const aiEnabled = currentFarm?.plan !== 'FREE';
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<UiMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
@@ -190,6 +196,26 @@ export function HelpAssistant() {
             </button>
           </div>
 
+          {!aiEnabled ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-accent-50 px-6 py-8 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+                <Sparkles className="size-6" />
+              </span>
+              <h3 className="text-base font-semibold text-gray-900">Unlock the AI assistant</h3>
+              <p className="text-sm text-gray-600">
+                The Pigsty Assistant is available on the Grower and Enterprise plans. Upgrade to get
+                instant help with your herd, reports, and more.
+              </p>
+              <Link
+                to="/billing"
+                onClick={() => setOpen(false)}
+                className="mt-1 inline-flex min-h-11 items-center rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700"
+              >
+                View plans
+              </Link>
+            </div>
+          ) : (
+          <>
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto overscroll-contain bg-accent-50 px-4 py-4">
             {messages.map((m) => (
               <div
@@ -264,6 +290,8 @@ export function HelpAssistant() {
               The assistant explains how to use The Pigsty. Always double-check important actions.
             </p>
           </form>
+          </>
+          )}
         </div>
       )}
     </>
