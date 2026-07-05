@@ -77,7 +77,10 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
           if (id.includes('recharts')) return 'charts';
-          if (id.includes('react-router-dom')) return 'router';
+          // Keep react-router-dom AND its core dep `react-router` (v7) in ONE chunk.
+          // Splitting them duplicates the Router context module, so lazily-loaded routes
+          // read a null context and crash on client-side navigation (e.g. Farms → Dashboard).
+          if (id.includes('react-router')) return 'router';
           if (id.includes('@tanstack/react-query')) return 'query';
           return 'vendor';
         },
