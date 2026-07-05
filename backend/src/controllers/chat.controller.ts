@@ -5,8 +5,6 @@ import { AppError } from '../middleware/error.middleware';
 import { ChatService } from '../services/chat.service';
 import { aiService } from '../services/ai.service';
 import { getAiSystemPrompt } from '../utils/aiPrompts';
-import { assertHumanRequest } from '../services/turnstile.service';
-import { getClientIp } from '../utils/requestIp';
 
 const createConversationSchema = z.object({
   title: z.string().trim().min(1).max(255).optional(),
@@ -105,11 +103,10 @@ export class ChatController {
     try {
       if (!req.userId) throw new AppError('Authentication required', 401);
       const body = sendMessageSchema.parse(req.body ?? {});
-      await assertHumanRequest({
-        turnstileToken: body.turnstileToken,
-        honeypot: body.website,
-        ip: getClientIp(req),
-      });
+      // No Turnstile/human check here: the authenticated assistant is already
+      // protected by login, per-user rate limiting, and the paid-plan gate.
+      // (Turnstile can't complete inside the native WebView; the public "Piggy"
+      // chat keeps its Turnstile check.)
       await ChatService.getConversationById(body.conversationId, req.userId);
 
       await ChatService.addMessage(body.conversationId, 'user', body.message);
