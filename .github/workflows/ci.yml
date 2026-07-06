@@ -48,3 +48,6 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Regression guard: fail if react-router is duplicated across chunks
+      # (would reintroduce the duplicate-Router-context navigation crash).
+      - run: npm run check:bundle
