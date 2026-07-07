@@ -52,9 +52,10 @@ export function mailtoSupport(subject: string, body?: string): string {
   return `mailto:${siteConfig.supportEmail}?${q.toString()}`;
 }
 
-const CONTACT_PAGE_EMAIL = 'mukundwatinashe@gmail.com';
+/** Public Contact page emails the same support address users see everywhere else. */
+const CONTACT_PAGE_EMAIL = siteConfig.supportEmail;
 
-/** Mailto for the public Contact page (matches backend CONTACT_PAGE_INBOX_EMAIL). */
+/** Mailto for the public Contact page. */
 export function mailtoContactPage(subject: string, body?: string): string {
   const q = new URLSearchParams({ subject });
   if (body) q.set('body', body);
