@@ -194,7 +194,7 @@ export default function PigImportPage() {
             <p className="text-accent-100 mt-1 text-sm">Your spreadsheet has been processed.</p>
           </div>
           <div className="p-8 space-y-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 gap-4 text-center sm:grid-cols-3">
               <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                 <p className="text-2xl font-bold text-gray-900">{importSummary.imported}</p>
                 <p className="text-xs text-gray-500 uppercase tracking-wide mt-1">Imported</p>
