@@ -9,7 +9,7 @@ interface State {
   message?: string;
 }
 
-const CHUNK_RELOAD_KEY = 'pigtrack:chunk-reload';
+const RECOVER_KEY = 'pigtrack:auto-recovered';
 
 /** Catches render errors so a single failure shows a recoverable screen instead of a blank page. */
 export class ErrorBoundary extends Component<Props, State> {
@@ -20,21 +20,36 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Stale PWA/deploy can leave hashed chunks 404ing. Reload once to fetch the new build.
-    const isChunkError = /loading (chunk|css chunk)|dynamically imported module|importing a module script failed/i.test(
-      `${error?.message ?? ''} ${error?.name ?? ''}`,
-    );
-    if (isChunkError && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
-      sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
-      window.location.reload();
-      return;
-    }
     console.error('App render error:', error, info.componentStack);
+    // A first unexpected error in a tab is almost always a stale cached build
+    // after a deploy (stale service worker / hashed chunks). Auto-recover once by
+    // dropping the SW + caches and reloading to fetch the latest build. If it
+    // still fails after that, show the recovery screen instead of looping.
+    if (!sessionStorage.getItem(RECOVER_KEY)) {
+      sessionStorage.setItem(RECOVER_KEY, '1');
+      void ErrorBoundary.reloadFresh();
+    }
+  }
+
+  private static async reloadFresh() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if (typeof caches !== 'undefined') {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch {
+      /* best-effort — reload regardless */
+    }
+    window.location.reload();
   }
 
   private handleReload = () => {
-    sessionStorage.removeItem(CHUNK_RELOAD_KEY);
-    window.location.reload();
+    sessionStorage.removeItem(RECOVER_KEY);
+    void ErrorBoundary.reloadFresh();
   };
 
   render() {
