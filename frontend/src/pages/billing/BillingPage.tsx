@@ -331,7 +331,11 @@ export default function BillingPage() {
       {(isGrower || isEnterprise) && manage && data.stripeConfigured && data.hasStripeCustomer && purchasingEnabled && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-gray-900">Manage subscription</h2>
-          <p className="mt-1 text-sm text-gray-600">Update payment method or cancel in the Stripe customer portal.</p>
+          <p className="mt-1 text-sm text-gray-600">
+            Update your payment method, or cancel your plan, in the Stripe customer portal. If you
+            cancel, paid features stay active until the end of your current billing period, then the
+            farm returns to the Free plan — your data is never deleted.
+          </p>
           <button
             type="button"
             disabled={portalMutation.isPending}
