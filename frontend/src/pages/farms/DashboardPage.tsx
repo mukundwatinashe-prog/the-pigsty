@@ -38,10 +38,14 @@ export default function DashboardPage() {
   const { currentFarm } = useFarm();
   const navigate = useNavigate();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['farm-dashboard', currentFarm?.id],
     queryFn: () => farmService.getById(currentFarm!.id),
     enabled: !!currentFarm,
+    // The dashboard is the first heavy call after login (several queries at once);
+    // ride out cold-start latency (serverless + DB wake-up) with a few retries.
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
   });
 
   const { data: servicedData } = useQuery({
@@ -83,7 +87,15 @@ export default function DashboardPage() {
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
         <AlertTriangle className="text-red-500 mx-auto mb-2" size={32} />
-        <p className="text-red-700">Failed to load dashboard data</p>
+        <p className="text-red-700">Couldn&apos;t load your dashboard — this is usually a brief hiccup.</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+        >
+          {isFetching ? 'Retrying…' : 'Try again'}
+        </button>
       </div>
     );
   }
