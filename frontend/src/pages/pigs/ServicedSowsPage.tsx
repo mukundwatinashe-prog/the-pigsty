@@ -197,7 +197,78 @@ export default function ServicedSowsPage() {
         )}
 
         {!isLoading && !isError && sows.length > 0 && (
-          <div className="overflow-x-auto">
+          <>
+            <ul className="divide-y divide-gray-100 md:hidden">
+              {sows.map((sow) => (
+                <li key={sow.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link to={`/pigs/${sow.id}`} className="font-mono text-base font-semibold text-primary-700 hover:underline">
+                        {sow.tagNumber}
+                      </Link>
+                      <p className="mt-0.5 text-sm text-gray-600">
+                        {breedLabel(sow.breed)} · {stageLabel(sow.stage)}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {sow.currentWeight} {unit}
+                        {sow.parity != null ? ` · Parity ${sow.parity}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${healthBadgeClass(sow.healthStatus)}`}>
+                        {healthLabel(sow.healthStatus)}
+                      </span>
+                      <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-semibold ${birthUrgencyClass(sow.daysUntilBirth)}`}>
+                        {sow.daysUntilBirth > 0 ? `${sow.daysUntilBirth} days` : sow.daysUntilBirth === 0 ? 'Today' : 'Overdue'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Serviced</dt>
+                      <dd className="text-gray-800">{formatDate(sow.servicedDate)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Expected birth</dt>
+                      <dd className="font-medium text-gray-900">{formatDate(sow.expectedBirthDate)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Date of birth</dt>
+                      <dd className="text-gray-800">{formatDate(sow.dateOfBirth)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Reminders</dt>
+                      <dd className="flex flex-wrap gap-1">
+                        {sow.needsHeatCheck && (
+                          <span className="rounded-md bg-primary-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-800">
+                            Day 21 heat
+                          </span>
+                        )}
+                        {sow.needsPreFarrowPrep && (
+                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                            Day 100 prep
+                          </span>
+                        )}
+                        {!sow.needsHeatCheck && !sow.needsPreFarrowPrep && (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <button
+                    onClick={() => openModal(sow)}
+                    className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 active:bg-primary-800 transition touch-target"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Record Birth
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -270,15 +341,16 @@ export default function ServicedSowsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
 
       {/* Birth Recording Modal */}
       {modalSow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <button type="button" className="absolute inset-0" aria-label="Close" onClick={closeModal} />
+          <div className="relative max-h-[100dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Record Birth</h2>
@@ -300,7 +372,7 @@ export default function ServicedSowsPage() {
                   required
                   value={form.farrowingDate}
                   onChange={e => setForm(f => ({ ...f, farrowingDate: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                  className="mobile-input w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                 />
               </div>
 

@@ -13,6 +13,62 @@ type ActivityResponse = {
   totalPages: number;
 };
 
+function AuditLogMobileCard({ row }: { row: AuditLog }) {
+  return (
+    <li className="p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="text-sm text-gray-700">
+          {new Date(row.createdAt).toLocaleString(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          })}
+        </p>
+        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
+          {row.action}
+        </span>
+      </div>
+      <p className="mt-2 font-medium text-gray-900">{row.user?.name ?? '—'}</p>
+      <p className="mt-1 text-sm text-gray-800">
+        <span className="font-medium">{row.entity}</span>
+        <span className="ml-2 font-mono text-xs text-gray-400">{row.entityId.slice(0, 8)}…</span>
+      </p>
+      {row.details ? (
+        <p className="mt-2 text-sm text-gray-600 line-clamp-3" title={row.details}>
+          {row.details}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+function AuditLogTableRow({ row }: { row: AuditLog }) {
+  return (
+    <tr className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+      <td className="whitespace-nowrap px-4 py-3 text-gray-700">
+        {new Date(row.createdAt).toLocaleString(undefined, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        })}
+      </td>
+      <td className="px-4 py-3 font-medium text-gray-900">{row.user?.name ?? '—'}</td>
+      <td className="px-4 py-3">
+        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
+          {row.action}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-gray-800">
+        <span className="font-medium">{row.entity}</span>
+        <span className="ml-2 font-mono text-xs text-gray-400">{row.entityId.slice(0, 8)}…</span>
+      </td>
+      <td className="max-w-md px-4 py-3 text-gray-600">
+        <span className="line-clamp-2" title={row.details ?? undefined}>
+          {row.details ?? '—'}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
 export default function AuditLogPage() {
   const { currentFarm } = useFarm();
   const farmId = currentFarm?.id;
@@ -34,7 +90,7 @@ export default function AuditLogPage() {
 
   if (!farmId) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12 text-center">
+      <div className="mx-auto max-w-3xl py-12 text-center">
         <ScrollText className="mx-auto mb-4 size-12 text-gray-300" />
         <h1 className="text-lg font-semibold text-gray-800">Audit log</h1>
         <p className="mt-2 text-gray-600">Select a farm to view the audit log.</p>
@@ -43,8 +99,8 @@ export default function AuditLogPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8">
+    <div className="mx-auto max-w-6xl space-y-8">
+      <div>
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Audit log</h1>
         <p className="mt-1 text-sm text-gray-600">
           Who did what on {currentFarm?.name} — immutable activity history
@@ -52,78 +108,54 @@ export default function AuditLogPage() {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50/80">
-                <th className="px-4 py-3 font-semibold text-gray-700">Date</th>
-                <th className="px-4 py-3 font-semibold text-gray-700">User</th>
-                <th className="px-4 py-3 font-semibold text-gray-700">Action</th>
-                <th className="px-4 py-3 font-semibold text-gray-700">Entity</th>
-                <th className="px-4 py-3 font-semibold text-gray-700">Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isError ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center">
-                    <p className="text-sm text-red-600">
-                      {error instanceof Error ? error.message : 'Failed to load audit log.'}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => refetch()}
-                      className="mt-3 text-sm font-medium text-primary-600 hover:underline"
-                    >
-                      Try again
-                    </button>
-                  </td>
-                </tr>
-              ) : isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-16 text-center text-gray-500">
-                    <Loader2 className="mx-auto mb-2 size-8 animate-spin text-primary-500" />
-                    Loading audit entries…
-                  </td>
-                </tr>
-              ) : !data?.data?.length ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-16 text-center text-gray-500">
-                    No audit entries yet.
-                  </td>
-                </tr>
-              ) : (
-                data.data.map((row) => (
-                  <tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
-                    <td className="whitespace-nowrap px-4 py-3 text-gray-700">
-                      {new Date(row.createdAt).toLocaleString(undefined, {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {row.user?.name ?? '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
-                        {row.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-800">
-                      <span className="font-medium">{row.entity}</span>
-                      <span className="ml-2 font-mono text-xs text-gray-400">{row.entityId.slice(0, 8)}…</span>
-                    </td>
-                    <td className="max-w-md px-4 py-3 text-gray-600">
-                      <span className="line-clamp-2" title={row.details ?? undefined}>
-                        {row.details ?? '—'}
-                      </span>
-                    </td>
+        {isError ? (
+          <div className="px-4 py-12 text-center">
+            <p className="text-sm text-red-600">
+              {error instanceof Error ? error.message : 'Failed to load audit log.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="mt-3 text-sm font-medium text-primary-600 hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        ) : isLoading ? (
+          <div className="flex flex-col items-center justify-center px-4 py-16 text-gray-500">
+            <Loader2 className="mb-2 size-8 animate-spin text-primary-500" />
+            Loading audit entries…
+          </div>
+        ) : !data?.data?.length ? (
+          <div className="px-4 py-16 text-center text-gray-500">No audit entries yet.</div>
+        ) : (
+          <>
+            <ul className="divide-y divide-gray-100 md:hidden">
+              {data.data.map((row) => (
+                <AuditLogMobileCard key={row.id} row={row} />
+              ))}
+            </ul>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50/80">
+                    <th className="px-4 py-3 font-semibold text-gray-700">Date</th>
+                    <th className="px-4 py-3 font-semibold text-gray-700">User</th>
+                    <th className="px-4 py-3 font-semibold text-gray-700">Action</th>
+                    <th className="px-4 py-3 font-semibold text-gray-700">Entity</th>
+                    <th className="px-4 py-3 font-semibold text-gray-700">Details</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {data.data.map((row) => (
+                    <AuditLogTableRow key={row.id} row={row} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
         {data && data.totalPages > 1 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-sm text-gray-600">
@@ -135,7 +167,7 @@ export default function AuditLogPage() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 font-medium hover:bg-gray-50 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 font-medium hover:bg-gray-50 disabled:opacity-40 touch-target"
               >
                 <ChevronLeft className="size-4" />
                 Previous
@@ -144,7 +176,7 @@ export default function AuditLogPage() {
                 type="button"
                 disabled={page >= data.totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 font-medium hover:bg-gray-50 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 font-medium hover:bg-gray-50 disabled:opacity-40 touch-target"
               >
                 Next
                 <ChevronRight className="size-4" />

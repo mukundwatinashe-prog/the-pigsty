@@ -31,6 +31,11 @@ frontend/.env
 /IMG-*.jpg*
 /feed_report.xlsx
 
+# Local ops scripts that connect to production and contain demo credentials — never commit
+backend/scripts/seed-demo-data.mjs
+backend/scripts/create-demo-user.mjs
+backend/scripts/verify-free-blocked.mjs
+
 # Logs
 logs/
 *.log

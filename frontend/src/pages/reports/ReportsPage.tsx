@@ -114,7 +114,58 @@ function WeightGainReportTable({
   weightUnit: string;
 }) {
   return (
-    <table className="w-full min-w-[800px] text-left text-sm">
+    <>
+      <ul className="divide-y divide-gray-100 md:hidden">
+        {rows.map((row, i) => {
+          const vs = row.vsTarget;
+          const vsLabel =
+            vs === 'on_track' ? 'On target' : vs === 'below' ? 'Below target' : 'N/A';
+          const cardBg =
+            vs === 'on_track'
+              ? 'bg-emerald-50/70'
+              : vs === 'below'
+                ? 'bg-red-50/70'
+                : 'bg-white';
+          return (
+            <li key={`${row.tagNumber}-${i}`} className={`p-4 ${cardBg}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium text-gray-900">{row.tagNumber}</p>
+                  <p className="text-sm text-gray-600">{row.stage}</p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    vs === 'on_track' ? 'bg-emerald-100 text-emerald-800' : vs === 'below' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {vsLabel}
+                </span>
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <dt className="text-xs text-gray-400">Entry</dt>
+                  <dd className="tabular-nums text-gray-800">{row.entryWeight} {weightUnit}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">Current</dt>
+                  <dd className="tabular-nums text-gray-800">{row.currentWeight} {weightUnit}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">Gain</dt>
+                  <dd className="tabular-nums text-gray-800">{row.totalGain}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">ADG / Target</dt>
+                  <dd className="tabular-nums text-gray-800">{row.adg} / {row.targetAdg}</dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-xs text-gray-500">{row.measurements} measurement{row.measurements === 1 ? '' : 's'}</p>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="hidden overflow-x-auto md:block">
+    <table className="w-full text-left text-sm">
       <thead>
         <tr className="border-b border-gray-200">
           <th className="px-3 py-2 font-semibold text-gray-700">Tag</th>
@@ -161,6 +212,8 @@ function WeightGainReportTable({
         })}
       </tbody>
     </table>
+      </div>
+    </>
   );
 }
 
@@ -351,7 +404,7 @@ export default function ReportsPage() {
     'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm transition disabled:opacity-55';
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-6xl space-y-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Reports</h1>
         <p className="mt-1 text-sm text-gray-600">
@@ -614,7 +667,7 @@ export default function ReportsPage() {
           <div className="border-b border-gray-100 bg-gray-50/80 px-4 py-3">
             <h3 className="text-sm font-semibold text-gray-800">Results</h3>
           </div>
-          <div className="overflow-x-auto p-4">
+          <div className="overflow-x-auto p-0 md:p-4">
             <ReportJsonTable reportId={selectedId} data={jsonResult} weightUnit={currentFarm?.weightUnit ?? 'kg'} />
           </div>
         </div>
@@ -634,7 +687,35 @@ function ReportJsonTable({
 }) {
   if (reportId === 'herd_inventory' && isHerdInventoryJson(data)) {
     return (
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <>
+        <ul className="divide-y divide-gray-100 md:hidden">
+          {data.pigs.map((pig) => (
+            <li key={pig.id} className="p-4">
+              <p className="font-medium text-gray-900">{pig.tagNumber}</p>
+              <p className="mt-1 text-sm text-gray-600">{pig.breed} · {pig.stage}</p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <dt className="text-xs text-gray-400">Weight</dt>
+                  <dd className="tabular-nums">{Number(pig.currentWeight).toFixed(2)} {weightUnit}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">Pen</dt>
+                  <dd>{pig.pen?.name ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">Status</dt>
+                  <dd>{pig.status}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">Health</dt>
+                  <dd className="text-gray-600">{pig.healthStatus}</dd>
+                </div>
+              </dl>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-x-auto md:block">
+      <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-gray-200">
             <th className="px-3 py-2 font-semibold text-gray-700">Tag</th>
@@ -660,6 +741,8 @@ function ReportJsonTable({
           ))}
         </tbody>
       </table>
+        </div>
+      </>
     );
   }
 
@@ -673,7 +756,31 @@ function ReportJsonTable({
 
   if (reportId === 'activity_log' && isActivityJson(data)) {
     return (
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <>
+        <ul className="divide-y divide-gray-100 md:hidden">
+          {data.data.map((row) => (
+            <li key={row.id} className="p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="text-sm text-gray-700">
+                  {new Date(row.createdAt).toLocaleString()}
+                </p>
+                <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
+                  {row.action}
+                </span>
+              </div>
+              <p className="mt-2 font-medium text-gray-900">{row.user?.name ?? '—'}</p>
+              <p className="mt-1 text-sm text-gray-800">
+                {row.entity}
+                <span className="ml-1 text-xs text-gray-400">({row.entityId.slice(0, 8)}…)</span>
+              </p>
+              {row.details ? (
+                <p className="mt-2 text-sm text-gray-600 line-clamp-3">{row.details}</p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-x-auto md:block">
+      <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-gray-200">
             <th className="px-3 py-2 font-semibold text-gray-700">Date</th>
@@ -702,6 +809,8 @@ function ReportJsonTable({
           ))}
         </tbody>
       </table>
+        </div>
+      </>
     );
   }
 
@@ -726,7 +835,42 @@ function ReportJsonTable({
             <p className="text-xs text-gray-500">Total Revenue</p>
           </div>
         </div>
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <ul className="divide-y divide-gray-100 md:hidden">
+          {data.sales.map((s, i) => (
+            <li key={i} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium text-gray-900">{s.tag}</p>
+                  <p className="text-sm text-gray-600">{s.breed}</p>
+                </div>
+                <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${s.type === 'Live Sale' ? 'bg-accent-100 text-accent-800' : 'bg-amber-100 text-amber-800'}`}>
+                  {s.type}
+                </span>
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <dt className="text-xs text-gray-400">Date</dt>
+                  <dd className="text-gray-700">{s.date}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">Weight</dt>
+                  <dd className="tabular-nums">{s.weight} {weightUnit}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">Per kg</dt>
+                  <dd className="tabular-nums">{data.currency} {s.pricePerKg}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-400">Total</dt>
+                  <dd className="tabular-nums font-medium">{data.currency} {s.totalPrice.toFixed(2)}</dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-sm text-gray-600">Buyer: {s.buyer}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-x-auto md:block">
+        <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-gray-200">
               <th className="px-3 py-2 font-semibold text-gray-700">Tag</th>
@@ -758,6 +902,7 @@ function ReportJsonTable({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     );
   }

@@ -295,8 +295,29 @@ export default function FeedDashboardPage() {
           Pig feeding schedule
         </h2>
         <p className="mt-1 text-sm text-gray-600">Per day (for one pig). General reference — adjust with your vet and genetics.</p>
-        <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100">
-          <table className="min-w-[36rem] w-full border-collapse text-left text-sm">
+        <ul className="mt-4 divide-y divide-gray-100 rounded-xl border border-gray-100 md:hidden">
+          {FEEDING_SCHEDULE_ROWS.map((row) => (
+            <li key={row.type} className={`p-4 ${row.rowClass}`}>
+              <p className="font-medium text-gray-900">{row.type}</p>
+              <dl className="mt-2 space-y-2 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-gray-500">Age / stage</dt>
+                  <dd className="text-right text-gray-700">{row.stage}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-gray-500">Feeding times</dt>
+                  <dd className="text-right text-gray-700">{row.timesPerDay}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-gray-500">Feed per pig</dt>
+                  <dd className="text-right font-medium text-gray-900">{row.amountKg}</dd>
+                </div>
+              </dl>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 hidden overflow-x-auto rounded-xl border border-gray-100 md:block">
+          <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th scope="col" className="px-3 py-2.5 font-semibold text-gray-900 sm:px-4">

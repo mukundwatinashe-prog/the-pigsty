@@ -194,19 +194,19 @@ export default function WeightLogPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div className="mx-auto max-w-4xl space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Weight log</h1>
           <p className="mt-1 text-sm text-gray-600">
             Record weights for individual pigs or an entire pen · {currentFarm?.name}
           </p>
         </div>
-        <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
+        <div className="inline-flex w-full rounded-xl border border-gray-200 bg-white p-1 shadow-sm sm:w-auto">
           <button
             type="button"
             onClick={() => setTab('log')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition sm:flex-none sm:px-4 ${
               tab === 'log'
                 ? 'bg-primary-600 text-white shadow'
                 : 'text-gray-600 hover:bg-gray-50'
@@ -218,7 +218,7 @@ export default function WeightLogPage() {
           <button
             type="button"
             onClick={() => setTab('recent')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition sm:flex-none sm:px-4 ${
               tab === 'recent'
                 ? 'bg-primary-600 text-white shadow'
                 : 'text-gray-600 hover:bg-gray-50'
@@ -231,10 +231,10 @@ export default function WeightLogPage() {
       </div>
 
       {tab === 'log' && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-6 flex flex-col gap-4 border-b border-gray-100 pb-6 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm font-medium text-gray-700">Entry mode</span>
-            <label className="flex cursor-pointer items-center gap-3">
+            <label className="flex cursor-pointer flex-wrap items-center gap-3">
               <span className={`text-sm ${!bulkMode ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
                 <User className="mr-1 inline size-4 align-text-bottom" />
                 Single pig
@@ -420,14 +420,54 @@ export default function WeightLogPage() {
 
                 {selectedPenId && !penPigsLoading && penPigs.length > 0 && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-sm font-medium text-gray-700">
                         Individual pig weights — {penPigs.length} pig{penPigs.length === 1 ? '' : 's'}
                       </p>
-                      <p className="text-xs text-gray-400">Enter each pig's weight below</p>
+                      <p className="text-xs text-gray-400">Enter each pig&apos;s weight below</p>
                     </div>
 
-                    <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 md:hidden">
+                      {penPigs.map((pig, idx) => {
+                        const newW = parseFloat(penWeights[pig.id] || '');
+                        const currentW = Number(pig.currentWeight);
+                        const diff = !isNaN(newW) && newW > 0 ? newW - currentW : null;
+                        return (
+                          <li key={pig.id} className="p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <span className="text-xs font-medium text-gray-400">#{idx + 1}</span>
+                                <p className="font-mono font-medium text-gray-900">{pig.tagNumber}</p>
+                                <p className="text-sm text-gray-500">
+                                  Current: {currentW > 0 ? `${currentW.toFixed(1)} ${unit}` : '—'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0"
+                                  placeholder="0.0"
+                                  aria-label={`New weight for ${pig.tagNumber}`}
+                                  value={penWeights[pig.id] ?? ''}
+                                  onChange={e =>
+                                    setPenWeights(prev => ({ ...prev, [pig.id]: e.target.value }))
+                                  }
+                                  className="mobile-input w-24 rounded-lg border border-gray-200 px-2.5 py-2 tabular-nums focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                                />
+                                {diff !== null && (
+                                  <span className={`text-xs font-medium tabular-nums ${diff > 0 ? 'text-emerald-600' : diff < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {diff > 0 ? '+' : ''}{diff.toFixed(1)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    <div className="hidden overflow-x-auto rounded-xl border border-gray-200 md:block">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-100">
@@ -478,7 +518,7 @@ export default function WeightLogPage() {
 
                     {filledWeights.length > 0 && (
                       <div className="rounded-xl bg-primary-50 border border-primary-200 p-4">
-                        <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="grid grid-cols-1 gap-4 text-center sm:grid-cols-3">
                           <div>
                             <p className="text-xs text-primary-600 font-medium">Pigs Weighed</p>
                             <p className="text-lg font-bold text-primary-900">{filledWeights.length}<span className="text-sm font-normal text-primary-500"> / {penPigs.length}</span></p>
@@ -535,7 +575,7 @@ export default function WeightLogPage() {
               <button
                 type="submit"
                 disabled={logMutation.isPending || (bulkMode && filledWeights.length === 0)}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 disabled:opacity-60 sm:w-auto touch-target"
               >
                 {logMutation.isPending ? (
                   <>
@@ -555,8 +595,40 @@ export default function WeightLogPage() {
 
       {tab === 'recent' && (
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
+          {recentLoading ? (
+            <div className="flex flex-col items-center justify-center px-4 py-16 text-gray-500">
+              <Loader2 className="mb-2 size-8 animate-spin text-primary-500" />
+              Loading recent logs…
+            </div>
+          ) : !recentData?.data?.length ? (
+            <div className="px-4 py-16 text-center text-gray-500">No weight logs yet.</div>
+          ) : (
+            <>
+              <ul className="divide-y divide-gray-100 md:hidden">
+                {recentData.data.map((row) => (
+                  <li key={row.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-gray-900">{row.pig.tagNumber}</p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          {new Date(row.date).toLocaleDateString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                      <p className="text-lg font-semibold tabular-nums text-gray-900">
+                        {Number(row.weight).toFixed(2)} <span className="text-sm font-normal text-gray-500">{unit}</span>
+                      </p>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500">Logged by {row.user?.name ?? '—'}</p>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/80">
                   <th className="px-4 py-3 font-semibold text-gray-700">Pig tag</th>
@@ -566,21 +638,7 @@ export default function WeightLogPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentLoading ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-16 text-center text-gray-500">
-                      <Loader2 className="mx-auto mb-2 size-8 animate-spin text-primary-500" />
-                      Loading recent logs…
-                    </td>
-                  </tr>
-                ) : !recentData?.data?.length ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-16 text-center text-gray-500">
-                      No weight logs yet.
-                    </td>
-                  </tr>
-                ) : (
-                  recentData.data.map((row) => (
+                {recentData.data.map((row) => (
                     <tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
                       <td className="px-4 py-3 font-medium text-gray-900">
                         {row.pig.tagNumber}
@@ -595,11 +653,12 @@ export default function WeightLogPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-600">{row.user?.name ?? '—'}</td>
                     </tr>
-                  ))
-                )}
+                  ))}
               </tbody>
             </table>
-          </div>
+              </div>
+            </>
+          )}
           {recentData && recentData.totalPages > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-sm text-gray-600">
               <span>
