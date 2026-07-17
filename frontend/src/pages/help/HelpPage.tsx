@@ -23,6 +23,10 @@ const faqs = [
     a: 'Billing in the sidebar → choose Grower or Enterprise → complete checkout with Stripe. Your farm unlocks paid features as soon as payment succeeds.',
   },
   {
+    q: 'How do I cancel or downgrade my plan?',
+    a: 'On the website, go to Billing → Manage subscription → Open billing portal, then choose Cancel plan. Your paid features stay active until the end of the billing period you have already paid for, then the farm returns to Free automatically. Your data is never deleted — you keep all your pigs and records. Only farm owners and managers can change the plan.',
+  },
+  {
     q: 'How do I invite my team?',
     a: 'On Grower or Enterprise, go to Settings → Team members → Invite. The person receives an email with a link to join your farm.',
   },
