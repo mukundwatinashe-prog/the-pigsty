@@ -1,0 +1,60 @@
+# Production stack for the Hetzner VPS: Postgres + API + Caddy (auto-HTTPS).
+# Run from this directory:  docker compose up -d --build
+#
+# Requires two local (gitignored) files alongside this one:
+#   .env       — compose variable substitution (POSTGRES_PASSWORD)
+#   api.env    — the backend's app secrets (JWT, Stripe, R2, Twilio, ...) WITHOUT DATABASE_URL
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: pigsty-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pigsty
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: pigtrack
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pigsty -d pigtrack"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Not published to the host — only reachable by the api service on the compose network.
+
+  api:
+    build:
+      context: ../backend
+    container_name: pigsty-api
+    restart: unless-stopped
+    env_file:
+      - ./api.env
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      # Point the app at the local Postgres container (overrides any DATABASE_URL in api.env).
+      DATABASE_URL: postgres://pigsty:${POSTGRES_PASSWORD}@db:5432/pigtrack
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "4000"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: pigsty-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

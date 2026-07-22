@@ -19,6 +19,9 @@ uploads/
 vercel-env-import.txt
 backend/.env
 frontend/.env
+# VPS deploy secrets (app env + Postgres password) — never commit
+deploy/api.env
+deploy/.env
 *client_secret*.json
 # Vercel env exports / production secret dumps (never commit)
 .env.vercel.*
