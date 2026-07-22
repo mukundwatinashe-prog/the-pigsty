@@ -1,0 +1,11 @@
+# Caddy reverse proxy with automatic HTTPS (Let's Encrypt).
+# Certs are issued once api.the-pigsty.org resolves to this box and ports 80/443
+# are reachable — i.e. after the DNS cutover.
+{
+	email pigfarm@the-pigsty.org
+}
+
+api.the-pigsty.org {
+	encode gzip
+	reverse_proxy api:4000
+}
