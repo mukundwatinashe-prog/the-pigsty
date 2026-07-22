@@ -8,7 +8,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 # Read specific values out of api.env WITHOUT shell-sourcing it — the file is a
 # docker env_file (literal KEY=VALUE), so values like `EMAIL_FROM=A <b@c>` are not
 # shell-safe to `source`.
-envval() { grep -E "^$1=" "$DIR/api.env" | head -1 | cut -d= -f2-; }
+envval() { grep -m1 -E "^$1=" "$DIR/api.env" 2>/dev/null | cut -d= -f2- || true; }
 R2_ACCOUNT_ID="$(envval R2_ACCOUNT_ID)"
 R2_ACCESS_KEY_ID="$(envval R2_ACCESS_KEY_ID)"
 R2_SECRET_ACCESS_KEY="$(envval R2_SECRET_ACCESS_KEY)"
