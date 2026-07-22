@@ -6,7 +6,7 @@
 #   api.env    — the backend's app secrets (JWT, Stripe, R2, Twilio, ...) WITHOUT DATABASE_URL
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: pigsty-db
     restart: unless-stopped
     environment:
