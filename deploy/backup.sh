@@ -5,12 +5,18 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck disable=SC1091
-set -a; . "$DIR/api.env"; set +a
+# Read specific values out of api.env WITHOUT shell-sourcing it — the file is a
+# docker env_file (literal KEY=VALUE), so values like `EMAIL_FROM=A <b@c>` are not
+# shell-safe to `source`.
+envval() { grep -E "^$1=" "$DIR/api.env" | head -1 | cut -d= -f2-; }
+R2_ACCOUNT_ID="$(envval R2_ACCOUNT_ID)"
+R2_ACCESS_KEY_ID="$(envval R2_ACCESS_KEY_ID)"
+R2_SECRET_ACCESS_KEY="$(envval R2_SECRET_ACCESS_KEY)"
+R2_BUCKET_NAME="$(envval R2_BUCKET_NAME)"
 
 : "${R2_ACCOUNT_ID:?}"; : "${R2_ACCESS_KEY_ID:?}"; : "${R2_SECRET_ACCESS_KEY:?}"; : "${R2_BUCKET_NAME:?}"
 
-RETAIN_DAYS="${BACKUP_RETAIN_DAYS:-14}"
+RETAIN_DAYS="$(envval BACKUP_RETAIN_DAYS)"; RETAIN_DAYS="${RETAIN_DAYS:-14}"
 TS="$(date -u +%Y%m%d-%H%M%SZ)"
 KEY="db-backups/pigtrack-${TS}.sql.gz"
 TMP="/tmp/pigtrack-${TS}.sql.gz"
