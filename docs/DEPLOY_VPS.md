@@ -35,6 +35,49 @@ apt-get install -y awscli
 mkdir -p /opt && git clone https://github.com/mukundwatinashe-prog/the-pigsty.git /opt/pigtrack-pro
 ```
 
+## Security hardening (on the VPS, as root)
+Applied to the live box on 2026-07-23. These live **only on the server** (not in
+the repo), so re-apply them after any server rebuild.
+
+**SSH — key-only, no passwords.** The box was taking ~6k/day password brute-force
+attempts. Key auth is already used for deploys, so passwords can be turned off with
+no downside. `sshd` is first-match-wins and reads `sshd_config.d/*.conf` before the
+main file, so a `00-`-prefixed drop-in overrides both `50-cloud-init.conf`
+(`PasswordAuthentication yes`) and the main config's `PermitRootLogin yes`:
+```bash
+cat > /etc/ssh/sshd_config.d/00-hardening.conf <<'CONF'
+PasswordAuthentication no
+PermitRootLogin prohibit-password
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PubkeyAuthentication yes
+CONF
+chmod 600 /etc/ssh/sshd_config.d/00-hardening.conf
+sshd -t && systemctl reload ssh          # validate BEFORE reload — never skip
+sshd -T | grep -iE '^passwordauthentication|^permitrootlogin'   # confirm
+```
+Before trusting it, verify from another terminal that a **fresh key login still
+works** and that password auth is refused (`Permission denied (publickey)`).
+
+**fail2ban — auto-ban repeat offenders:**
+```bash
+apt-get install -y fail2ban
+cat > /etc/fail2ban/jail.d/sshd.local <<'CONF'
+[sshd]
+enabled  = true
+mode     = aggressive
+maxretry = 4
+findtime = 10m
+bantime  = 1h
+CONF
+systemctl enable --now fail2ban
+fail2ban-client status sshd        # shows currently-banned IPs
+```
+
+Other posture already in place: `ufw` allows only OpenSSH/80/443; Postgres and the
+API are container-internal (never host-published); Caddy adds TLS + HSTS; secrets
+files are `chmod 600`; `unattended-upgrades` is active.
+
 ## Configure secrets (on the VPS)
 ```bash
 cd /opt/pigtrack-pro/deploy
