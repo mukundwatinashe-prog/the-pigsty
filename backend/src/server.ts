@@ -26,6 +26,13 @@ import { getClientIp } from './utils/requestIp';
 
 const app = express();
 
+// Behind exactly one reverse proxy (Caddy on the VPS; Vercel's edge on Vercel),
+// which sets X-Forwarded-For. Trust that single hop so req.ip is the real client
+// IP — otherwise every request looks like it comes from the proxy, which breaks
+// per-client rate limiting and makes express-rate-limit throw
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR. Use 1 (a specific hop count), never `true`.
+app.set('trust proxy', 1);
+
 app.post(
   '/api/billing/webhook',
   express.raw({ type: 'application/json' }),
