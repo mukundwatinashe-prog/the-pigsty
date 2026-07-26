@@ -28,6 +28,7 @@ import {
 } from '../../services/admin.service';
 import { apiErrorMessage } from '../../services/api';
 import AdminSubscriptionsTab from './AdminSubscriptionsTab';
+import AdminUsageTab from './AdminUsageTab';
 import {
   PlanSelect,
   planBadgeClass,
@@ -335,7 +336,7 @@ function UserDetailPanel({
 
 export default function AdminUsersPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'users' | 'subscriptions'>('users');
+  const [tab, setTab] = useState<'users' | 'subscriptions' | 'usage'>('users');
   const [planFilter, setPlanFilter] = useState<AdminPlanFilter>('ALL');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -354,6 +355,12 @@ export default function AdminUsersPage() {
     queryKey: ['admin-users', page, pageSize, planFilter, search],
     queryFn: () => adminService.listUsers({ page, pageSize, plan: planFilter, search: search || undefined }),
     enabled: !!summary && tab === 'users',
+  });
+
+  const { data: usage, isLoading: usageLoading } = useQuery({
+    queryKey: ['admin-usage'],
+    queryFn: () => adminService.getUsage(),
+    enabled: !!summary && tab === 'usage',
   });
 
   const setUserPlan = useMutation({
@@ -491,10 +498,21 @@ export default function AdminUsersPage() {
         >
           Subscriptions
         </button>
+        <button
+          type="button"
+          onClick={() => setTab('usage')}
+          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            tab === 'usage' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Usage
+        </button>
       </div>
 
       {tab === 'subscriptions' ? (
         <AdminSubscriptionsTab />
+      ) : tab === 'usage' ? (
+        <AdminUsageTab usage={usage} loading={usageLoading} />
       ) : (
         <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

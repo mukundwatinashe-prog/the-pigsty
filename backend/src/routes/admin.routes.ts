@@ -8,6 +8,7 @@ const router = Router();
 router.use(authenticate, requirePlatformAdmin);
 
 router.get('/summary', AdminController.summary);
+router.get('/usage', AdminController.usage);
 router.get('/farms', AdminController.listFarms);
 router.get('/users/export', AdminController.exportUsers);
 router.get('/users', AdminController.listUsers);

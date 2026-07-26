@@ -59,6 +59,17 @@ export type AdminUsersResponse = {
   totalPages: number;
 };
 
+export type UsageBucket = { requests: number; tokens: number; cost: number };
+export type AdminUsage = {
+  ai: {
+    last7d: UsageBucket;
+    last30d: UsageBucket;
+    allTime: UsageBucket;
+    topUsers: { userId: string; name: string; email: string; requests: number; tokens: number; cost: number }[];
+    recent: { id: string; createdAt: string; userName: string; endpoint: string; tokens: number; cost: number }[];
+  };
+};
+
 export type AdminPlanFilter = 'ALL' | 'TRIAL' | FarmPlan;
 
 export type SetFarmPlanResult = {
@@ -93,6 +104,8 @@ export type AdminFarmsResponse = {
 
 export const adminService = {
   getSummary: () => api.get<AdminSummary>('/admin/summary').then((r) => r.data),
+
+  getUsage: () => api.get<AdminUsage>('/admin/usage').then((r) => r.data),
 
   listUsers: (params: { page?: number; pageSize?: number; plan?: AdminPlanFilter; search?: string }) => {
     const qs = new URLSearchParams();

@@ -317,6 +317,74 @@ export class AdminService {
     };
   }
 
+  /** AI usage monitoring — token/cost consumption (the metered, billable resource). */
+  static async getUsage() {
+    const now = new Date();
+    const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const bucket = async (since?: Date) => {
+      const where = since ? { createdAt: { gte: since } } : {};
+      const [requests, sums] = await Promise.all([
+        prisma.aiUsageLog.count({ where }),
+        prisma.aiUsageLog.aggregate({ where, _sum: { tokensUsed: true, cost: true } }),
+      ]);
+      return {
+        requests,
+        tokens: sums._sum.tokensUsed ?? 0,
+        cost: Number(sums._sum.cost ?? 0),
+      };
+    };
+
+    const [last7d, last30d, allTime, topRaw, recentRaw] = await Promise.all([
+      bucket(d7),
+      bucket(d30),
+      bucket(),
+      prisma.aiUsageLog.groupBy({
+        by: ['userId'],
+        _sum: { tokensUsed: true, cost: true },
+        _count: { _all: true },
+        orderBy: { _sum: { tokensUsed: 'desc' } },
+        take: 10,
+      }),
+      prisma.aiUsageLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        include: { user: { select: { name: true, email: true } } },
+      }),
+    ]);
+
+    const topUserRecords = await prisma.user.findMany({
+      where: { id: { in: topRaw.map((t) => t.userId) } },
+      select: { id: true, name: true, email: true },
+    });
+    const userById = new Map(topUserRecords.map((u) => [u.id, u]));
+
+    return {
+      ai: {
+        last7d,
+        last30d,
+        allTime,
+        topUsers: topRaw.map((t) => ({
+          userId: t.userId,
+          name: userById.get(t.userId)?.name ?? 'Unknown user',
+          email: userById.get(t.userId)?.email ?? '',
+          requests: t._count._all,
+          tokens: t._sum.tokensUsed ?? 0,
+          cost: Number(t._sum.cost ?? 0),
+        })),
+        recent: recentRaw.map((r) => ({
+          id: r.id,
+          createdAt: r.createdAt,
+          userName: r.user?.name ?? 'Unknown user',
+          endpoint: r.endpoint,
+          tokens: r.tokensUsed ?? 0,
+          cost: Number(r.cost ?? 0),
+        })),
+      },
+    };
+  }
+
   static async listUsers(opts: {
     page: number;
     pageSize: number;

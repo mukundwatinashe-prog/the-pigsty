@@ -21,6 +21,14 @@ export class AdminController {
     }
   }
 
+  static async usage(_req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      res.json(await AdminService.getUsage());
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async listUsers(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
