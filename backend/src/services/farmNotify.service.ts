@@ -1,10 +1,20 @@
 import prisma from '../config/database';
+import { sendUserEmail } from './email/emailSender';
 
 type FarmNotificationRecipient = {
   email: string;
   name: string;
   role: 'OWNER' | 'FARM_MANAGER';
 };
+
+/** Escape text so it renders safely inside the HTML email body. */
+function textToHtml(text: string): string {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return `<pre style="font-family:inherit;white-space:pre-wrap;margin:0">${escaped}</pre>`;
+}
 
 async function farmRecipientsForAlerts(farmId: string): Promise<FarmNotificationRecipient[]> {
   const members = await prisma.farmMember.findMany({
@@ -37,56 +47,38 @@ async function farmRecipientsForAlerts(farmId: string): Promise<FarmNotification
   return recipients;
 }
 
-async function sendMail(to: string[], subject: string, text: string, logTag: string): Promise<void> {
-  const host = process.env.SMTP_HOST?.trim();
-  if (!host) {
-    console.info(`[${logTag}] SMTP_HOST not set — recipients=${to.join(', ')}`, text.replace(/\n/g, ' | '));
-    return;
-  }
-
-  const from = process.env.SMTP_FROM?.trim();
-  if (!from) {
-    console.warn(`[${logTag}] SMTP_FROM is not set — skipping email send.`);
-    return;
-  }
-
-  try {
-    const nodemailer = await import('nodemailer');
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth:
-        process.env.SMTP_USER && process.env.SMTP_PASS
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-          : undefined,
-    });
-    await transporter.sendMail({
-      from,
-      to: to.join(', '),
-      subject,
-      text,
-    });
-  } catch (e) {
-    console.error(`[${logTag}] Failed to send farm email:`, e);
-  }
-}
-
+/**
+ * Notify a farm's owners/managers about farm activity (pig/pen added, imports, …).
+ *
+ * Sends through the same provider path as every other transactional email
+ * (`sendUserEmail` → Cloudflare Worker / Resend), so any future activity
+ * notification added here uses the one configured, working email system.
+ *
+ * Opt-in per farm: only sends when `activityEmailNotifications` is enabled
+ * (default off) — activity emails are noisy, so farms turn them on deliberately.
+ */
 export async function notifyFarmLeads(opts: {
   farmId: string;
   subject: string;
   text: string;
   logTag: string;
 }): Promise<void> {
+  const farm = await prisma.farm.findUnique({
+    where: { id: opts.farmId },
+    select: { activityEmailNotifications: true },
+  });
+  if (!farm?.activityEmailNotifications) return; // opt-in disabled — nothing to send
+
   const recipients = await farmRecipientsForAlerts(opts.farmId);
   if (!recipients.length) return;
-  await sendMail(
-    recipients.map((r) => r.email),
-    opts.subject,
-    opts.text,
-    opts.logTag,
+
+  const html = textToHtml(opts.text);
+  await Promise.all(
+    recipients.map((r) =>
+      sendUserEmail({ to: r.email, subject: opts.subject, text: opts.text, html }).catch((e) =>
+        console.error(`[${opts.logTag}] Failed to send farm email to ${r.email}:`, e),
+      ),
+    ),
   );
 }
 

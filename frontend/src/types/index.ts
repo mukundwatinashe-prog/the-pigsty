@@ -55,6 +55,8 @@ export interface Farm {
   alertSmsPhone?: string | null;
   alertSmsFarrowing?: boolean;
   alertSmsLowStock?: boolean;
+  /** Opt-in: email owners/managers on farm activity (pig/pen added, imports). All plans. */
+  activityEmailNotifications?: boolean;
   createdAt: string;
   plan?: FarmPlan;
   _count?: { pigs: number; pens: number; members: number };

@@ -276,6 +276,8 @@ model Farm {
   alertSmsLowStock        Boolean            @default(false) @map("alert_sms_low_stock")
   alertSmsLastFarrowingAt DateTime?          @map("alert_sms_last_farrowing_at")
   alertSmsLastLowStockAt  DateTime?          @map("alert_sms_last_low_stock_at")
+  /** Opt-in (all plans): email owners/managers on farm activity (pig/pen added, imports) */
+  activityEmailNotifications Boolean         @default(false) @map("activity_email_notifications")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

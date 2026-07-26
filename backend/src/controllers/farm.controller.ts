@@ -66,6 +66,9 @@ const updateFarmSchema = z.object({
   alertSmsPhone: z.string().max(20).nullable().optional(),
   alertSmsFarrowing: z.boolean().optional(),
   alertSmsLowStock: z.boolean().optional(),
+  // Opt-in email on farm activity (pig/pen added, imports). All plans — not
+  // Enterprise-gated, so intentionally excluded from the automation plan check below.
+  activityEmailNotifications: z.boolean().optional(),
 });
 
 export class FarmController {

@@ -309,6 +309,25 @@ export default function FarmSettingsPage() {
     },
   });
 
+  // Standalone so it works on every plan and never trips the Enterprise
+  // automation 402 gate — sends only the one field.
+  const activityMutation = useMutation({
+    mutationFn: (value: boolean) => farmService.update(farmId!, { activityEmailNotifications: value }),
+    onSuccess: updated => {
+      queryClient.invalidateQueries({ queryKey: ['farm', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['farms'] });
+      setCurrentFarm((prev: Farm | null) =>
+        prev && prev.id === updated.id
+          ? { ...prev, activityEmailNotifications: updated.activityEmailNotifications }
+          : prev,
+      );
+      toast.success('Activity notifications updated');
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Could not update notifications');
+    },
+  });
+
   const inviteMutation = useMutation({
     mutationFn: (data: InviteForm) => farmService.createInvitation(farmId!, data.email, data.role),
     onSuccess: () => {
@@ -935,6 +954,34 @@ export default function FarmSettingsPage() {
             </button>
           </form>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+            <Bell className="size-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold text-gray-900">Activity email notifications</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Email owners and managers when a pig or pen is added, or a bulk import finishes. Off by
+              default — turn it on if you want these updates. Available on all plans.
+            </p>
+          </div>
+        </div>
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-gray-800">
+          <input
+            type="checkbox"
+            checked={farm?.activityEmailNotifications ?? false}
+            disabled={activityMutation.isPending}
+            onChange={e => activityMutation.mutate(e.target.checked)}
+            className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <span>
+            <strong className="font-medium">Email me on farm activity</strong> — sent to all owners and
+            managers through the same email system as password resets and invites.
+          </span>
+        </label>
       </section>
 
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
