@@ -75,51 +75,17 @@ async function sendViaResend(email: OutboundEmail): Promise<boolean> {
   }
 }
 
-async function sendViaSmtp(email: OutboundEmail): Promise<boolean> {
-  const host = process.env.SMTP_HOST?.trim();
-  const from = env.EMAIL_FROM.trim();
-  if (!host || !from) return false;
-
-  try {
-    const nodemailer = await import('nodemailer');
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth:
-        process.env.SMTP_USER && process.env.SMTP_PASS
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-          : undefined,
-    });
-    await transporter.sendMail({
-      from,
-      to: email.to,
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
-      ...(email.replyTo ? { replyTo: email.replyTo } : {}),
-    });
-    return true;
-  } catch (err) {
-    console.error('[email] SMTP send failed:', err);
-    return false;
-  }
-}
-
 /**
- * Sends user-facing transactional email via Cloudflare email Worker, Resend, or SMTP
- * (in that order). Returns true when a provider accepted the message.
+ * Sends user-facing transactional email via the Cloudflare email Worker, then Resend.
+ * Returns true when a provider accepted the message.
  */
 export async function sendUserEmail(email: OutboundEmail): Promise<boolean> {
   if (await sendViaWorker(email)) return true;
   if (await sendViaResend(email)) return true;
-  if (await sendViaSmtp(email)) return true;
 
   console.error(
     `[email] All delivery paths failed for to=${email.to} subject="${email.subject}". ` +
-      'Configure CLOUDFLARE_EMAIL_WORKER_URL, RESEND_API_KEY, or SMTP_HOST.',
+      'Configure CLOUDFLARE_EMAIL_WORKER_URL or RESEND_API_KEY.',
   );
   return false;
 }
