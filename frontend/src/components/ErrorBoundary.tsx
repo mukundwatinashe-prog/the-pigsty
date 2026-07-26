@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('App render error:', error, info.componentStack);
+    Sentry.captureException(error); // no-op unless Sentry was initialized with a DSN
     // An unexpected error is most often a stale cached build after a deploy
     // (stale service worker / hashed chunks). Auto-recover by dropping the SW +
     // caches and reloading — throttled so multiple deploys in one session each

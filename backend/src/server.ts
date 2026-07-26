@@ -1,3 +1,5 @@
+import './instrument'; // must be first — sets up Sentry before Express loads (no-op without SENTRY_DSN)
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -132,6 +134,8 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Capture unhandled errors in Sentry (no-op without SENTRY_DSN) before our handler responds.
+if (env.SENTRY_DSN) Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 
 let prismaConnected = false;

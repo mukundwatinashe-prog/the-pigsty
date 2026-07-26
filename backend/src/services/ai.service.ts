@@ -6,8 +6,30 @@ type ChatMessage = { role: 'user' | 'assistant'; content: string };
 export type AiResponse = {
   content: string;
   tokensUsed: number;
+  /** Estimated USD cost of this request from token counts (see priceFor). */
+  cost: number;
   provider: string;
 };
+
+/**
+ * Approximate public API pricing (USD per 1M tokens) by model family, for cost
+ * estimation in admin usage monitoring. Update if Anthropic/OpenAI change prices.
+ */
+function priceFor(model: string): { input: number; output: number } {
+  const m = (model || '').toLowerCase();
+  if (m.includes('opus')) return { input: 15, output: 75 };
+  if (m.includes('sonnet')) return { input: 3, output: 15 };
+  if (m.includes('haiku')) return { input: 0.8, output: 4 }; // Claude Haiku 3.5
+  if (m.includes('gpt-4o-mini')) return { input: 0.15, output: 0.6 };
+  if (m.includes('gpt-4o')) return { input: 2.5, output: 10 };
+  if (m.includes('gemini') && m.includes('flash')) return { input: 0.075, output: 0.3 };
+  return { input: 1, output: 5 }; // conservative default for unknown models
+}
+
+function estimateCost(model: string, inputTokens: number, outputTokens: number): number {
+  const p = priceFor(model);
+  return (inputTokens / 1_000_000) * p.input + (outputTokens / 1_000_000) * p.output;
+}
 
 function friendlyProviderError(provider: string, status: number, body: string): string {
   let parsed: { error?: { message?: string; type?: string } } = {};
@@ -93,11 +115,14 @@ class AiService {
     }
     const data = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
-      usage?: { total_tokens?: number };
+      usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
     };
+    const inputTokens = data.usage?.prompt_tokens || 0;
+    const outputTokens = data.usage?.completion_tokens || 0;
     return {
       content: data.choices?.[0]?.message?.content?.trim() || '',
-      tokensUsed: data.usage?.total_tokens || 0,
+      tokensUsed: data.usage?.total_tokens || inputTokens + outputTokens,
+      cost: estimateCost(env.OPENAI_MODEL, inputTokens, outputTokens),
       provider: 'openai',
     };
   }
@@ -129,9 +154,12 @@ class AiService {
       usage?: { input_tokens?: number; output_tokens?: number };
     };
     const text = data.content?.find((block) => block.type === 'text');
+    const inputTokens = data.usage?.input_tokens || 0;
+    const outputTokens = data.usage?.output_tokens || 0;
     return {
       content: text?.text?.trim() || '',
-      tokensUsed: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
+      tokensUsed: inputTokens + outputTokens,
+      cost: estimateCost(env.CLAUDE_MODEL, inputTokens, outputTokens),
       provider: 'claude',
     };
   }
@@ -169,6 +197,7 @@ class AiService {
     return {
       content: data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '',
       tokensUsed: 0,
+      cost: 0,
       provider: 'gemini',
     };
   }

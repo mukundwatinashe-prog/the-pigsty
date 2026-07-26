@@ -50,6 +50,8 @@ export const env = {
   TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY || '',
   /** Bearer token for Vercel Cron → /api/cron/* (Vercel sets this automatically in production). */
   CRON_SECRET: process.env.CRON_SECRET || '',
+  /** Sentry error monitoring DSN. When empty, Sentry is fully disabled (no-op). */
+  SENTRY_DSN: process.env.SENTRY_DSN || '',
 };
 
 export const stripeConfigured = Boolean(

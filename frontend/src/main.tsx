@@ -1,8 +1,18 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import './index.css';
 import App from './App';
 import { initGa4 } from './lib/analytics';
+
+// Error monitoring — no-op until VITE_SENTRY_DSN is configured at build time.
+if (import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE,
+    tracesSampleRate: 0,
+  });
+}
 
 /** In dev, remove any PWA service worker left over from `preview`/production so CSS/JS always match the running server. */
 if (import.meta.env.DEV && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {

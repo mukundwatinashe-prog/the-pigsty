@@ -133,7 +133,7 @@ export class ChatController {
         aiResponse.content,
         aiResponse.tokensUsed,
       );
-      await ChatService.logUsage(req.userId, '/api/chat/message', aiResponse.tokensUsed);
+      await ChatService.logUsage(req.userId, '/api/chat/message', aiResponse.tokensUsed, aiResponse.cost);
 
       res.json({
         id: storedAssistantMessage.id,
