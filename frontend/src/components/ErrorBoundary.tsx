@@ -9,7 +9,10 @@ interface State {
   message?: string;
 }
 
-const RECOVER_KEY = 'pigtrack:auto-recovered';
+/** When we last auto-recovered (epoch ms). Time-throttled, not once-ever, so a long
+ *  session spanning several deploys recovers each time without infinite-looping. */
+const RECOVER_AT_KEY = 'pigtrack:recover-at';
+const RECOVER_COOLDOWN_MS = 15_000;
 
 /** Catches render errors so a single failure shows a recoverable screen instead of a blank page. */
 export class ErrorBoundary extends Component<Props, State> {
@@ -21,12 +24,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('App render error:', error, info.componentStack);
-    // A first unexpected error in a tab is almost always a stale cached build
-    // after a deploy (stale service worker / hashed chunks). Auto-recover once by
-    // dropping the SW + caches and reloading to fetch the latest build. If it
-    // still fails after that, show the recovery screen instead of looping.
-    if (!sessionStorage.getItem(RECOVER_KEY)) {
-      sessionStorage.setItem(RECOVER_KEY, '1');
+    // An unexpected error is most often a stale cached build after a deploy
+    // (stale service worker / hashed chunks). Auto-recover by dropping the SW +
+    // caches and reloading — throttled so multiple deploys in one session each
+    // recover, but a genuine bug that re-throws within the cooldown surfaces the
+    // recovery screen (with the message) instead of looping.
+    const last = Number(sessionStorage.getItem(RECOVER_AT_KEY) || 0);
+    if (Date.now() - last > RECOVER_COOLDOWN_MS) {
+      sessionStorage.setItem(RECOVER_AT_KEY, String(Date.now()));
       void ErrorBoundary.reloadFresh();
     }
   }
@@ -48,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReload = () => {
-    sessionStorage.removeItem(RECOVER_KEY);
+    sessionStorage.removeItem(RECOVER_AT_KEY);
     void ErrorBoundary.reloadFresh();
   };
 
@@ -61,6 +66,11 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="mt-2 text-sm text-gray-600">
             The page hit an unexpected error. Reloading usually fixes it.
           </p>
+          {this.state.message ? (
+            <p className="mt-3 break-words rounded-lg bg-gray-50 px-3 py-2 text-left font-mono text-xs text-gray-500">
+              {this.state.message}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={this.handleReload}
