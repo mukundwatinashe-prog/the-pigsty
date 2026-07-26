@@ -1,0 +1,17 @@
+# SSH brute-force protection for the VPS.
+#
+# Deliberately NOT "aggressive" mode: aggressive matches key-only auth probes
+# (e.g. an operator testing that password auth is refused), which once locked
+# our own ops IP out of SSH. Standard mode only counts real failed logins.
+#
+# Loopback is ignored, and the deploy workflow clears stale bans on every run,
+# so operators and the CI deploy runner can never get locked out for long.
+#
+# Managed in-repo; applied to /etc/fail2ban/jail.d/sshd.local by
+# .github/workflows/deploy.yml on every deploy.
+[sshd]
+enabled  = true
+maxretry = 5
+findtime = 15m
+bantime  = 1h
+ignoreip = 127.0.0.1/8 ::1

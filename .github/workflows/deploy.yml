@@ -32,7 +32,7 @@ jobs:
             # Self-heal SSH brute-force protection so it can never lock out an
             # operator or this deploy runner: apply the in-repo (non-aggressive)
             # jail, reload, and clear any stale bans.
-            install -m 644 /opt/pigtrack-pro/deploy/fail2ban-sshd.local /etc/fail2ban/jail.d/sshd.local
+            [ -f /opt/pigtrack-pro/deploy/fail2ban-sshd.local ] && install -m 644 /opt/pigtrack-pro/deploy/fail2ban-sshd.local /etc/fail2ban/jail.d/sshd.local || true
             systemctl reload fail2ban 2>/dev/null || systemctl restart fail2ban || true
             fail2ban-client unban --all || true
             systemctl is-active --quiet ssh || systemctl restart ssh
