@@ -1,7 +1,7 @@
 import { NavLink, Link } from 'react-router-dom';
 import {
   LayoutDashboard, PiggyBank, Warehouse, Weight, FileSpreadsheet,
-  FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet, Wheat, LifeBuoy, Shield, Users,
+  FileText, Settings, LogOut, ChevronLeft, ChevronRight, Upload, CreditCard, Wallet, Wheat, LifeBuoy, Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -37,7 +37,7 @@ export default function Sidebar({ mobileNavOpen = false, onNavigate }: SidebarPr
   const showNavText = mobileNavOpen || !collapsed;
   const adminNav = user?.isPlatformAdmin
     ? [
-        { to: '/admin/users', icon: Users, label: 'Users' },
+        { to: '/admin/users', icon: LayoutDashboard, label: 'Admin Dashboard' },
         { to: '/security', icon: Shield, label: 'Security' },
       ]
     : [];

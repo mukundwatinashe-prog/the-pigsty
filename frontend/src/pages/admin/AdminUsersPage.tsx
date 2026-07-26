@@ -6,14 +6,17 @@ import {
   ChevronRight,
   CreditCard,
   Download,
+  LayoutDashboard,
   Loader2,
+  Lock,
   LogOut,
   RefreshCw,
   Search,
+  ShieldCheck,
   Trash2,
   Unlock,
   UserCog,
-  Users,
+  UserPlus,
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -391,11 +394,12 @@ export default function AdminUsersPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <Users className="size-7 text-primary-600" />
-          Platform users
+          <LayoutDashboard className="size-7 text-primary-600" />
+          Admin Dashboard
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          View and manage all accounts across The Pigsty. Only visible to platform admins.
+          Everything across The Pigsty — users, signups, security, plans, and subscriptions.
+          Only visible to platform admins.
         </p>
       </div>
 
@@ -426,6 +430,45 @@ export default function AdminUsersPage() {
         <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-purple-600">Enterprise farms</p>
           <p className="mt-1 text-3xl font-bold text-purple-800">{summary?.farmsByPlan.ENTERPRISE ?? 0}</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">New — 7 days</p>
+          <p className="mt-1 flex items-center gap-2 text-3xl font-bold text-emerald-900">
+            <UserPlus className="size-6 text-emerald-600" />
+            {summary?.newUsers7d ?? 0}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">New — 30 days</p>
+          <p className="mt-1 text-3xl font-bold text-gray-900">{summary?.newUsers30d ?? 0}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">2FA enabled</p>
+          <p className="mt-1 flex items-center gap-2 text-3xl font-bold text-gray-900">
+            <ShieldCheck className="size-6 text-primary-600" />
+            {summary?.mfaUsers ?? 0}
+          </p>
+        </div>
+        <div
+          className={`rounded-xl border p-4 ${
+            (summary?.lockedUsers ?? 0) > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'
+          }`}
+        >
+          <p
+            className={`text-xs font-medium uppercase tracking-wide ${
+              (summary?.lockedUsers ?? 0) > 0 ? 'text-red-700' : 'text-gray-500'
+            }`}
+          >
+            Locked accounts
+          </p>
+          <p
+            className={`mt-1 flex items-center gap-2 text-3xl font-bold ${
+              (summary?.lockedUsers ?? 0) > 0 ? 'text-red-900' : 'text-gray-900'
+            }`}
+          >
+            <Lock className={`size-6 ${(summary?.lockedUsers ?? 0) > 0 ? 'text-red-600' : 'text-gray-400'}`} />
+            {summary?.lockedUsers ?? 0}
+          </p>
         </div>
       </div>
 

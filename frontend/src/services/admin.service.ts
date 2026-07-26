@@ -45,6 +45,10 @@ export type AdminSummary = {
   payingOwners: number;
   freeOwners: number;
   activeTrials: number;
+  newUsers7d: number;
+  newUsers30d: number;
+  lockedUsers: number;
+  mfaUsers: number;
 };
 
 export type AdminUsersResponse = {

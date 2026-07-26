@@ -267,28 +267,36 @@ function planFilterWhere(plan: AdminPlanFilter, trialFarmIds?: string[]): Prisma
 export class AdminService {
   static async getSummary() {
     const trialMap = await fetchActiveTrialsByFarmId();
-    const [totalUsers, farmsByPlan, payingOwners] = await Promise.all([
-      prisma.user.count(),
-      prisma.farm.groupBy({
-        by: ['plan'],
-        where: { isDeleted: false },
-        _count: { _all: true },
-      }),
-      prisma.user.count({
-        where: {
-          farmMemberships: {
-            some: {
-              role: 'OWNER',
-              farm: {
-                isDeleted: false,
-                plan: { in: [FarmPlan.GROWER, FarmPlan.ENTERPRISE] },
-                stripeSubscriptionId: { not: null },
+    const now = new Date();
+    const days7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const [totalUsers, farmsByPlan, payingOwners, newUsers7d, newUsers30d, lockedUsers, mfaUsers] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.farm.groupBy({
+          by: ['plan'],
+          where: { isDeleted: false },
+          _count: { _all: true },
+        }),
+        prisma.user.count({
+          where: {
+            farmMemberships: {
+              some: {
+                role: 'OWNER',
+                farm: {
+                  isDeleted: false,
+                  plan: { in: [FarmPlan.GROWER, FarmPlan.ENTERPRISE] },
+                  stripeSubscriptionId: { not: null },
+                },
               },
             },
           },
-        },
-      }),
-    ]);
+        }),
+        prisma.user.count({ where: { createdAt: { gte: days7Ago } } }),
+        prisma.user.count({ where: { createdAt: { gte: days30Ago } } }),
+        prisma.user.count({ where: { loginLockedUntil: { gt: now } } }),
+        prisma.user.count({ where: { mfaEnabled: true } }),
+      ]);
 
     const planCounts = { FREE: 0, GROWER: 0, ENTERPRISE: 0 };
     for (const row of farmsByPlan) {
@@ -302,6 +310,10 @@ export class AdminService {
       payingOwners,
       freeOwners: totalUsers - payingOwners,
       activeTrials: trialMap.size,
+      newUsers7d,
+      newUsers30d,
+      lockedUsers,
+      mfaUsers,
     };
   }
 
