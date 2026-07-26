@@ -29,3 +29,10 @@ jobs:
             cd deploy
             docker compose up -d --build
             docker image prune -f
+            # Self-heal SSH brute-force protection so it can never lock out an
+            # operator or this deploy runner: apply the in-repo (non-aggressive)
+            # jail, reload, and clear any stale bans.
+            install -m 644 /opt/pigtrack-pro/deploy/fail2ban-sshd.local /etc/fail2ban/jail.d/sshd.local
+            systemctl reload fail2ban 2>/dev/null || systemctl restart fail2ban || true
+            fail2ban-client unban --all || true
+            systemctl is-active --quiet ssh || systemctl restart ssh
