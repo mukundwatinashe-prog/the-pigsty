@@ -1,20 +1,20 @@
-// Regression guard for the duplicate/null Router-context navigation crash.
+// Regression guard for the duplicate/null Router-context navigation crash
+// ("Cannot destructure property 'basename' of useContext(...) as it is null").
 //
-// The bug: when react-router is bundled into the shared `vendor` chunk (instead
-// of its own `router` chunk), lazily-loaded routes read a null Router context
-// and crash on client-side navigation ("Cannot destructure property 'basename'
-// of useContext(...) as it is null"). The fix keeps react-router isolated in a
-// dedicated `router-*` chunk (see the manualChunks note in vite.config.ts).
+// Root cause: react-router's context module ending up in MORE THAN ONE output
+// chunk. When that happens, <BrowserRouter> registers one context instance while
+// a lazily-loaded route's hook reads a different one → null context → crash on
+// navigation. (An earlier guard wrongly required an isolated `router-*` chunk;
+// that arrangement ALSO duplicated the module and crashed.)
 //
-// This asserts react-router lives ONLY in a `router-*` chunk. Run after
-// `vite build` (wired into CI). Confirmed to fail on the buggy config and pass
-// on the fix.
+// The real invariant: react-router must appear in EXACTLY ONE chunk. Run after
+// `vite build` (wired into CI).
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const assetsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'assets');
-// Stable react-router error string that survives minification.
+// Stable react-router internal string that survives minification.
 const MARKER = 'may be used only in the context of a <Router>';
 
 let files;
@@ -35,14 +35,13 @@ if (hits.length === 0) {
   process.exit(1);
 }
 
-const leaked = hits.filter((f) => !f.startsWith('router-'));
-if (leaked.length > 0) {
+if (hits.length > 1) {
   console.error(
-    `✗ bundle check: react-router is bundled outside its dedicated chunk: ${hits.join(', ')}.\n` +
-      '  This regresses the duplicate/null Router-context navigation crash.\n' +
-      "  Keep react-router in its own 'router' chunk (see the manualChunks note in vite.config.ts).",
+    `✗ bundle check: react-router is duplicated across ${hits.length} chunks: ${hits.join(', ')}.\n` +
+      '  Two Router-context instances cause the null-context navigation crash.\n' +
+      '  Bundle react-router in a single chunk (see the manualChunks note in vite.config.ts).',
   );
   process.exit(1);
 }
 
-console.log(`✓ bundle check: react-router isolated in its own chunk (${hits.join(', ')}).`);
+console.log(`✓ bundle check: react-router in exactly one chunk (${hits[0]}).`);

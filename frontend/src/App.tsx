@@ -73,9 +73,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
-        <AuthProvider>
+        <BrowserRouter>
+          <AuthProvider>
           <FarmProvider>
-          <BrowserRouter>
             <ScrollToTop />
             <Suspense
               fallback={
@@ -130,7 +130,6 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
           <Toaster
             position="top-center"
             containerStyle={{
@@ -140,6 +139,7 @@ export default function App() {
           />
         </FarmProvider>
       </AuthProvider>
+      </BrowserRouter>
       </ErrorBoundary>
     </QueryClientProvider>
   );

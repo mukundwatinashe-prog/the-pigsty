@@ -76,12 +76,15 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
-          if (id.includes('recharts')) return 'charts';
-          // Keep react-router-dom AND its core dep `react-router` (v7) in ONE chunk.
-          // Splitting them duplicates the Router context module, so lazily-loaded routes
-          // read a null context and crash on client-side navigation (e.g. Farms → Dashboard).
-          if (id.includes('react-router')) return 'router';
+          if (id.includes('recharts') || id.includes('/d3-')) return 'charts';
           if (id.includes('@tanstack/react-query')) return 'query';
+          // Keep the ENTIRE React ecosystem — react, react-dom, scheduler, AND
+          // react-router(-dom) — together in one chunk. Splitting react-router into
+          // its own chunk (separate from React) duplicates / mis-orders the Router
+          // context module, so a router hook reads a null context and crashes
+          // intermittently on navigation:
+          //   "Cannot destructure property 'basename' of useContext(...) as null".
+          // Bundling them together guarantees a single React + single Router context.
           return 'vendor';
         },
       },
