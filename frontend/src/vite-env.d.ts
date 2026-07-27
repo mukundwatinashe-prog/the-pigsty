@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/client" />
 
 interface ImportMetaEnv {
   /** Production API base (e.g. https://api.the-pigsty.org/api). Defaults to /api. */
@@ -10,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_GOOGLE_CLIENT_ID?: string;
   /** Cloudflare Turnstile site key — required in production for chat human verification. */
   readonly VITE_TURNSTILE_SITE_KEY?: string;
+  /** Sentry DSN for frontend error monitoring. Empty disables Sentry. */
+  readonly VITE_SENTRY_DSN?: string;
 }
 
 interface ImportMeta {

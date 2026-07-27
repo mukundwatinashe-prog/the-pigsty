@@ -13,6 +13,10 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      /** We register the SW manually (web only) in main.tsx — never inside the
+       *  native Capacitor WebView, where a SW caching bundled assets can serve
+       *  stale UI after an app update. */
+      injectRegister: false,
       /** Do not register a service worker during `vite dev` (avoids confusing stale caches). */
       devOptions: { enabled: false },
       includeAssets: ['logo.png', 'pwa-192x192.png', 'pwa-512x512.png'],

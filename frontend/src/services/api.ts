@@ -15,6 +15,12 @@ export function resolveApiBaseURL(): string {
   const envApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
   if (envApiBase) return envApiBase.replace(/\/+$/, '');
 
+  // Native shells load from capacitor://localhost or http://localhost, so the
+  // hostname is "localhost" — but there is NO dev proxy there. Native must always
+  // call the absolute API host, never a relative "/api". (Belt-and-suspenders in
+  // case a build ever ships without VITE_API_BASE_URL baked in.)
+  if (isNativeApp()) return PRODUCTION_API_BASE;
+
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1') return '/api';
