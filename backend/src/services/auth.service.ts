@@ -63,7 +63,7 @@ export class AuthService {
     );
 
     const tokens = await this.generateTokens(user.id);
-    return { user, ...tokens };
+    return { user: { ...user, isPlatformAdmin: isPlatformAdminEmail(user.email) }, ...tokens };
   }
 
   static async login(email: string, password: string, ip?: string): Promise<AuthResult> {
@@ -110,7 +110,7 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id);
     const { passwordHash: _, mfaSecret: __, ...safeUser } = user;
-    return { user: safeUser, ...tokens };
+    return { user: { ...safeUser, isPlatformAdmin: isPlatformAdminEmail(safeUser.email) }, ...tokens };
   }
 
   static async googleAuth(googleId: string, email: string, name: string, photo?: string, ip?: string): Promise<AuthResult> {
@@ -154,7 +154,7 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id);
     const { passwordHash: _, mfaSecret: __, ...safeUser } = user;
-    return { user: safeUser, ...tokens };
+    return { user: { ...safeUser, isPlatformAdmin: isPlatformAdminEmail(safeUser.email) }, ...tokens };
   }
 
   static async completeMfaLogin(challenge: string, code: string, ip?: string) {
@@ -167,7 +167,7 @@ export class AuthService {
     });
     if (!user) throw new AppError('User not found', 404);
     const tokens = await this.generateTokens(userId);
-    return { user, ...tokens };
+    return { user: { ...user, isPlatformAdmin: isPlatformAdminEmail(user.email) }, ...tokens };
   }
 
   static async revokeRefreshToken(token: string | undefined) {
