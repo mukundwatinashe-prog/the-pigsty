@@ -28,7 +28,7 @@ const WELCOME_MESSAGE: UiMessage = {
   id: 'welcome',
   role: 'assistant',
   content:
-    "Hi! I'm The Pigsty Assistant. Ask me how to do anything in the app — like adding pigs, logging feed, tracking sows, running reports, or managing your team.",
+    "Hi! I'm Piglet. Ask me how to do anything in the app — like adding pigs, logging feed, tracking sows, running reports, or managing your team.",
 };
 
 function newId() {
@@ -182,7 +182,7 @@ export function HelpAssistant() {
                 <Sparkles className="size-4" />
               </span>
               <div className="leading-tight">
-                <p className="text-sm font-semibold">The Pigsty Assistant</p>
+                <p className="text-sm font-semibold">Piglet</p>
                 <p className="text-[11px] text-white/70">Here to help you use the app</p>
               </div>
             </div>
@@ -203,7 +203,7 @@ export function HelpAssistant() {
               </span>
               <h3 className="text-base font-semibold text-gray-900">Unlock the AI assistant</h3>
               <p className="text-sm text-gray-600">
-                The Pigsty Assistant is available on the Grower and Enterprise plans. Upgrade to get
+                Piglet is available on the Grower and Enterprise plans. Upgrade to get
                 instant help with your herd, reports, and more.
               </p>
               <Link

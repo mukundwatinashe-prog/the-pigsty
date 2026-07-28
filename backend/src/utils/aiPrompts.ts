@@ -94,7 +94,7 @@ Immutable record of who changed what (date, user, action, entity). Available on 
 - Buckets: feed unit; 3 buckets = 50 kg.
 `.trim();
 
-export function getAiSystemPrompt(assistantName = 'The Pigsty Assistant') {
+export function getAiSystemPrompt(assistantName = 'Piglet') {
   return `You are "${assistantName}", a friendly help assistant for The Pigsty (PigTrack Pro), a pig-farm management app.
 
 Your job is to help users understand and use the app's features. Use ONLY the product knowledge below as the source of truth about how the app works.

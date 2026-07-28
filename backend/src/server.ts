@@ -101,7 +101,7 @@ const publicChatLimiter = rateLimitWithAlert(10, 15 * 60 * 1000, 'Too many chat 
 const publicLimiter = rateLimitWithAlert(20, 15 * 60 * 1000, 'Too many requests. Try again later.');
 
 const farmApiLimiter = rateLimitWithAlert(300, 15 * 60 * 1000, 'Too many API requests. Slow down.');
-// Public "Piggy" help chat — registered before the general public mount so it
+// Public "Piglet" help chat — registered before the general public mount so it
 // uses the AI rate limiter rather than the stricter contact-form limiter.
 app.use('/api/public/chat', publicChatLimiter, express.json({ limit: '32kb' }), publicChatRoutes);
 app.use('/api/public', publicLimiter, express.json({ limit: '32kb' }), publicRoutes);

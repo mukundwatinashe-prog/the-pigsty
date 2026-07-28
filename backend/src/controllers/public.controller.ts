@@ -73,7 +73,7 @@ export class PublicController {
     }
   }
 
-  /** Stateless help chat for the public Contact page ("Piggy"). No account or persistence. */
+  /** Stateless help chat for the public Contact page ("Piglet"). No account or persistence. */
   static async chat(req: Request, res: Response, next: NextFunction) {
     try {
       const body = publicChatSchema.parse(req.body ?? {});
@@ -83,7 +83,7 @@ export class PublicController {
         ip: getClientIp(req),
       });
       const { messages } = body;
-      const aiResponse = await aiService.generateResponse(messages, getAiSystemPrompt('Piggy'));
+      const aiResponse = await aiService.generateResponse(messages, getAiSystemPrompt('Piglet'));
       if (!aiResponse.content.trim()) {
         throw new AppError('AI provider returned an empty response', 502);
       }

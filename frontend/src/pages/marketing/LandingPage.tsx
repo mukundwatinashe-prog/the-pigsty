@@ -513,7 +513,7 @@ export default function LandingPage() {
               Questions before you start?
             </h2>
             <p className="mt-3 text-lg text-white/70">
-              Email us or chat with Piggy — our assistant knows The Pigsty inside out.
+              Email us or chat with Piglet — our assistant knows The Pigsty inside out.
             </p>
             <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
               <Link

@@ -37,14 +37,14 @@ const WELCOME_MESSAGE: UiMessage = {
   id: 'welcome',
   role: 'assistant',
   content:
-    "Hi, I'm Piggy! 🐷 Ask me anything about The Pigsty — features, pricing, or getting started.",
+    "Hi, I'm Piglet! 🐷 Ask me anything about The Pigsty — features, pricing, or getting started.",
 };
 
 function newId() {
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => void }) {
+function PigletFloatingChat({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [messages, setMessages] = useState<UiMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -87,7 +87,7 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
       );
       track('piggy_message', { source: 'contact_page' });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Sorry, I could not reach Piggy just now.';
+      const message = err instanceof Error ? err.message : 'Sorry, I could not reach Piglet just now.';
       setMessages((prev) =>
         prev.map((m) => (m.id === pendingId ? { id: pendingId, role: 'assistant', content: message, error: true } : m)),
       );
@@ -116,7 +116,7 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <div
       role="dialog"
-      aria-label="Piggy chat"
+      aria-label="Piglet chat"
       aria-modal="false"
       className="fixed bottom-0 right-0 z-50 flex h-[min(85vh,640px)] w-full flex-col overflow-hidden border border-gray-200 bg-white shadow-2xl sm:bottom-[max(1rem,env(safe-area-inset-bottom))] sm:right-[max(1rem,env(safe-area-inset-right))] sm:h-[min(80vh,620px)] sm:w-[400px] sm:rounded-2xl"
     >
@@ -126,14 +126,14 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
             <Sparkles className="size-4" />
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-semibold">Piggy</p>
+            <p className="text-sm font-semibold">Piglet</p>
             <p className="text-[11px] text-white/70">Your instant Pigsty assistant</p>
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close Piggy chat"
+          aria-label="Close Piglet chat"
           className="flex size-11 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
         >
           <X className="size-5" />
@@ -195,7 +195,7 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
             onKeyDown={onKeyDown}
             rows={1}
             maxLength={2000}
-            placeholder="Ask Piggy a question…"
+            placeholder="Ask Piglet a question…"
             className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
           <button
@@ -208,7 +208,7 @@ function PiggyFloatingChat({ open, onClose }: { open: boolean; onClose: () => vo
           </button>
         </div>
         <p className="mt-1.5 px-1 text-[11px] text-gray-400">
-          Piggy explains how The Pigsty works. Always double-check important actions.
+          Piglet explains how The Pigsty works. Always double-check important actions.
         </p>
       </form>
     </div>
@@ -270,7 +270,7 @@ function ActionCard({
 }
 
 export default function ContactPage() {
-  const [piggyOpen, setPiggyOpen] = useState(false);
+  const [piggyOpen, setPigletOpen] = useState(false);
   const waUrl = whatsappHelpUrl();
   const mailtoHref = mailtoContactPage('The Pigsty — contact request');
 
@@ -301,7 +301,7 @@ export default function ContactPage() {
           </span>
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">Contact us</h1>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg">
-            Send us an email and we&apos;ll get back to you, or chat with Piggy for instant answers about The Pigsty.
+            Send us an email and we&apos;ll get back to you, or chat with Piglet for instant answers about The Pigsty.
           </p>
         </div>
 
@@ -315,7 +315,7 @@ export default function ContactPage() {
           <li className="flex gap-3">
             <Sparkles className="mt-0.5 size-5 shrink-0 text-primary-600" aria-hidden />
             <span>
-              <strong className="font-semibold text-gray-900">Ask Piggy</strong> — instant help with features, pricing,
+              <strong className="font-semibold text-gray-900">Ask Piglet</strong> — instant help with features, pricing,
               and getting started.
             </span>
           </li>
@@ -340,11 +340,11 @@ export default function ContactPage() {
           />
           <ActionCard
             icon={Sparkles}
-            title="Ask Piggy"
+            title="Ask Piglet"
             description="Get instant answers about The Pigsty — what it does, how features work, pricing, and how to get started."
-            buttonLabel="Chat with Piggy"
+            buttonLabel="Chat with Piglet"
             onClick={() => {
-              setPiggyOpen(true);
+              setPigletOpen(true);
               track('piggy_open', { source: 'contact_page' });
             }}
             accent="emerald"
@@ -369,7 +369,7 @@ export default function ContactPage() {
         )}
       </main>
 
-      <PiggyFloatingChat open={piggyOpen} onClose={() => setPiggyOpen(false)} />
+      <PigletFloatingChat open={piggyOpen} onClose={() => setPigletOpen(false)} />
     </div>
   );
 }

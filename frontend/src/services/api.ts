@@ -46,6 +46,7 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
     message?: string;
   };
   const status = e.response?.status;
+  const serverMsg = e.response?.data?.message;
   if (status === 402) {
     return 'This feature requires a Grower or Enterprise plan. Open Billing to upgrade.';
   }
@@ -53,12 +54,14 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
     return 'Could not reach the API (404). Try a hard refresh (Ctrl+Shift+R). If it persists, the app may be outdated — contact support.';
   }
   if (status === 502 || status === 503 || status === 504) {
-    return 'API unavailable (bad gateway). The dev server proxies /api to port 4000 — start the backend: cd backend && npm run dev. Or from the repo root: npm install && npm run dev. Check http://localhost:4000/api/health responds.';
+    // Provider/AI failures (e.g. AI credits exhausted) send a specific, useful
+    // message in the body — surface it rather than a generic gateway error.
+    if (typeof serverMsg === 'string' && serverMsg.trim()) return serverMsg;
+    return 'The service is temporarily unavailable. Please try again in a moment.';
   }
-  const serverMsg = e.response?.data?.message;
   if (typeof serverMsg === 'string' && serverMsg.trim()) return serverMsg;
   if (e.code === 'ERR_NETWORK' || e.code === 'ECONNABORTED' || e.message === 'Network Error') {
-    return 'Cannot reach the server. From the project root, run the API with: cd backend && npm run dev — then open the app at http://localhost:5173 (not a production build unless the API URL is configured).';
+    return 'Cannot reach the server. Please check your connection and try again.';
   }
   if (typeof e.message === 'string' && e.message.trim()) return e.message;
   return fallback;

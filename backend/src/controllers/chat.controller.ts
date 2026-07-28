@@ -105,7 +105,7 @@ export class ChatController {
       const body = sendMessageSchema.parse(req.body ?? {});
       // No Turnstile/human check here: the authenticated assistant is already
       // protected by login, per-user rate limiting, and the paid-plan gate.
-      // (Turnstile can't complete inside the native WebView; the public "Piggy"
+      // (Turnstile can't complete inside the native WebView; the public "Piglet"
       // chat keeps its Turnstile check.)
       await ChatService.getConversationById(body.conversationId, req.userId);
 
