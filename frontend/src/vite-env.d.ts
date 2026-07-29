@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_WHATSAPP_E164?: string;
   /** Same Web client ID as backend GOOGLE_CLIENT_ID (Google Cloud Console → APIs & Services → Credentials). */
   readonly VITE_GOOGLE_CLIENT_ID?: string;
+  /** iOS OAuth client ID for native Google Sign-In (@capgo/capacitor-social-login). */
+  readonly VITE_GOOGLE_IOS_CLIENT_ID?: string;
   /** Cloudflare Turnstile site key — required in production for chat human verification. */
   readonly VITE_TURNSTILE_SITE_KEY?: string;
   /** Sentry DSN for frontend error monitoring. Empty disables Sentry. */

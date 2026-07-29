@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { isNativeApp } from '../lib/native';
 
 let gsiScriptPromise: Promise<void> | null = null;
@@ -32,10 +33,79 @@ type Props = {
 /**
  * Renders the official Google button. Requires `VITE_GOOGLE_CLIENT_ID` (same OAuth client ID as backend `GOOGLE_CLIENT_ID`).
  */
-/** Google blocks OAuth inside embedded WebViews, so the button is hidden in the native app. */
+/** Web client ID (matches backend GOOGLE_CLIENT_ID) — used to mint an ID token the backend can verify. */
+const GOOGLE_WEB_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ||
+  '556349279611-bv7sf5q249p3j76m2spr0ums3lermenj.apps.googleusercontent.com';
+/** iOS OAuth client ID — set VITE_GOOGLE_IOS_CLIENT_ID after creating the iOS client in Google Cloud. */
+const GOOGLE_IOS_CLIENT_ID = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID?.trim();
+
+/**
+ * Web renders the official Google Identity (GSI) button. Native apps can't use GSI
+ * (Google blocks OAuth in embedded WebViews), so they use a native sign-in flow via
+ * @capgo/capacitor-social-login, which returns an ID token the backend verifies at
+ * /api/auth/google — exactly like the web flow.
+ */
 export function GoogleSignInButton(props: Props) {
-  if (isNativeApp()) return null;
+  if (isNativeApp()) return <NativeGoogleButton {...props} />;
   return <GoogleSignInButtonImpl {...props} />;
+}
+
+let socialLoginInitialized = false;
+
+function NativeGoogleButton({ onCredential, text = 'continue_with', className = '' }: Props) {
+  const [loading, setLoading] = useState(false);
+  const label = text === 'signup_with' ? 'Sign up with Google' : 'Continue with Google';
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const { SocialLogin } = await import('@capgo/capacitor-social-login');
+      if (!socialLoginInitialized) {
+        await SocialLogin.initialize({
+          google: {
+            webClientId: GOOGLE_WEB_CLIENT_ID,
+            ...(GOOGLE_IOS_CLIENT_ID ? { iOSClientId: GOOGLE_IOS_CLIENT_ID } : {}),
+          },
+        });
+        socialLoginInitialized = true;
+      }
+      const res = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
+      const idToken = (res as { result?: { idToken?: string } })?.result?.idToken;
+      if (!idToken) throw new Error('Google did not return an ID token');
+      onCredential(idToken);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
+      if (!/cancel/i.test(msg)) toast.error('Google sign-in failed. Please try email and password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+      >
+        <GoogleGlyph />
+        {loading ? 'Connecting…' : label}
+      </button>
+    </div>
+  );
+}
+
+function GoogleGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z" />
+      <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z" />
+    </svg>
+  );
 }
 
 function GoogleSignInButtonImpl({ onCredential, text = 'continue_with', className = '' }: Props) {
