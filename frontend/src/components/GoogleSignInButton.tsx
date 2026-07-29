@@ -41,13 +41,21 @@ const GOOGLE_WEB_CLIENT_ID =
 const GOOGLE_IOS_CLIENT_ID = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID?.trim();
 
 /**
+ * Native Google Sign-In is off until the Google Cloud config is done (Android
+ * OAuth client + SHA-1, iOS client). Ship builds with it OFF so testers don't see
+ * a button that errors; set VITE_NATIVE_GOOGLE_ENABLED=true once configured, then
+ * rebuild. See docs/MOBILE_GOOGLE_SIGNIN.md.
+ */
+const NATIVE_GOOGLE_ENABLED = import.meta.env.VITE_NATIVE_GOOGLE_ENABLED === 'true';
+
+/**
  * Web renders the official Google Identity (GSI) button. Native apps can't use GSI
- * (Google blocks OAuth in embedded WebViews), so they use a native sign-in flow via
- * @capgo/capacitor-social-login, which returns an ID token the backend verifies at
- * /api/auth/google — exactly like the web flow.
+ * (Google blocks OAuth in embedded WebViews), so — when enabled — they use a native
+ * sign-in flow via @capgo/capacitor-social-login, which returns an ID token the
+ * backend verifies at /api/auth/google — exactly like the web flow.
  */
 export function GoogleSignInButton(props: Props) {
-  if (isNativeApp()) return <NativeGoogleButton {...props} />;
+  if (isNativeApp()) return NATIVE_GOOGLE_ENABLED ? <NativeGoogleButton {...props} /> : null;
   return <GoogleSignInButtonImpl {...props} />;
 }
 

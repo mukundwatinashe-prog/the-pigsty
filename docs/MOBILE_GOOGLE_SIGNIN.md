@@ -43,12 +43,17 @@ project** that owns your Web client (`556349279611-…apps.googleusercontent.com
 > ID stays as-is; the native flow requests an ID token whose audience is the Web
 > client ID so the backend verification is unchanged.
 
-## 3. Configure the iOS client ID for the build
+## 3. Configure the build
 
-Add to `frontend/.env.production` (baked into the native build):
+Native Google Sign-In is **off by default** so builds don't ship a button that
+errors before the OAuth clients exist. Once steps 1–2 are done, add to
+`frontend/.env.production` (baked into the native build):
 ```
+VITE_NATIVE_GOOGLE_ENABLED=true
 VITE_GOOGLE_IOS_CLIENT_ID=<your-iOS-client-id>.apps.googleusercontent.com
 ```
+Leave `VITE_NATIVE_GOOGLE_ENABLED` unset (or not `true`) to keep the native
+Google button hidden — the app falls back to email/password, which always works.
 
 ## 4. iOS URL scheme
 
