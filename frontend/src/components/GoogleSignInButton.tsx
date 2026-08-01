@@ -83,8 +83,10 @@ function NativeGoogleButton({ onCredential, text = 'continue_with', className = 
       if (!idToken) throw new Error('Google did not return an ID token');
       onCredential(idToken);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
-      if (!/cancel/i.test(msg)) toast.error('Google sign-in failed. Please try email and password.');
+      const msg = err instanceof Error ? err.message : String(err);
+      // TEMP (diagnostics): surface the real Google error so we can see the exact
+      // failure on-device. Revert to the friendly message once native login works.
+      if (!/cancel/i.test(msg)) toast.error(`Google sign-in error: ${msg}`, { duration: 15000 });
     } finally {
       setLoading(false);
     }
