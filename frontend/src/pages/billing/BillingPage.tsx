@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CreditCard, ExternalLink, Loader2, Sparkles, MessageCircle } from 'lucide-react';
+import { CreditCard, ExternalLink, Loader2, Sparkles, MessageCircle, XCircle, RotateCcw } from 'lucide-react';
 import { siteConfig, sitePricing, whatsappHelpUrl } from '../../lib/siteConfig';
 import toast from 'react-hot-toast';
 import { useFarm } from '../../context/FarmContext';
 import { farmService } from '../../services/farm.service';
 import { track } from '../../lib/analytics';
 import { isNativeApp } from '../../lib/native';
-
-function canManageSubscription(role: string) {
-  return role === 'OWNER' || role === 'FARM_MANAGER';
-}
+import { cancelAffordance, canManageSubscription } from '../../lib/billingActions';
 
 type CheckoutTarget = { plan: 'GROWER' | 'ENTERPRISE'; startTrial?: boolean } | null;
 
@@ -73,9 +70,58 @@ export default function BillingPage() {
     },
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: () => farmService.billingCancel(farmId!),
+    onSuccess: ({ cancelAtPeriodEnd }) => {
+      track('subscription_cancel_scheduled');
+      toast.success(
+        cancelAtPeriodEnd
+          ? 'Subscription set to cancel at the end of your billing period.'
+          : 'Subscription cancelled. This farm is back on the Smallholder (Free) plan.',
+      );
+      queryClient.invalidateQueries({ queryKey: ['farm-billing', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['farm-dashboard', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['farms'] });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message ?? 'Could not cancel subscription');
+    },
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: () => farmService.billingResume(farmId!),
+    onSuccess: () => {
+      track('subscription_cancel_reverted');
+      toast.success('Your subscription will continue — cancellation undone.');
+      queryClient.invalidateQueries({ queryKey: ['farm-billing', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['farm-dashboard', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['farms'] });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message ?? 'Could not resume subscription');
+    },
+  });
+
   function startCheckout(target: NonNullable<CheckoutTarget>) {
     setCheckoutTarget(target);
     checkoutMutation.mutate(target);
+  }
+
+  function confirmCancel() {
+    const when = data?.currentPeriodEnd
+      ? new Date(data.currentPeriodEnd).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : 'the end of your current billing period';
+    if (
+      window.confirm(
+        `Cancel this farm's subscription? Paid features stay active until ${when}, then the farm returns to the Smallholder (Free) plan. Your data is never deleted. You can resume any time before then.`,
+      )
+    ) {
+      cancelMutation.mutate();
+    }
   }
 
   function isCheckingOut(target: NonNullable<CheckoutTarget>) {
@@ -112,7 +158,9 @@ export default function BillingPage() {
   const manage = canManageSubscription(data.myRole);
   // Apple/Google require their own in-app purchase system for digital subscriptions
   // bought inside the app. We keep subscriptions web-only, so on native we hide all
-  // purchase/checkout UI and show an informational notice instead.
+  // purchase/checkout UI and show an informational notice instead. Cancelling is not a
+  // purchase, so the cancel/resume controls stay available on native — a mobile-only
+  // user must always be able to unsubscribe without leaving the app.
   const purchasingEnabled = !isNativeApp();
   const limitLabel = data.pigLimit == null ? 'Unlimited' : String(data.pigLimit);
   const isGrower = data.plan === 'GROWER';
@@ -120,6 +168,18 @@ export default function BillingPage() {
   const isFree = data.plan === 'FREE';
   const currentPlanLabel =
     data.planLabel ?? (isFree ? 'Smallholder' : isGrower ? 'Grower' : 'Enterprise');
+  const isPaid = isGrower || isEnterprise;
+  // Single source of truth for the unsubscribe route, unit-tested in lib/billingActions
+  // to guarantee no paid state resolves to "no way out".
+  const affordance = cancelAffordance(data);
+  const canCancelInApp = affordance === 'CANCEL_IN_APP';
+  const periodEndLabel = data.currentPeriodEnd
+    ? new Date(data.currentPeriodEnd).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -170,6 +230,11 @@ export default function BillingPage() {
             plan, sign in at <span className="font-medium text-gray-900">the-pigsty.org</span> from a
             web browser. Any changes will appear here automatically.
           </p>
+          {isPaid && manage && data.hasSubscription && (
+            <p className="mt-2 text-sm text-gray-600">
+              You can cancel your subscription right here in the app — see below.
+            </p>
+          )}
         </div>
       )}
 
@@ -328,13 +393,38 @@ export default function BillingPage() {
         </div>
       )}
 
+      {affordance === 'PENDING_CANCELLATION' && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+          <h2 className="font-semibold text-amber-900">Subscription ending</h2>
+          <p className="mt-1 text-sm text-amber-800">
+            Your {currentPlanLabel} subscription is scheduled to cancel
+            {periodEndLabel ? (
+              <>
+                {' '}on <span className="font-medium">{periodEndLabel}</span>
+              </>
+            ) : (
+              ' at the end of the current billing period'
+            )}
+            . Paid features stay active until then, after which this farm returns to the Smallholder
+            (Free) plan. Your data is never deleted.
+          </p>
+          <button
+            type="button"
+            disabled={resumeMutation.isPending}
+            onClick={() => resumeMutation.mutate()}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+          >
+            {resumeMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+            Keep my subscription
+          </button>
+        </div>
+      )}
+
       {(isGrower || isEnterprise) && manage && data.stripeConfigured && data.hasStripeCustomer && purchasingEnabled && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-gray-900">Manage subscription</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Update your payment method, or cancel your plan, in the Stripe customer portal. If you
-            cancel, paid features stay active until the end of your current billing period, then the
-            farm returns to the Free plan — your data is never deleted.
+            Update your payment method or view invoices in the Stripe customer portal.
           </p>
           <button
             type="button"
@@ -345,6 +435,74 @@ export default function BillingPage() {
             {portalMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}
             Open billing portal
           </button>
+        </div>
+      )}
+
+      {/*
+        Anyone on a paid plan must always see a way out, so this section renders for every
+        paid farm. Only the action inside it varies: a real cancel button when there is a
+        Stripe subscription to cancel, and a support route when there is not (plan granted
+        manually, Stripe unconfigured, or the checkout webhook never landed) — those are
+        exactly the cases the cancel endpoint rejects with 400/503.
+      */}
+      {(affordance === 'CANCEL_IN_APP' ||
+        affordance === 'REQUEST_VIA_SUPPORT' ||
+        affordance === 'ASK_FARM_MANAGER') && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-900">Cancel subscription</h2>
+          {canCancelInApp ? (
+            <>
+              <p className="mt-1 text-sm text-gray-600">
+                Cancel to stop future payments. Your paid features stay active until the end of the
+                current billing period
+                {periodEndLabel ? (
+                  <>
+                    {' '}(<span className="font-medium">{periodEndLabel}</span>)
+                  </>
+                ) : null}
+                , then this farm returns to the Smallholder (Free) plan. Your data is never deleted, and
+                you can resubscribe any time.
+              </p>
+              <button
+                type="button"
+                disabled={cancelMutation.isPending}
+                onClick={confirmCancel}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                {cancelMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <XCircle className="size-4" />}
+                Cancel subscription
+              </button>
+            </>
+          ) : affordance === 'REQUEST_VIA_SUPPORT' ? (
+            <>
+              <p className="mt-1 text-sm text-gray-600">
+                This farm's {currentPlanLabel} plan is not linked to an online subscription we can
+                cancel automatically. Email us and we will end it for you — your data is never
+                deleted, and the farm simply returns to the Smallholder (Free) plan.
+              </p>
+              <a
+                href={`mailto:${siteConfig.supportEmail}?subject=${encodeURIComponent(
+                  `Cancel subscription — ${currentFarm?.name ?? 'my farm'}`,
+                )}`}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50"
+              >
+                <XCircle className="size-4" />
+                Request cancellation
+              </a>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-gray-600">
+              Only a farm owner or manager can cancel this farm's {currentPlanLabel} subscription.
+              Ask them to open this page, or email{' '}
+              <a
+                href={`mailto:${siteConfig.supportEmail}`}
+                className="font-medium text-primary-700 hover:underline"
+              >
+                {siteConfig.supportEmail}
+              </a>
+              .
+            </p>
+          )}
         </div>
       )}
 

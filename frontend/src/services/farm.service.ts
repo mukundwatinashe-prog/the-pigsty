@@ -26,6 +26,9 @@ export interface FarmBillingSummary extends FarmBillingInfo {
   myRole: Role;
   stripeConfigured: boolean;
   hasStripeCustomer: boolean;
+  hasSubscription?: boolean;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: string | null;
 }
 
 export interface FarmFinancialsResponse {
@@ -96,6 +99,20 @@ export const farmService = {
 
   billingPortal: (farmId: string) =>
     api.post<{ url: string }>(`/farms/${farmId}/billing/portal`).then(r => r.data),
+
+  billingCancel: (farmId: string) =>
+    api
+      .post<{ cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null }>(
+        `/farms/${farmId}/billing/cancel`,
+      )
+      .then(r => r.data),
+
+  billingResume: (farmId: string) =>
+    api
+      .post<{ cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null }>(
+        `/farms/${farmId}/billing/resume`,
+      )
+      .then(r => r.data),
 
   create: (data: { name: string; location: string; country: string; currency?: string; timezone?: string; weightUnit?: string }) =>
     api.post<Farm>('/farms', data).then(r => r.data),
