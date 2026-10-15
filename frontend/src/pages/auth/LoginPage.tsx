@@ -135,6 +135,16 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <p className="text-center text-sm text-gray-500 mt-4">
+            Don't have an account?{' '}
+            <Link
+              to={safeRedirect ? `/register?redirect=${encodeURIComponent(safeRedirect)}` : '/register'}
+              className="text-primary-600 font-medium hover:text-primary-700"
+            >
+              Create one
+            </Link>
+          </p>
+
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center" aria-hidden>
               <div className="w-full border-t border-gray-200" />
@@ -153,15 +163,6 @@ export default function LoginPage() {
             <Link to="/privacy" className="text-primary-600 hover:underline">Privacy</Link>
             {' · '}
             <Link to="/terms" className="text-primary-600 hover:underline">Terms</Link>
-          </p>
-          <p className="text-center text-sm text-gray-500 mt-4">
-            Don't have an account?{' '}
-            <Link
-              to={safeRedirect ? `/register?redirect=${encodeURIComponent(safeRedirect)}` : '/register'}
-              className="text-primary-600 font-medium hover:text-primary-700"
-            >
-              Create one
-            </Link>
           </p>
         </div>
       </div>
