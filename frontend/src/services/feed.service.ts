@@ -88,6 +88,20 @@ export const feedService = {
     return withBase(`/farms/${farmId}/feed/purchases/${purchaseId}/receipt`);
   },
 
+  /**
+   * Fetches a receipt with the app's auth and hands it to saveBlob. Needed in the
+   * native app: a plain link to receiptUrl opens the API in the WebView without the
+   * Bearer token (401) and navigates away from the app.
+   */
+  async openReceipt(farmId: string, purchaseId: string) {
+    const res = await api.get<Blob>(`/farms/${farmId}/feed/purchases/${purchaseId}/receipt`, {
+      responseType: 'blob',
+    });
+    const type = res.data.type || '';
+    const ext = type.includes('pdf') ? 'pdf' : type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : 'jpg';
+    await saveBlob(res.data, `receipt-${purchaseId.slice(0, 8)}.${ext}`);
+  },
+
   listDailyUsage(farmId: string, params?: { from?: string; to?: string }) {
     const q = new URLSearchParams();
     if (params?.from) q.set('from', params.from);

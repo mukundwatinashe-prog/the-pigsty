@@ -6,10 +6,12 @@ import { ArrowLeft, Download, ExternalLink, FileText, Loader2 } from 'lucide-rea
 import { useFarm } from '../../context/FarmContext';
 import { feedService } from '../../services/feed.service';
 import { FEED_TYPE_LABELS } from '../../lib/feedUnits';
+import { isNativeApp } from '../../lib/native';
 
 export default function FeedPurchaseHistoryPage() {
   const { currentFarm } = useFarm();
   const [exporting, setExporting] = useState<'pdf' | 'xlsx' | null>(null);
+  const [openingReceiptId, setOpeningReceiptId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['feed-purchases', currentFarm?.id],
@@ -104,14 +106,35 @@ export default function FeedPurchaseHistoryPage() {
                   <td className="px-4 py-3 text-gray-600">{p.supplier ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-700">{p.createdBy?.name?.trim() || '—'}</td>
                   <td className="px-4 py-3">
-                    <a
-                      href={feedService.receiptUrl(currentFarm.id, p.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-primary-600 hover:underline"
-                    >
-                      View <ExternalLink size={14} />
-                    </a>
+                    {isNativeApp() ? (
+                      <button
+                        type="button"
+                        disabled={openingReceiptId === p.id}
+                        onClick={async () => {
+                          setOpeningReceiptId(p.id);
+                          try {
+                            await feedService.openReceipt(currentFarm.id, p.id);
+                          } catch {
+                            toast.error('Could not open the receipt');
+                          } finally {
+                            setOpeningReceiptId(null);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-primary-600 hover:underline disabled:opacity-60"
+                      >
+                        {openingReceiptId === p.id ? <Loader2 size={14} className="animate-spin" /> : null}
+                        View <ExternalLink size={14} />
+                      </button>
+                    ) : (
+                      <a
+                        href={feedService.receiptUrl(currentFarm.id, p.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-primary-600 hover:underline"
+                      >
+                        View <ExternalLink size={14} />
+                      </a>
+                    )}
                   </td>
                 </tr>
               ))}
