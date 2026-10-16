@@ -4,6 +4,8 @@ import type { Prisma } from '@prisma/client';
 import prisma from '../config/database';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
+import { farrowingEndsCurrentService, weanedExceedsBornAlive } from '../lib/farrowing';
+import { isFutureCalendarDate } from '../lib/calendarDate';
 import { AuditService } from '../services/audit.service';
 import { wouldExceedFreeTier, pigLimitForPlan } from '../config/planLimits';
 import { syncPigGrowthStageIfNeeded } from '../services/pigStageSync.service';
@@ -53,8 +55,12 @@ const pigSchema = z.object({
   tagNumber: z.string().min(1).max(20),
   breed: z.enum(BREEDS),
   stage: z.enum(STAGES),
-  dateOfBirth: z.string().optional().nullable(),
-  acquisitionDate: z.string(),
+  dateOfBirth: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((v) => !isFutureCalendarDate(v), 'Date of birth cannot be in the future'),
+  acquisitionDate: z.string().refine((v) => !isFutureCalendarDate(v), 'Acquisition date cannot be in the future'),
   entryWeight: z.number().positive(),
   currentWeight: z.number().positive().optional(),
   status: z.enum(STATUSES).default('ACTIVE'),
@@ -319,13 +325,18 @@ export class PigController {
       });
       const data = schema.parse(req.body);
 
+      if (weanedExceedsBornAlive(data.pigletsBornAlive, data.pigletsWeaned)) {
+        return next(new AppError('Piglets weaned cannot be more than piglets born alive', 400));
+      }
+
       const pig = await prisma.pig.findUnique({ where: { id: pigId } });
       if (!pig || pig.farmId !== req.farmId!) return next(new AppError('Pig not found', 404));
 
-      const record = await prisma.farrowingRecord.create({
+      const farrowingDate = new Date(data.farrowingDate);
+      const createRecord = prisma.farrowingRecord.create({
         data: {
           pigId,
-          farrowingDate: new Date(data.farrowingDate),
+          farrowingDate,
           pigletsBornAlive: data.pigletsBornAlive,
           pigletsBornDead: data.pigletsBornDead,
           pigletsWeaned: data.pigletsWeaned ?? null,
@@ -337,6 +348,16 @@ export class PigController {
           notes: data.notes ?? null,
         },
       });
+      // Like "Complete birth": a farrowing ends the current service so the gestation
+      // countdown and serviced-sow lists stop tracking a sow that has already given birth.
+      const record = farrowingEndsCurrentService(pig, farrowingDate)
+        ? (
+            await prisma.$transaction([
+              createRecord,
+              prisma.pig.update({ where: { id: pigId }, data: { serviced: false, servicedDate: null } }),
+            ])
+          )[0]
+        : await createRecord;
 
       await AuditService.log({
         userId: req.userId!, farmId: req.farmId!,
@@ -375,6 +396,9 @@ export class PigController {
         where: { id: recordId, pigId },
       });
       if (!existing) return next(new AppError('Farrowing record not found', 404));
+      if (weanedExceedsBornAlive(existing.pigletsBornAlive, body.pigletsWeaned)) {
+        return next(new AppError('Piglets weaned cannot be more than piglets born alive', 400));
+      }
 
       const updateData: Record<string, unknown> = {};
       if (body.pigletsWeaned !== undefined) updateData.pigletsWeaned = body.pigletsWeaned;

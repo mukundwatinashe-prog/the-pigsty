@@ -274,6 +274,7 @@ export default function PigListPage() {
       pigService.delete(farmId, pigId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pigs'] });
+      queryClient.invalidateQueries({ queryKey: ['pens'] });
       toast.success('Pig removed from inventory');
       setDeleteTarget(null);
     },
@@ -294,6 +295,7 @@ export default function PigListPage() {
     }) => pigService.addObservation(vars.farmId, vars.pigId, vars.payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pigs'] });
+      queryClient.invalidateQueries({ queryKey: ['pens'] });
       queryClient.invalidateQueries({ queryKey: ['farm-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['farm'] });
       toast.success('Observation saved');
@@ -313,6 +315,7 @@ export default function PigListPage() {
       pigService.recordSale(vars.farmId, vars.pigId, vars.payload),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pigs'] });
+      queryClient.invalidateQueries({ queryKey: ['pens'] });
       queryClient.invalidateQueries({ queryKey: ['farm-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['serviced-sows'] });
       toast.success(`${saleForm.saleType === 'SLAUGHTER' ? 'Slaughter' : 'Sale'} recorded — ${currency} ${Number(result.totalPrice).toFixed(2)}`);

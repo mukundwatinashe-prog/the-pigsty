@@ -502,6 +502,7 @@ export default function PigDetailPage() {
   const invalidatePigAndList = () => {
     queryClient.invalidateQueries({ queryKey: ['pig', farmId, pigId] });
     queryClient.invalidateQueries({ queryKey: ['pigs'] });
+    queryClient.invalidateQueries({ queryKey: ['pens'] });
   };
 
   const deleteVaccinationMutation = useMutation({
@@ -541,6 +542,7 @@ export default function PigDetailPage() {
     onSuccess: () => {
       toast.success('Pig removed');
       queryClient.invalidateQueries({ queryKey: ['pigs', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['pens'] });
       navigate('/pigs');
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
@@ -988,28 +990,36 @@ export default function PigDetailPage() {
                             </button>
                           </td>
                         </tr>
-                        {expandedFarrowCareId === f.id && (
-                          <tr className="bg-gray-50/50">
-                            <td colSpan={10} className="px-3 py-2">
-                              <FarrowingLitterCarePanel
-                                farmId={farmId!}
-                                pigId={pigId!}
-                                record={f}
-                                unit={unit}
-                                onSaved={() => {
-                                  setExpandedFarrowCareId(null);
-                                  queryClient.invalidateQueries({ queryKey: ['pig', farmId, pigId] });
-                                }}
-                              />
-                            </td>
-                          </tr>
-                        )}
                       </Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+            {/* Rendered below the table, not in a row: inside the horizontally scrolling
+                table the editor was as wide as the table and its Save button sat off-screen
+                on phones. */}
+            {(() => {
+              const f = farrowings.find((x) => x.id === expandedFarrowCareId);
+              if (!f) return null;
+              return (
+                <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3">
+                  <p className="mb-2 text-sm font-medium text-gray-700">
+                    Piglet care — litter of {formatDate(f.farrowingDate)}
+                  </p>
+                  <FarrowingLitterCarePanel
+                    farmId={farmId!}
+                    pigId={pigId!}
+                    record={f}
+                    unit={unit}
+                    onSaved={() => {
+                      setExpandedFarrowCareId(null);
+                      queryClient.invalidateQueries({ queryKey: ['pig', farmId, pigId] });
+                    }}
+                  />
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
