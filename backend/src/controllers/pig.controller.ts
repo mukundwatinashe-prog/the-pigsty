@@ -76,6 +76,13 @@ const pigSchema = z.object({
   notes: z.string().max(2000).optional().nullable(),
 });
 
+/** A pen id from the client must belong to the caller's farm (cross-farm IDOR guard). */
+async function penBelongsToFarm(penId: string | null | undefined, farmId: string): Promise<boolean> {
+  if (!penId) return true;
+  const pen = await prisma.pen.findUnique({ where: { id: penId }, select: { farmId: true } });
+  return !!pen && pen.farmId === farmId;
+}
+
 export class PigController {
   static async list(req: FarmRequest, res: Response, next: NextFunction) {
     try {
@@ -172,6 +179,7 @@ export class PigController {
   static async create(req: FarmRequest, res: Response, next: NextFunction) {
     try {
       const data = pigSchema.parse(req.body);
+      if (!(await penBelongsToFarm(data.penId, req.farmId!))) return next(new AppError('Pen not found', 404));
 
       const farmPlan = await prisma.farm.findUnique({
         where: { id: req.farmId! },
@@ -255,6 +263,11 @@ export class PigController {
     try {
       const pigId = req.params.pigId as string;
       const data = pigSchema.partial().parse(req.body);
+
+      // Tenant isolation: the pig (and any pen it moves to) must belong to this farm.
+      const existing = await prisma.pig.findUnique({ where: { id: pigId }, select: { farmId: true } });
+      if (!existing || existing.farmId !== req.farmId!) return next(new AppError('Pig not found', 404));
+      if (!(await penBelongsToFarm(data.penId, req.farmId!))) return next(new AppError('Pen not found', 404));
 
       const updateData: any = { ...data };
       if (data.dateOfBirth) updateData.dateOfBirth = new Date(data.dateOfBirth);
