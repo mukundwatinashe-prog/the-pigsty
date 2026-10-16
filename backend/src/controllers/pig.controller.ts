@@ -506,6 +506,8 @@ export class PigController {
         saleType: z.enum(['LIVE_SALE', 'SLAUGHTER']),
         saleDate: z.string(),
         weightAtSale: z.number().min(0),
+        /** Agreed price for this sale; defaults to the farm's sale price in settings. */
+        pricePerKg: z.number().min(0).optional(),
         buyer: z.string().max(200).optional().nullable(),
         notes: z.string().max(2000).optional().nullable(),
       });
@@ -517,7 +519,7 @@ export class PigController {
       const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
       if (!farm) return next(new AppError('Farm not found', 404));
 
-      const pricePerKg = Number(farm.pricePerKg);
+      const pricePerKg = data.pricePerKg ?? Number(farm.pricePerKg);
       const totalPrice = parseFloat((data.weightAtSale * pricePerKg).toFixed(2));
       /** Inventory status is always SOLD for any sale; `saleType` on SaleRecord distinguishes live vs slaughter. */
       const newStatus = 'SOLD';
@@ -567,6 +569,8 @@ export class PigController {
         saleDate: z.string(),
         buyer: z.string().max(200).optional().nullable(),
         notes: z.string().max(2000).optional().nullable(),
+        /** Agreed price for these sales; defaults to the farm's sale price in settings. */
+        pricePerKg: z.number().min(0).optional(),
         items: z
           .array(
             z.object({
@@ -585,7 +589,7 @@ export class PigController {
 
       const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
       if (!farm) return next(new AppError('Farm not found', 404));
-      const pricePerKg = Number(farm.pricePerKg);
+      const pricePerKg = data.pricePerKg ?? Number(farm.pricePerKg);
 
       const pigs = await prisma.pig.findMany({
         where: { id: { in: pigIds }, farmId: req.farmId! },

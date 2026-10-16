@@ -80,6 +80,9 @@ export class FarmController {
       const farm = await prisma.farm.create({
         data: {
           ...data,
+          // The schema's 3.30 default sale price is a GBP figure; in any other currency it
+          // would silently mis-price sales and herd value, so start unset and ask the owner.
+          ...(data.currency === 'GBP' ? {} : { pricePerKg: 0 }),
           members: { create: { userId: req.userId!, role: 'OWNER' } },
         },
         include: {

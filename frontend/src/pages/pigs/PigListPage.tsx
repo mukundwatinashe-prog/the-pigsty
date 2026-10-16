@@ -197,6 +197,7 @@ export default function PigListPage() {
     saleType: 'LIVE_SALE' as SaleType,
     saleDate: new Date().toISOString().slice(0, 10),
     weightAtSale: '',
+    pricePerKg: '',
     buyer: '',
     notes: '',
   });
@@ -206,9 +207,10 @@ export default function PigListPage() {
     queryFn: () => farmService.getById(currentFarm!.id),
     enabled: !!currentFarm?.id,
   });
-  const pricePerKg = Number(farmDetail?.farm?.pricePerKg) || 0;
+  const farmPricePerKg = Number(farmDetail?.farm?.pricePerKg) || 0;
   const currency = currentFarm?.currency ?? 'GBP';
   const saleWeight = parseFloat(saleForm.weightAtSale) || 0;
+  const pricePerKg = parseFloat(saleForm.pricePerKg) || 0;
   const calculatedPrice = parseFloat((saleWeight * pricePerKg).toFixed(2));
 
   useEffect(() => {
@@ -355,6 +357,8 @@ export default function PigListPage() {
       saleType: 'LIVE_SALE',
       saleDate: new Date().toISOString().slice(0, 10),
       weightAtSale: pig.currentWeight != null ? String(pig.currentWeight) : '',
+      // Pre-fill the farm's usual price; left blank when none is set so it isn't guessed.
+      pricePerKg: farmPricePerKg > 0 ? String(farmPricePerKg) : '',
       buyer: '',
       notes: '',
     });
@@ -364,6 +368,7 @@ export default function PigListPage() {
     e.preventDefault();
     if (!currentFarm || !saleTarget) return;
     if (!saleWeight || saleWeight <= 0) return toast.error('Enter a valid weight');
+    if (saleForm.pricePerKg.trim() === '' || pricePerKg < 0) return toast.error('Enter the price per kg for this sale');
     saleMutation.mutate({
       farmId: currentFarm.id,
       pigId: saleTarget.id,
@@ -371,6 +376,7 @@ export default function PigListPage() {
         saleType: saleForm.saleType,
         saleDate: saleForm.saleDate,
         weightAtSale: saleWeight,
+        pricePerKg,
         buyer: saleForm.buyer || null,
         notes: saleForm.notes || null,
       },
@@ -1049,11 +1055,23 @@ export default function PigListPage() {
 
               <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-emerald-600 font-medium">Price per {weightUnit}</p>
-                    <p className="text-lg font-bold text-emerald-900">{currency} {pricePerKg.toFixed(2)}</p>
-                    <p className="text-xs text-emerald-500 mt-0.5">Set in farm settings</p>
-                  </div>
+                  <label className="block">
+                    <span className="text-xs text-emerald-600 font-medium">Price per {weightUnit} ({currency}) *</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={saleForm.pricePerKg}
+                      onChange={e => setSaleForm(f => ({ ...f, pricePerKg: e.target.value }))}
+                      placeholder="0.00"
+                      className="mt-1 block w-28 rounded-lg border border-emerald-300 bg-white px-2 py-1.5 text-lg font-bold text-emerald-900"
+                    />
+                    <span className="mt-0.5 block text-xs text-emerald-500">
+                      {farmPricePerKg > 0 ? 'Default from farm settings' : 'Tip: set a default in Farm settings'}
+                    </span>
+                  </label>
                   <div className="text-right">
                     <p className="text-xs text-emerald-600 font-medium">Total Price</p>
                     <p className="text-2xl font-bold text-emerald-900">{currency} {calculatedPrice.toFixed(2)}</p>
