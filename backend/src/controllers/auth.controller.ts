@@ -195,9 +195,10 @@ export class AuthController {
     }
   }
 
-  static async mfaSetup(_req: AuthRequest, res: Response, next: NextFunction) {
+  static async mfaSetup(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const { secret, otpauthUrl } = MfaService.generateSecret();
+      const user = await AuthService.getProfile(req.userId!);
+      const { secret, otpauthUrl } = MfaService.generateSecret(user.email);
       res.json({ secret, otpauthUrl });
     } catch (error) {
       next(error);

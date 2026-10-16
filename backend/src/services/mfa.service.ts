@@ -9,9 +9,10 @@ const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 authenticator.options = { window: 1 };
 
 export class MfaService {
-  static generateSecret(): { secret: string; otpauthUrl: string } {
+  /** `accountLabel` is what the authenticator app lists under "The Pigsty" — the user's email. */
+  static generateSecret(accountLabel: string): { secret: string; otpauthUrl: string } {
     const secret = authenticator.generateSecret();
-    const otpauthUrl = authenticator.keyuri('user@the-pigsty.org', 'The Pigsty', secret);
+    const otpauthUrl = authenticator.keyuri(accountLabel, 'The Pigsty', secret);
     return { secret, otpauthUrl };
   }
 

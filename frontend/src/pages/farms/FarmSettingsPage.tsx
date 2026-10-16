@@ -333,7 +333,7 @@ export default function FarmSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['farm-invitations', farmId] });
       inviteForm.reset({ email: '', role: inviteForm.getValues('role') });
-      toast.success('Invitation sent — we emailed them a link to join.');
+      toast.success('Invitation created — we’re emailing them a link. You can also copy it from Pending invitations below.');
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       toast.error(err.response?.data?.message || 'Invite failed');
