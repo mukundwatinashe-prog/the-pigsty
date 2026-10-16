@@ -157,6 +157,11 @@ export class PigController {
             include: { user: { select: { id: true, name: true } } },
           },
           vaccinations: { orderBy: { dateAdministered: 'desc' } },
+          observations: {
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+            include: { user: { select: { id: true, name: true } } },
+          },
           farrowingRecords: { orderBy: { farrowingDate: 'desc' } },
           damOffspring: { select: { id: true, tagNumber: true, status: true } },
           sireOffspring: { select: { id: true, tagNumber: true, status: true } },

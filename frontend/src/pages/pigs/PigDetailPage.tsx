@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, Pencil, Trash2, PiggyBank, Scale, Calendar,
-  MapPin, Dna, Syringe, Baby, StickyNote, Heart, Clock, Plus, Loader2,
+  MapPin, Dna, Syringe, Baby, StickyNote, Heart, Clock, Plus, Loader2, Stethoscope, AlertTriangle,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -12,7 +12,8 @@ import {
 import { useFarm } from '../../context/FarmContext';
 import { pigService } from '../../services/pig.service';
 import { weightService } from '../../services/weight.service';
-import type { Pig, WeightLog, Vaccination, FarrowingRecord } from '../../types';
+import type { Pig, WeightLog, Vaccination, FarrowingRecord, PigObservation, PigObservationCategory } from '../../types';
+import { PIG_OBSERVATION_OPTIONS, pigObservationLabel } from '../../lib/pigObservations';
 
 const GESTATION_DAYS = 114;
 const HEAT_RETURN_DAYS = 21;
@@ -23,6 +24,7 @@ const GESTATION_DAY_100 = 100;
 type PigWithRelations = Pig & {
   weightLogs?: WeightLog[];
   vaccinations?: Vaccination[];
+  observations?: PigObservation[];
   farrowingRecords?: FarrowingRecord[];
   damOffspring?: { id: string; tagNumber: string }[];
   sireOffspring?: { id: string; tagNumber: string }[];
@@ -523,7 +525,7 @@ export default function PigDetailPage() {
 
   const { data: weightHistory, isLoading: weightLoading } = useQuery({
     queryKey: ['pig-weights', farmId, pigId],
-    queryFn: () => weightService.getHistory(farmId!, pigId!) as Promise<{ logs: WeightLog[]; adg: number }>,
+    queryFn: () => weightService.getHistory(farmId!, pigId!) as Promise<{ logs: WeightLog[]; adg: number | null }>,
     enabled: !!farmId && !!pigId,
   });
 
@@ -535,6 +537,37 @@ export default function PigDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['pig', farmId, pigId] });
     },
     onError: () => toast.error('Could not save heat check'),
+  });
+
+  const [obsCategory, setObsCategory] = useState<PigObservationCategory>(PIG_OBSERVATION_OPTIONS[0].value);
+  const [obsNotes, setObsNotes] = useState('');
+  const observationMutation = useMutation({
+    mutationFn: () => pigService.addObservation(farmId!, pigId!, { category: obsCategory, notes: obsNotes.trim() || null }),
+    onSuccess: () => {
+      toast.success('Observation saved');
+      setObsNotes('');
+      queryClient.invalidateQueries({ queryKey: ['pig', farmId, pigId] });
+      queryClient.invalidateQueries({ queryKey: ['farm-dashboard'] });
+    },
+    onError: () => toast.error('Could not save observation'),
+  });
+
+  /** A sow back in heat after service is probably not pregnant: let the farmer end that service. */
+  const clearServiceMutation = useMutation({
+    mutationFn: () =>
+      pigService.update(farmId!, pigId!, {
+        serviced: false,
+        servicedDate: null,
+        serviceHeatCheckAt: null,
+        serviceHeatInHeat: null,
+      }),
+    onSuccess: () => {
+      toast.success('Service cleared');
+      queryClient.invalidateQueries({ queryKey: ['pig', farmId, pigId] });
+      queryClient.invalidateQueries({ queryKey: ['serviced-sows', farmId] });
+      queryClient.invalidateQueries({ queryKey: ['farm-dashboard'] });
+    },
+    onError: () => toast.error('Could not clear the service'),
   });
 
   const deleteMutation = useMutation({
@@ -591,13 +624,14 @@ export default function PigDetailPage() {
   }
 
   const logs = weightHistory?.logs ?? [];
-  const adg = weightHistory?.adg ?? 0;
+  const adg = weightHistory?.adg ?? null;
   const chartData = logs.map((l) => ({
     date: new Date(l.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
     weight: Number(l.weight),
   }));
 
   const vaccinations = pig.vaccinations ?? [];
+  const observations = pig.observations ?? [];
   const ageLabel = ageSummaryFromDob(pig.dateOfBirth);
   const farrowings = pig.farrowingRecords ?? [];
   const offspring = [...(pig.damOffspring ?? []), ...(pig.sireOffspring ?? [])];
@@ -850,6 +884,27 @@ export default function PigDetailPage() {
             </div>
           )}
 
+          {pig.serviced && pig.serviceHeatInHeat === true && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 space-y-3">
+              <p className="flex items-start gap-2">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-600" aria-hidden />
+                <span>
+                  <strong>Back in heat{pig.serviceHeatCheckAt ? ` on ${formatDate(pig.serviceHeatCheckAt)}` : ''}.</strong>{' '}
+                  She is probably not pregnant, so the expected farrowing below is unlikely. Re-service her
+                  (Edit → update the serviced date) or clear this service.
+                </span>
+              </p>
+              <button
+                type="button"
+                disabled={clearServiceMutation.isPending}
+                onClick={() => clearServiceMutation.mutate()}
+                className="rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+              >
+                {clearServiceMutation.isPending ? 'Clearing…' : 'Clear service'}
+              </button>
+            </div>
+          )}
+
           {/* Expected dates */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {pig.serviced && pig.servicedDate && (
@@ -1031,8 +1086,8 @@ export default function PigDetailPage() {
             <Scale size={20} className="text-primary-600" /> Weight history
           </h2>
           <div className="text-sm">
-            <span className="text-gray-500">ADG (from logs): </span>
-            <span className="font-semibold text-gray-900">{weightLoading ? '…' : logs.length >= 2 ? `${adg} ${unit}/day` : '—'}</span>
+            <span className="text-gray-500">ADG (since entry): </span>
+            <span className="font-semibold text-gray-900">{weightLoading ? '…' : adg != null ? `${adg} ${unit}/day` : '—'}</span>
           </div>
         </div>
         {weightLoading ? (
@@ -1051,6 +1106,65 @@ export default function PigDetailPage() {
               </LineChart>
             </ResponsiveContainer>
           </div>
+        )}
+      </div>
+
+      {/* Health observations */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+          <Stethoscope size={20} className="text-primary-600" /> Health observations
+        </h2>
+        <form
+          className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,14rem)_1fr_auto] sm:items-end"
+          onSubmit={(e) => {
+            e.preventDefault();
+            observationMutation.mutate();
+          }}
+        >
+          <label className="block text-sm font-medium text-gray-700">
+            Focus area
+            <select
+              value={obsCategory}
+              onChange={(e) => setObsCategory(e.target.value as PigObservationCategory)}
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal"
+            >
+              {PIG_OBSERVATION_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-gray-700">
+            Notes (optional)
+            <input
+              value={obsNotes}
+              onChange={(e) => setObsNotes(e.target.value)}
+              placeholder="What did you see?"
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={observationMutation.isPending}
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
+          >
+            {observationMutation.isPending ? 'Saving…' : 'Log observation'}
+          </button>
+        </form>
+        {observations.length === 0 ? (
+          <p className="text-gray-500 text-sm">No health observations yet.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {observations.map((o) => (
+              <li key={o.id} className="py-3">
+                <p className="text-sm font-medium text-gray-900">{pigObservationLabel(o.category)}</p>
+                {o.notes && <p className="text-sm text-gray-700 mt-0.5">{o.notes}</p>}
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {new Date(o.createdAt).toLocaleString()}
+                  {o.user?.name ? ` · ${o.user.name}` : ''}
+                </p>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
