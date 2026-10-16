@@ -40,6 +40,11 @@ const mfaDisableSchema = z.object({
   code: z.string().min(6).max(8),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Enter your current password'),
+  newPassword: strongPasswordSchema,
+});
+
 const profileUpdateSchema = z
   .object({
     name: z.string().min(2).max(100).optional(),
@@ -198,8 +203,7 @@ export class AuthController {
   static async mfaSetup(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const user = await AuthService.getProfile(req.userId!);
-      const { secret, otpauthUrl } = MfaService.generateSecret(user.email);
-      res.json({ secret, otpauthUrl });
+      res.json(await MfaService.generateSecret(user.email));
     } catch (error) {
       next(error);
     }
@@ -210,6 +214,19 @@ export class AuthController {
       const { secret, code } = mfaEnableSchema.parse(req.body);
       await MfaService.enableMfa(req.userId!, secret, code, getClientIp(req));
       res.json({ mfaEnabled: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return next(new AppError(error.errors[0].message, 400));
+      }
+      next(error);
+    }
+  }
+
+  static async changePassword(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+      const tokens = await AuthService.changePassword(req.userId!, currentPassword, newPassword, getClientIp(req));
+      sendTokens(req, res, tokens, { message: 'Password updated' });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return next(new AppError(error.errors[0].message, 400));

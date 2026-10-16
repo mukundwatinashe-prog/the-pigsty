@@ -3,6 +3,7 @@ import { authenticator } from 'otplib';
 import prisma from '../config/database';
 import { AppError } from '../middleware/error.middleware';
 import { SecurityService } from './security.service';
+import QRCode from 'qrcode';
 
 const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
@@ -10,10 +11,13 @@ authenticator.options = { window: 1 };
 
 export class MfaService {
   /** `accountLabel` is what the authenticator app lists under "The Pigsty" — the user's email. */
-  static generateSecret(accountLabel: string): { secret: string; otpauthUrl: string } {
+  static async generateSecret(
+    accountLabel: string,
+  ): Promise<{ secret: string; otpauthUrl: string; qrDataUrl: string }> {
     const secret = authenticator.generateSecret();
     const otpauthUrl = authenticator.keyuri(accountLabel, 'The Pigsty', secret);
-    return { secret, otpauthUrl };
+    const qrDataUrl = await QRCode.toDataURL(otpauthUrl, { margin: 1, width: 240 });
+    return { secret, otpauthUrl, qrDataUrl };
   }
 
   static verifyCode(secret: string, code: string): boolean {
