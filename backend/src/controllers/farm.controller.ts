@@ -9,6 +9,7 @@ import { FarmPlan, Prisma } from '@prisma/client';
 import { allowsMassImport, allowsMultiUser, allowsReports, allowsFinancialsExport, allowsEnterpriseAutomation, memberLimitForPlan, pigLimitForPlan } from '../config/planLimits';
 import { normalizePhone } from '../lib/phone';
 import { onHandPigsWhere } from '../lib/pigStock';
+import { turnsOnEnterpriseAutomation } from '../lib/farmAutomation';
 import { farmCurrencySchema } from '../config/farmCurrencies';
 
 const createFarmSchema = z.object({
@@ -216,23 +217,7 @@ export class FarmController {
       });
       if (!farmBefore) return next(new AppError('Farm not found', 404));
 
-      const wantsAutomation =
-        parsed.reportEmailCadence !== undefined ||
-        parsed.alertSmsPhone !== undefined ||
-        parsed.alertSmsFarrowing !== undefined ||
-        parsed.alertSmsLowStock !== undefined;
-      const automationActive =
-        (parsed.reportEmailCadence && parsed.reportEmailCadence !== 'OFF') ||
-        parsed.alertSmsFarrowing === true ||
-        parsed.alertSmsLowStock === true ||
-        (parsed.alertSmsPhone != null && String(parsed.alertSmsPhone).trim() !== '');
-
-      if (wantsAutomation && !allowsEnterpriseAutomation(farmBefore.plan)) {
-        return next(
-          new AppError('Scheduled reports and SMS alerts are available on the Enterprise plan.', 402),
-        );
-      }
-      if (automationActive && !allowsEnterpriseAutomation(farmBefore.plan)) {
+      if (turnsOnEnterpriseAutomation(parsed) && !allowsEnterpriseAutomation(farmBefore.plan)) {
         return next(
           new AppError('Scheduled reports and SMS alerts are available on the Enterprise plan.', 402),
         );
