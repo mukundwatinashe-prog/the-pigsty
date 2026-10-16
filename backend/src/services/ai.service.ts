@@ -31,6 +31,18 @@ function estimateCost(model: string, inputTokens: number, outputTokens: number):
   return (inputTokens / 1_000_000) * p.input + (outputTokens / 1_000_000) * p.output;
 }
 
+/**
+ * The assistant can't answer for an operator-side reason (missing key, exhausted credits,
+ * provider outage). Farmers get a plain message; the detail is logged and shown only to
+ * platform admins (see ChatController).
+ */
+export class AiUnavailableError extends AppError {
+  constructor(public readonly operatorDetail: string, statusCode: number) {
+    super('Piglet is unavailable right now. Please try again in a little while.', statusCode);
+    console.error('[ai] assistant unavailable:', operatorDetail);
+  }
+}
+
 function friendlyProviderError(provider: string, status: number, body: string): string {
   let parsed: { error?: { message?: string; type?: string } } = {};
   try {
@@ -64,16 +76,16 @@ class AiService {
   private assertProviderConfigured() {
     switch (this.provider) {
       case 'openai':
-        if (!env.OPENAI_API_KEY) throw new AppError('OPENAI_API_KEY is not configured', 503);
+        if (!env.OPENAI_API_KEY) throw new AiUnavailableError('OPENAI_API_KEY is not configured', 503);
         break;
       case 'claude':
-        if (!env.CLAUDE_API_KEY) throw new AppError('CLAUDE_API_KEY is not configured', 503);
+        if (!env.CLAUDE_API_KEY) throw new AiUnavailableError('CLAUDE_API_KEY is not configured', 503);
         break;
       case 'gemini':
-        if (!env.GEMINI_API_KEY) throw new AppError('GEMINI_API_KEY is not configured', 503);
+        if (!env.GEMINI_API_KEY) throw new AiUnavailableError('GEMINI_API_KEY is not configured', 503);
         break;
       default:
-        throw new AppError(`Unsupported AI provider: ${this.provider}`, 500);
+        throw new AiUnavailableError(`Unsupported AI provider: ${this.provider}`, 500);
     }
   }
 
@@ -88,7 +100,7 @@ class AiService {
       case 'gemini':
         return this.generateGeminiResponse(messages, systemPrompt);
       default:
-        throw new AppError(`Unsupported AI provider: ${this.provider}`, 500);
+        throw new AiUnavailableError(`Unsupported AI provider: ${this.provider}`, 500);
     }
   }
 
@@ -111,7 +123,7 @@ class AiService {
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new AppError(friendlyProviderError('OpenAI', response.status, body), 502);
+      throw new AiUnavailableError(friendlyProviderError('OpenAI', response.status, body), 502);
     }
     const data = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
@@ -147,7 +159,7 @@ class AiService {
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new AppError(friendlyProviderError('Claude', response.status, body), 502);
+      throw new AiUnavailableError(friendlyProviderError('Claude', response.status, body), 502);
     }
     const data = (await response.json()) as {
       content?: Array<{ type: string; text?: string }>;
@@ -185,7 +197,7 @@ class AiService {
     );
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new AppError(friendlyProviderError('Gemini', response.status, body), 502);
+      throw new AiUnavailableError(friendlyProviderError('Gemini', response.status, body), 502);
     }
     const data = (await response.json()) as {
       candidates?: Array<{
