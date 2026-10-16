@@ -5,6 +5,7 @@ import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from '../services/audit.service';
 import { syncPigGrowthStageIfNeeded } from '../services/pigStageSync.service';
+import { averageDailyGain } from '../lib/averageDailyGain';
 
 const weightSchema = z.object({
   pigId: z.string().uuid(),
@@ -131,18 +132,12 @@ export class WeightController {
         orderBy: { date: 'asc' },
       });
 
-      // Calculate ADG
-      let adg = 0;
-      if (logs.length >= 2) {
-        const first = logs[0];
-        const last = logs[logs.length - 1];
-        const days = (new Date(last.date).getTime() - new Date(first.date).getTime()) / (1000 * 60 * 60 * 24);
-        if (days > 0) {
-          adg = (Number(last.weight) - Number(first.weight)) / days;
-        }
-      }
+      const adg = averageDailyGain(
+        { date: pig.acquisitionDate, weight: Number(pig.entryWeight) },
+        logs.map((l) => ({ date: new Date(l.date), weight: Number(l.weight) })),
+      );
 
-      res.json({ logs, adg: Math.round(adg * 100) / 100 });
+      res.json({ logs, adg: adg == null ? null : Math.round(adg * 100) / 100 });
     } catch (error) {
       next(error);
     }

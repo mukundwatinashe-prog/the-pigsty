@@ -9,6 +9,8 @@ import { FarmPlan, Prisma } from '@prisma/client';
 import { allowsMassImport, allowsMultiUser, allowsReports, allowsFinancialsExport, allowsEnterpriseAutomation, memberLimitForPlan, pigLimitForPlan } from '../config/planLimits';
 import { normalizePhone } from '../lib/phone';
 import { onHandPigsWhere } from '../lib/pigStock';
+import { turnsOnEnterpriseAutomation } from '../lib/farmAutomation';
+import { farmDeletionBlocker } from '../lib/farmDeletion';
 import { farmCurrencySchema } from '../config/farmCurrencies';
 
 const createFarmSchema = z.object({
@@ -78,6 +80,9 @@ export class FarmController {
       const farm = await prisma.farm.create({
         data: {
           ...data,
+          // The schema's 3.30 default sale price is a GBP figure; in any other currency it
+          // would silently mis-price sales and herd value, so start unset and ask the owner.
+          ...(data.currency === 'GBP' ? {} : { pricePerKg: 0 }),
           members: { create: { userId: req.userId!, role: 'OWNER' } },
         },
         include: {
@@ -216,23 +221,7 @@ export class FarmController {
       });
       if (!farmBefore) return next(new AppError('Farm not found', 404));
 
-      const wantsAutomation =
-        parsed.reportEmailCadence !== undefined ||
-        parsed.alertSmsPhone !== undefined ||
-        parsed.alertSmsFarrowing !== undefined ||
-        parsed.alertSmsLowStock !== undefined;
-      const automationActive =
-        (parsed.reportEmailCadence && parsed.reportEmailCadence !== 'OFF') ||
-        parsed.alertSmsFarrowing === true ||
-        parsed.alertSmsLowStock === true ||
-        (parsed.alertSmsPhone != null && String(parsed.alertSmsPhone).trim() !== '');
-
-      if (wantsAutomation && !allowsEnterpriseAutomation(farmBefore.plan)) {
-        return next(
-          new AppError('Scheduled reports and SMS alerts are available on the Enterprise plan.', 402),
-        );
-      }
-      if (automationActive && !allowsEnterpriseAutomation(farmBefore.plan)) {
+      if (turnsOnEnterpriseAutomation(parsed) && !allowsEnterpriseAutomation(farmBefore.plan)) {
         return next(
           new AppError('Scheduled reports and SMS alerts are available on the Enterprise plan.', 402),
         );
@@ -286,7 +275,20 @@ export class FarmController {
 
   static async delete(req: FarmRequest, res: Response, next: NextFunction) {
     try {
+      const farm = await prisma.farm.findUnique({
+        where: { id: req.farmId! },
+        select: { name: true, plan: true, stripeSubscriptionId: true },
+      });
+      if (!farm) return next(new AppError('Farm not found', 404));
+      const blocker = farmDeletionBlocker(farm);
+      if (blocker) return next(new AppError(blocker, 400));
+
       await prisma.farm.update({ where: { id: req.farmId! }, data: { isDeleted: true } });
+      await AuditService.log({
+        userId: req.userId!, farmId: req.farmId!,
+        action: 'DELETE', entity: 'Farm', entityId: req.farmId!,
+        details: `Deleted farm "${farm.name}"`,
+      });
       res.json({ message: 'Farm deleted' });
     } catch (error) {
       next(error);

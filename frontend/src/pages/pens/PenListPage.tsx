@@ -474,6 +474,14 @@ export default function PenListPage() {
               <span className="font-medium text-gray-900">{deletePen.name}</span> will be
               removed. This cannot be undone.
             </p>
+            {(deletePen._count?.pigs ?? 0) > 0 && (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {deletePen._count?.pigs === 1
+                  ? '1 pig is in this pen. It will stay on the farm but show as '
+                  : `${deletePen._count?.pigs} pigs are in this pen. They will stay on the farm but show as `}
+                <strong>No pen assigned</strong> until you move {deletePen._count?.pigs === 1 ? 'it' : 'them'}.
+              </p>
+            )}
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"

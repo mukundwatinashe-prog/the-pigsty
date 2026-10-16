@@ -77,6 +77,8 @@ export type RecordSalePayload = {
   saleType: SaleType;
   saleDate: string;
   weightAtSale: number;
+  /** Agreed price for this sale; the server falls back to the farm's sale price. */
+  pricePerKg?: number;
   buyer?: string | null;
   notes?: string | null;
 };
@@ -84,6 +86,8 @@ export type RecordSalePayload = {
 export type BulkRecordSalePayload = {
   saleType: SaleType;
   saleDate: string;
+  /** Agreed price for this sale; the server falls back to the farm's sale price. */
+  pricePerKg?: number;
   buyer?: string | null;
   notes?: string | null;
   items: { pigId: string; weightAtSale: number }[];

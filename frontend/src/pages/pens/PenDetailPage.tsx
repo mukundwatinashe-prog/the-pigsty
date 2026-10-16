@@ -63,6 +63,7 @@ export default function PenDetailPage() {
   const [saleForm, setSaleForm] = useState({
     saleType: 'LIVE_SALE' as SaleType,
     saleDate: new Date().toISOString().slice(0, 10),
+    pricePerKg: '',
     buyer: '',
     notes: '',
   });
@@ -79,7 +80,8 @@ export default function PenDetailPage() {
     queryFn: () => farmService.getById(farmId!),
     enabled: !!farmId,
   });
-  const pricePerKg = Number(farmDetail?.farm?.pricePerKg) || 0;
+  const farmPricePerKg = Number(farmDetail?.farm?.pricePerKg) || 0;
+  const pricePerKg = parseFloat(saleForm.pricePerKg) || 0;
 
   const pen = penQuery.data;
   const pigs = useMemo(() => pen?.pigs ?? [], [pen?.pigs]);
@@ -94,9 +96,11 @@ export default function PenDetailPage() {
       });
       const bad = items.find((i) => !Number.isFinite(i.weightAtSale) || i.weightAtSale <= 0);
       if (bad) throw new Error('INVALID_WEIGHT');
+      if (saleForm.pricePerKg.trim() === '') throw new Error('MISSING_PRICE');
       return pigService.bulkRecordSale(farmId!, {
         saleType: saleForm.saleType,
         saleDate: saleForm.saleDate,
+        pricePerKg,
         buyer: saleForm.buyer.trim() || null,
         notes: saleForm.notes.trim() || null,
         items,
@@ -116,6 +120,10 @@ export default function PenDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['serviced-sows', farmId] });
     },
     onError: (err: unknown) => {
+      if (err instanceof Error && err.message === 'MISSING_PRICE') {
+        toast.error('Enter the price per kg for this sale');
+        return;
+      }
       if (err instanceof Error && err.message === 'INVALID_WEIGHT') {
         toast.error('Enter a valid weight for every selected pig');
         return;
@@ -144,6 +152,8 @@ export default function PenDetailPage() {
     setSaleForm((f) => ({
       ...f,
       saleDate: new Date().toISOString().slice(0, 10),
+      // Pre-fill the farm's usual price; left blank when none is set so it isn't guessed.
+      pricePerKg: farmPricePerKg > 0 ? String(farmPricePerKg) : '',
     }));
     setBulkOpen(true);
   };
@@ -472,12 +482,24 @@ export default function PenDetailPage() {
 
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                 <div className="flex justify-between gap-4 text-sm">
-                  <div>
-                    <p className="text-xs font-medium text-emerald-700">Price / {weightUnit}</p>
-                    <p className="text-lg font-bold text-emerald-900">
-                      {currency} {pricePerKg.toFixed(2)}
-                    </p>
-                  </div>
+                  <label className="block">
+                    <span className="text-xs font-medium text-emerald-700">
+                      Price / {weightUnit} ({currency}) *
+                    </span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      value={saleForm.pricePerKg}
+                      onChange={(e) => setSaleForm((f) => ({ ...f, pricePerKg: e.target.value }))}
+                      placeholder="0.00"
+                      className="mt-1 block w-28 rounded-lg border border-emerald-300 bg-white px-2 py-1.5 text-lg font-bold text-emerald-900"
+                    />
+                    <span className="mt-0.5 block text-xs text-emerald-600">
+                      {farmPricePerKg > 0 ? 'Default from farm settings' : 'Tip: set a default in Farm settings'}
+                    </span>
+                  </label>
                   <div className="text-right">
                     <p className="text-xs font-medium text-emerald-700">Combined total</p>
                     <p className="text-xl font-bold text-emerald-900">

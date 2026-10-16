@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -145,6 +145,8 @@ export default function FarmSettingsPage() {
   const [logoDragging, setLogoDragging] = useState(false);
 
   const farmId = currentFarm?.id;
+  const navigate = useNavigate();
+  const [deleteFarmConfirm, setDeleteFarmConfirm] = useState('');
 
   const {
     data: detail,
@@ -333,10 +335,23 @@ export default function FarmSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['farm-invitations', farmId] });
       inviteForm.reset({ email: '', role: inviteForm.getValues('role') });
-      toast.success('Invitation sent — we emailed them a link to join.');
+      toast.success('Invitation created — we’re emailing them a link. You can also copy it from Pending invitations below.');
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
       toast.error(err.response?.data?.message || 'Invite failed');
+    },
+  });
+
+  const deleteFarmMutation = useMutation({
+    mutationFn: () => farmService.delete(farmId!),
+    onSuccess: () => {
+      toast.success('Farm deleted');
+      queryClient.invalidateQueries({ queryKey: ['farms'] });
+      setCurrentFarm(null);
+      navigate('/farms', { replace: true });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Could not delete the farm');
     },
   });
 
@@ -1187,6 +1202,39 @@ export default function FarmSettingsPage() {
           )}
         </div>
       </section>
+
+      {detail?.myRole === 'OWNER' && (
+        <section className="rounded-2xl border border-red-200 bg-white p-6">
+          <h2 className="flex items-center gap-2 font-semibold text-red-700">
+            <Trash2 className="size-5" aria-hidden />
+            Delete farm
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Removes <strong>{farm.name}</strong> for everyone on the team, including its pigs,
+            pens, feed and reports. Pending invitations stop working. A farm with a paid
+            subscription must have it cancelled under Billing first.
+          </p>
+          <label className="mt-4 block text-sm font-medium text-gray-700">
+            Type the farm name to confirm
+            <input
+              value={deleteFarmConfirm}
+              onChange={(e) => setDeleteFarmConfirm(e.target.value)}
+              placeholder={farm.name}
+              autoCorrect="off"
+              autoCapitalize="off"
+              className="mt-1 block w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => deleteFarmMutation.mutate()}
+            disabled={deleteFarmConfirm.trim() !== farm.name.trim() || deleteFarmMutation.isPending}
+            className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {deleteFarmMutation.isPending ? 'Deleting…' : 'Delete this farm'}
+          </button>
+        </section>
+      )}
 
       <div className="flex items-start gap-2 rounded-xl bg-gray-100/80 px-4 py-3 text-sm text-gray-600">
         <Hash className="mt-0.5 size-4 shrink-0 text-gray-400" />

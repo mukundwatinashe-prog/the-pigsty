@@ -28,6 +28,7 @@ import {
   parseImportDate,
   penNameFromImportData,
   validateImportRowFromData,
+  isBlankImportRow,
 } from '../lib/importValidation';
 
 const BREEDS = [...IMPORT_BREEDS];
@@ -236,6 +237,7 @@ export class ImportController {
           const tag0 = String(allRows[k]['Tag Number'] || '').trim();
           if (tag0 === 'PIG-001') continue;
         }
+        if (isBlankImportRow(allRows[k])) continue;
         dataRowCount++;
       }
 
@@ -257,6 +259,7 @@ export class ImportController {
           const tagSkip = String(allRows[k]['Tag Number'] || '').trim();
           if (tagSkip === 'PIG-001') continue;
         }
+        if (isBlankImportRow(allRows[k])) continue;
 
         const row = allRows[k];
         const errors: RowError[] = [];
