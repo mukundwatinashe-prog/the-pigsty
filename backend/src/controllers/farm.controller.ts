@@ -10,6 +10,7 @@ import { allowsMassImport, allowsMultiUser, allowsReports, allowsFinancialsExpor
 import { normalizePhone } from '../lib/phone';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { turnsOnEnterpriseAutomation } from '../lib/farmAutomation';
+import { farmDeletionBlocker } from '../lib/farmDeletion';
 import { farmCurrencySchema } from '../config/farmCurrencies';
 
 const createFarmSchema = z.object({
@@ -271,7 +272,20 @@ export class FarmController {
 
   static async delete(req: FarmRequest, res: Response, next: NextFunction) {
     try {
+      const farm = await prisma.farm.findUnique({
+        where: { id: req.farmId! },
+        select: { name: true, plan: true, stripeSubscriptionId: true },
+      });
+      if (!farm) return next(new AppError('Farm not found', 404));
+      const blocker = farmDeletionBlocker(farm);
+      if (blocker) return next(new AppError(blocker, 400));
+
       await prisma.farm.update({ where: { id: req.farmId! }, data: { isDeleted: true } });
+      await AuditService.log({
+        userId: req.userId!, farmId: req.farmId!,
+        action: 'DELETE', entity: 'Farm', entityId: req.farmId!,
+        details: `Deleted farm "${farm.name}"`,
+      });
       res.json({ message: 'Farm deleted' });
     } catch (error) {
       next(error);
