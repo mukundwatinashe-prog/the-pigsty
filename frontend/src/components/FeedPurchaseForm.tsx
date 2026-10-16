@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Camera, X } from 'lucide-react';
 import { feedService } from '../services/feed.service';
 import { farmService } from '../services/farm.service';
 import { apiErrorMessage } from '../services/api';
+import { cameraCaptureSupported, capturePhoto } from '../lib/camera';
 import type { FeedType } from '../types';
 import { FEED_TYPE_LABELS, FEED_TYPES_ORDER } from '../lib/feedUnits';
 import { feedPriceUnitLabel, previewFeedPurchaseCost, type FeedPurchasePriceUnit } from '../lib/feedPurchasePricing';
@@ -26,6 +27,20 @@ export function FeedPurchaseForm({ farmId, currency, onSaved, variant = 'page' }
   const [supplier, setSupplier] = useState('');
   const [purchasedAt, setPurchasedAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [file, setFile] = useState<File | null>(null);
+  const [capturing, setCapturing] = useState(false);
+  const canUseCamera = cameraCaptureSupported();
+
+  const takePhoto = async () => {
+    setCapturing(true);
+    try {
+      const photo = await capturePhoto();
+      if (photo) setFile(photo);
+    } catch {
+      toast.error('Could not open the camera. Check camera permissions and try again.');
+    } finally {
+      setCapturing(false);
+    }
+  };
 
   const { data: farmDetail, isLoading: farmLoading } = useQuery({
     queryKey: ['farm', farmId],
@@ -173,13 +188,40 @@ export function FeedPurchaseForm({ farmId, currency, onSaved, variant = 'page' }
 
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">Receipt (required)</label>
+        {canUseCamera && (
+          <button
+            type="button"
+            onClick={takePhoto}
+            disabled={capturing}
+            className="mb-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary-300 bg-primary-50 px-4 py-2.5 text-sm font-medium text-primary-800 hover:bg-primary-100 disabled:opacity-50"
+          >
+            {capturing ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+            Take photo of receipt
+          </button>
+        )}
         <input
           type="file"
           accept="image/*,application/pdf"
+          capture="environment"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-700"
-          required
         />
+        {canUseCamera && (
+          <p className="mt-1 text-xs text-gray-500">Take a photo, or choose an existing image or PDF.</p>
+        )}
+        {file && (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            <span className="min-w-0 flex-1 truncate">{file.name}</span>
+            <button
+              type="button"
+              onClick={() => setFile(null)}
+              className="inline-flex shrink-0 items-center gap-1 text-gray-500 hover:text-gray-800"
+              aria-label="Remove receipt"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       <button

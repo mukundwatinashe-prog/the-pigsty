@@ -1,4 +1,5 @@
 import api from './api';
+import { saveBlob } from '../lib/download';
 import type {
   BulkRecordSaleResult,
   FarrowingRecord,
@@ -135,14 +136,9 @@ export const pigService = {
     api.delete(`/farms/${farmId}/pigs/${pigId}`).then((r) => r.data),
 
   downloadTemplate: (farmId: string) =>
-    api.get(`/farms/${farmId}/pigs/import/template`, { responseType: 'blob' }).then((r) => {
-      const url = window.URL.createObjectURL(new Blob([r.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'pigtrack_import_template.xlsx';
-      a.click();
-      window.URL.revokeObjectURL(url);
-    }),
+    api
+      .get(`/farms/${farmId}/pigs/import/template`, { responseType: 'blob' })
+      .then((r) => saveBlob(new Blob([r.data]), 'pigtrack_import_template.xlsx')),
 
   validateImport: (farmId: string, file: File) => {
     const form = new FormData();
@@ -203,11 +199,6 @@ export const pigService = {
       })
       .then((r) => {
         const ext = format === 'xlsx' ? 'xlsx' : 'pdf';
-        const url = window.URL.createObjectURL(new Blob([r.data]));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `serviced_sows.${ext}`;
-        a.click();
-        window.URL.revokeObjectURL(url);
+        return saveBlob(new Blob([r.data]), `serviced_sows.${ext}`);
       }),
 };
