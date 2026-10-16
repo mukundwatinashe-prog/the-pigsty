@@ -84,12 +84,12 @@ export function parseImportDate(val: unknown): Date | null {
   if (val instanceof Date) return val;
   if (typeof val === 'number') {
     const d = XLSX.SSF.parse_date_code(val);
-    return new Date(d.y, d.m - 1, d.d);
+    return new Date(Date.UTC(d.y, d.m - 1, d.d));
   }
   const str = String(val).trim();
   const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (ddmmyyyy) {
-    return new Date(parseInt(ddmmyyyy[3], 10), parseInt(ddmmyyyy[2], 10) - 1, parseInt(ddmmyyyy[1], 10));
+    return new Date(Date.UTC(parseInt(ddmmyyyy[3], 10), parseInt(ddmmyyyy[2], 10) - 1, parseInt(ddmmyyyy[1], 10)));
   }
   const iso = new Date(str);
   return Number.isNaN(iso.getTime()) ? null : iso;
@@ -240,4 +240,14 @@ export function validateImportRowFromData(
     errors,
     valid: errors.length === 0,
   };
+}
+
+/**
+ * True when a parsed spreadsheet row has no content in any cell. The import
+ * template declares thousands of pre-formatted rows, so blank rows must be
+ * skipped rather than reported as invalid records.
+ */
+export function isBlankImportRow(row: Record<string, unknown> | null | undefined): boolean {
+  if (!row) return true;
+  return Object.values(row).every((v) => v === null || v === undefined || String(v).trim() === '');
 }
