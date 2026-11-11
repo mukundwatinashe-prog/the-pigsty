@@ -545,6 +545,17 @@ export default function LandingPage() {
           <div className="flex flex-col items-center gap-3 sm:items-start">
             <HomeBrandLink size="sm" />
             <p className="text-sm text-gray-500">© {new Date().getFullYear()} The Pigsty · Farmer-focused herd software</p>
+            <p className="text-sm text-gray-500">
+              Designed by{' '}
+              <a
+                href="https://www.tmmdesigns.uk/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-gray-600 underline-offset-2 hover:text-primary-700 hover:underline"
+              >
+                TMM Designs
+              </a>
+            </p>
           </div>
           <div className="flex flex-wrap justify-center gap-1 text-sm font-medium text-gray-600 sm:gap-2">
             <Link to="/privacy" className="inline-flex min-h-11 items-center px-3 hover:text-primary-700">
