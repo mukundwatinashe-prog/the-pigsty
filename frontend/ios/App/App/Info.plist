@@ -24,6 +24,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>The Pigsty uses the camera so you can photograph feed receipts to attach to a purchase.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>The Pigsty lets you attach a receipt image from your photo library to a feed purchase.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>The Pigsty saves downloaded reports and receipts to your device.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
