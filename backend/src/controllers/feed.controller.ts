@@ -13,7 +13,8 @@ import {
   FEED_TYPES,
   getFeedUsageReportData,
   listFeedPurchasesInPeriod,
-  getStockKgByType,
+  getStockSnapshot,
+  lowStockFromSnapshot,
   parseUsageDate,
   readReceiptFile,
   saveReceiptFile,
@@ -68,8 +69,9 @@ export class FeedController {
         select: { feedLowStockThresholdKg: true },
       });
       const threshold = farm?.feedLowStockThresholdKg ?? new Prisma.Decimal(50);
-      const stock = await getStockKgByType(req.farmId!);
-      const lowStock = FEED_TYPES.filter((t) => stock[t].lte(threshold));
+      const snapshot = await getStockSnapshot(req.farmId!);
+      const { stock } = snapshot;
+      const lowStock = lowStockFromSnapshot(snapshot, threshold);
       res.json({
         stock: stockToJson(stock),
         lowStockThresholdKg: parseFloat(threshold.toFixed(2)),
@@ -87,7 +89,8 @@ export class FeedController {
         select: { feedLowStockThresholdKg: true, currency: true },
       });
       const threshold = farm?.feedLowStockThresholdKg ?? new Prisma.Decimal(50);
-      const stock = await getStockKgByType(req.farmId!);
+      const snapshot = await getStockSnapshot(req.farmId!);
+      const { stock } = snapshot;
       const now = new Date();
       const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
       const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
@@ -97,7 +100,7 @@ export class FeedController {
         currency: farm?.currency ?? 'GBP',
         stock: stockToJson(stock),
         lowStockThresholdKg: parseFloat(threshold.toFixed(2)),
-        lowStockFeedTypes: FEED_TYPES.filter((t) => stock[t].lte(threshold)),
+        lowStockFeedTypes: lowStockFromSnapshot(snapshot, threshold),
         monthSpendByType: FEED_TYPES.map((t) => ({
           feedType: t,
           spend: parseFloat(byType[t].spend.toFixed(2)),

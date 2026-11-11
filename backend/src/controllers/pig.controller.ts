@@ -4,6 +4,8 @@ import type { Prisma } from '@prisma/client';
 import prisma from '../config/database';
 import { FarmRequest } from '../middleware/rbac.middleware';
 import { AppError } from '../middleware/error.middleware';
+import { farrowingEndsCurrentService, weanedExceedsBornAlive } from '../lib/farrowing';
+import { isFutureCalendarDate } from '../lib/calendarDate';
 import { AuditService } from '../services/audit.service';
 import { wouldExceedFreeTier, pigLimitForPlan } from '../config/planLimits';
 import { syncPigGrowthStageIfNeeded } from '../services/pigStageSync.service';
@@ -53,8 +55,12 @@ const pigSchema = z.object({
   tagNumber: z.string().min(1).max(20),
   breed: z.enum(BREEDS),
   stage: z.enum(STAGES),
-  dateOfBirth: z.string().optional().nullable(),
-  acquisitionDate: z.string(),
+  dateOfBirth: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((v) => !isFutureCalendarDate(v), 'Date of birth cannot be in the future'),
+  acquisitionDate: z.string().refine((v) => !isFutureCalendarDate(v), 'Acquisition date cannot be in the future'),
   entryWeight: z.number().positive(),
   currentWeight: z.number().positive().optional(),
   status: z.enum(STATUSES).default('ACTIVE'),
@@ -69,6 +75,13 @@ const pigSchema = z.object({
   sireId: z.string().uuid().optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
 });
+
+/** A pen id from the client must belong to the caller's farm (cross-farm IDOR guard). */
+async function penBelongsToFarm(penId: string | null | undefined, farmId: string): Promise<boolean> {
+  if (!penId) return true;
+  const pen = await prisma.pen.findUnique({ where: { id: penId }, select: { farmId: true } });
+  return !!pen && pen.farmId === farmId;
+}
 
 export class PigController {
   static async list(req: FarmRequest, res: Response, next: NextFunction) {
@@ -144,6 +157,11 @@ export class PigController {
             include: { user: { select: { id: true, name: true } } },
           },
           vaccinations: { orderBy: { dateAdministered: 'desc' } },
+          observations: {
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+            include: { user: { select: { id: true, name: true } } },
+          },
           farrowingRecords: { orderBy: { farrowingDate: 'desc' } },
           damOffspring: { select: { id: true, tagNumber: true, status: true } },
           sireOffspring: { select: { id: true, tagNumber: true, status: true } },
@@ -166,6 +184,7 @@ export class PigController {
   static async create(req: FarmRequest, res: Response, next: NextFunction) {
     try {
       const data = pigSchema.parse(req.body);
+      if (!(await penBelongsToFarm(data.penId, req.farmId!))) return next(new AppError('Pen not found', 404));
 
       const farmPlan = await prisma.farm.findUnique({
         where: { id: req.farmId! },
@@ -250,6 +269,11 @@ export class PigController {
       const pigId = req.params.pigId as string;
       const data = pigSchema.partial().parse(req.body);
 
+      // Tenant isolation: the pig (and any pen it moves to) must belong to this farm.
+      const existing = await prisma.pig.findUnique({ where: { id: pigId }, select: { farmId: true } });
+      if (!existing || existing.farmId !== req.farmId!) return next(new AppError('Pig not found', 404));
+      if (!(await penBelongsToFarm(data.penId, req.farmId!))) return next(new AppError('Pen not found', 404));
+
       const updateData: any = { ...data };
       if (data.dateOfBirth) updateData.dateOfBirth = new Date(data.dateOfBirth);
       if (data.acquisitionDate) updateData.acquisitionDate = new Date(data.acquisitionDate);
@@ -319,13 +343,18 @@ export class PigController {
       });
       const data = schema.parse(req.body);
 
+      if (weanedExceedsBornAlive(data.pigletsBornAlive, data.pigletsWeaned)) {
+        return next(new AppError('Piglets weaned cannot be more than piglets born alive', 400));
+      }
+
       const pig = await prisma.pig.findUnique({ where: { id: pigId } });
       if (!pig || pig.farmId !== req.farmId!) return next(new AppError('Pig not found', 404));
 
-      const record = await prisma.farrowingRecord.create({
+      const farrowingDate = new Date(data.farrowingDate);
+      const createRecord = prisma.farrowingRecord.create({
         data: {
           pigId,
-          farrowingDate: new Date(data.farrowingDate),
+          farrowingDate,
           pigletsBornAlive: data.pigletsBornAlive,
           pigletsBornDead: data.pigletsBornDead,
           pigletsWeaned: data.pigletsWeaned ?? null,
@@ -337,6 +366,16 @@ export class PigController {
           notes: data.notes ?? null,
         },
       });
+      // Like "Complete birth": a farrowing ends the current service so the gestation
+      // countdown and serviced-sow lists stop tracking a sow that has already given birth.
+      const record = farrowingEndsCurrentService(pig, farrowingDate)
+        ? (
+            await prisma.$transaction([
+              createRecord,
+              prisma.pig.update({ where: { id: pigId }, data: { serviced: false, servicedDate: null } }),
+            ])
+          )[0]
+        : await createRecord;
 
       await AuditService.log({
         userId: req.userId!, farmId: req.farmId!,
@@ -375,6 +414,9 @@ export class PigController {
         where: { id: recordId, pigId },
       });
       if (!existing) return next(new AppError('Farrowing record not found', 404));
+      if (weanedExceedsBornAlive(existing.pigletsBornAlive, body.pigletsWeaned)) {
+        return next(new AppError('Piglets weaned cannot be more than piglets born alive', 400));
+      }
 
       const updateData: Record<string, unknown> = {};
       if (body.pigletsWeaned !== undefined) updateData.pigletsWeaned = body.pigletsWeaned;
@@ -469,6 +511,8 @@ export class PigController {
         saleType: z.enum(['LIVE_SALE', 'SLAUGHTER']),
         saleDate: z.string(),
         weightAtSale: z.number().min(0),
+        /** Agreed price for this sale; defaults to the farm's sale price in settings. */
+        pricePerKg: z.number().min(0).optional(),
         buyer: z.string().max(200).optional().nullable(),
         notes: z.string().max(2000).optional().nullable(),
       });
@@ -480,7 +524,7 @@ export class PigController {
       const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
       if (!farm) return next(new AppError('Farm not found', 404));
 
-      const pricePerKg = Number(farm.pricePerKg);
+      const pricePerKg = data.pricePerKg ?? Number(farm.pricePerKg);
       const totalPrice = parseFloat((data.weightAtSale * pricePerKg).toFixed(2));
       /** Inventory status is always SOLD for any sale; `saleType` on SaleRecord distinguishes live vs slaughter. */
       const newStatus = 'SOLD';
@@ -530,6 +574,8 @@ export class PigController {
         saleDate: z.string(),
         buyer: z.string().max(200).optional().nullable(),
         notes: z.string().max(2000).optional().nullable(),
+        /** Agreed price for these sales; defaults to the farm's sale price in settings. */
+        pricePerKg: z.number().min(0).optional(),
         items: z
           .array(
             z.object({
@@ -548,7 +594,7 @@ export class PigController {
 
       const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
       if (!farm) return next(new AppError('Farm not found', 404));
-      const pricePerKg = Number(farm.pricePerKg);
+      const pricePerKg = data.pricePerKg ?? Number(farm.pricePerKg);
 
       const pigs = await prisma.pig.findMany({
         where: { id: { in: pigIds }, farmId: req.farmId! },

@@ -208,11 +208,12 @@ export class InvitationController {
           role: true,
           status: true,
           expiresAt: true,
-          farm: { select: { name: true } },
+          farm: { select: { name: true, isDeleted: true } },
           invitedBy: { select: { name: true } },
         },
       });
-      if (!invitation) return next(new AppError('Invitation not found', 404));
+      // A deleted farm's invites must not show a "Join" page that then fails on accept.
+      if (!invitation || invitation.farm.isDeleted) return next(new AppError('Invitation not found', 404));
 
       const expired = invitation.expiresAt < new Date();
       const status =

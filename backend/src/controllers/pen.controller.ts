@@ -124,6 +124,9 @@ export class PenController {
     try {
       const penId = req.params.penId as string;
       const data = penSchema.partial().parse(req.body);
+      // Tenant isolation: never touch a pen that belongs to another farm.
+      const existing = await prisma.pen.findUnique({ where: { id: penId }, select: { farmId: true } });
+      if (!existing || existing.farmId !== req.farmId!) return next(new AppError('Pen not found', 404));
       const pen = await prisma.pen.update({
         where: { id: penId },
         data,
@@ -149,6 +152,9 @@ export class PenController {
   static async delete(req: FarmRequest, res: Response, next: NextFunction) {
     try {
       const penId = req.params.penId as string;
+      // Tenant isolation: never delete a pen that belongs to another farm.
+      const existing = await prisma.pen.findUnique({ where: { id: penId }, select: { farmId: true } });
+      if (!existing || existing.farmId !== req.farmId!) return next(new AppError('Pen not found', 404));
       await prisma.pen.delete({ where: { id: penId } });
       await AuditService.log({
         userId: req.userId!, farmId: req.farmId!,

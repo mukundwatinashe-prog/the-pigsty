@@ -4,7 +4,7 @@ import { AppError } from '../middleware/error.middleware';
 import { createPigImportTemplateBuffer } from './import.controller';
 import { recordAndNotifyContact } from '../services/leadContact.service';
 import { contactPageInboxAddress } from '../services/contactNotify.service';
-import { aiService } from '../services/ai.service';
+import { AiUnavailableError, aiService } from '../services/ai.service';
 import { getAiSystemPrompt } from '../utils/aiPrompts';
 import { assertHumanRequest } from '../services/turnstile.service';
 import { getClientIp } from '../utils/requestIp';
@@ -85,7 +85,7 @@ export class PublicController {
       const { messages } = body;
       const aiResponse = await aiService.generateResponse(messages, getAiSystemPrompt('Piglet'));
       if (!aiResponse.content.trim()) {
-        throw new AppError('AI provider returned an empty response', 502);
+        throw new AiUnavailableError('AI provider returned an empty response', 502);
       }
       res.json({ content: aiResponse.content });
     } catch (error) {

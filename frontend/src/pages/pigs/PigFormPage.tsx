@@ -92,6 +92,12 @@ const HEALTH_LABELS: Record<HealthStatus, string> = {
   RECOVERED: 'Recovered',
 };
 
+/** Today's date (YYYY-MM-DD) in the user's timezone, comparable with date-input values. */
+const localTodayIso = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const pigFormSchema = z.object({
   tagNumber: z
     .string()
@@ -99,8 +105,14 @@ const pigFormSchema = z.object({
     .max(20, 'Tag number must be at most 20 characters'),
   breed: z.enum(BREEDS),
   stage: z.enum(STAGES),
-  dateOfBirth: z.string().optional(),
-  acquisitionDate: z.string().min(1, 'Acquisition date is required'),
+  dateOfBirth: z
+    .string()
+    .optional()
+    .refine((v) => !v || v <= localTodayIso(), 'Date of birth cannot be in the future'),
+  acquisitionDate: z
+    .string()
+    .min(1, 'Acquisition date is required')
+    .refine((v) => v <= localTodayIso(), 'Acquisition date cannot be in the future'),
   entryWeight: z
     .string()
     .min(1, 'Entry weight is required')
@@ -215,6 +227,7 @@ export default function PigFormPage() {
       pigService.create(currentFarm!.id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pigs'] });
+      queryClient.invalidateQueries({ queryKey: ['pens'] });
       track('pig_created');
       toast.success('Pig added successfully');
       navigate('/pigs');
@@ -242,6 +255,7 @@ export default function PigFormPage() {
       pigService.update(currentFarm!.id, pigId!, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pigs'] });
+      queryClient.invalidateQueries({ queryKey: ['pens'] });
       queryClient.invalidateQueries({ queryKey: ['pig', currentFarm?.id, pigId] });
       toast.success('Pig updated');
       navigate('/pigs');

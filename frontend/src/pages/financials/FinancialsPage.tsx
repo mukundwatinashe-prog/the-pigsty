@@ -214,6 +214,16 @@ export default function FinancialsPage() {
         </div>
       </div>
 
+      {farmDash?.farm && !(Number(farmDash.farm.pricePerKg) > 0) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          No sale price is set, so herd value shows as zero.{' '}
+          <Link to="/settings" className="font-medium underline">
+            Set your price per {currentFarm.weightUnit || 'kg'} in Farm settings
+          </Link>
+          .
+        </div>
+      )}
+
       {planLocked && (
         <PlanUpgradeBanner
           title="Financials require Grower or Enterprise"

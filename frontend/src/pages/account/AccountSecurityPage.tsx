@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Shield, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
+import { KeyRound, Shield, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { mfaService } from '../../services/security.service';
@@ -11,7 +11,8 @@ export default function AccountSecurityPage() {
   const { user, updateUser, logout } = useAuth();
   const navigate = useNavigate();
   const [confirmDelete, setConfirmDelete] = useState('');
-  const [setup, setSetup] = useState<{ secret: string; otpauthUrl: string } | null>(null);
+  const [setup, setSetup] = useState<{ secret: string; otpauthUrl: string; qrDataUrl: string } | null>(null);
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [enableCode, setEnableCode] = useState('');
   const [disableCode, setDisableCode] = useState('');
 
@@ -47,6 +48,17 @@ export default function AccountSecurityPage() {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
+  const changePassword = useMutation({
+    mutationFn: () =>
+      api.post('/auth/change-password', { currentPassword: pw.current, newPassword: pw.next }),
+    onSuccess: () => {
+      setPw({ current: '', next: '', confirm: '' });
+      toast.success('Password updated. Other devices have been signed out.');
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  const pwMismatch = pw.confirm.length > 0 && pw.next !== pw.confirm;
+
   const deleteAccount = useMutation({
     mutationFn: () => api.delete('/auth/account'),
     onSuccess: async () => {
@@ -65,9 +77,66 @@ export default function AccountSecurityPage() {
           Account security
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          Protect your account with two-factor authentication (TOTP).
+          Change your password and protect your account with two-factor authentication (TOTP).
         </p>
       </div>
+
+      <form
+        className="rounded-xl border border-gray-200 bg-white p-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!pwMismatch) changePassword.mutate();
+        }}
+      >
+        <h2 className="flex items-center gap-2 font-semibold text-gray-900">
+          <KeyRound className="size-5 text-primary-600" aria-hidden />
+          Change password
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Use at least 12 characters with upper and lower case letters, a number, and a symbol.
+          Your other devices will be signed out.
+        </p>
+        <div className="mt-4 space-y-3">
+          <label className="block text-sm font-medium text-gray-700">
+            Current password
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={pw.current}
+              onChange={(e) => setPw((p) => ({ ...p, current: e.target.value }))}
+              className="mt-1 block w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal"
+            />
+          </label>
+          <label className="block text-sm font-medium text-gray-700">
+            New password
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={pw.next}
+              onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))}
+              className="mt-1 block w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal"
+            />
+          </label>
+          <label className="block text-sm font-medium text-gray-700">
+            Confirm new password
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={pw.confirm}
+              onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))}
+              className="mt-1 block w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal"
+            />
+          </label>
+          {pwMismatch && <p className="text-sm text-red-600">Passwords do not match</p>}
+        </div>
+        <button
+          type="submit"
+          disabled={!pw.current || !pw.next || pw.next !== pw.confirm || changePassword.isPending}
+          className="mt-4 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+        >
+          {changePassword.isPending ? 'Updating…' : 'Update password'}
+        </button>
+      </form>
 
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <div className="flex items-start justify-between gap-4">
@@ -100,10 +169,25 @@ export default function AccountSecurityPage() {
         {setup && !user?.mfaEnabled && (
           <div className="mt-4 space-y-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
             <p className="text-sm text-gray-700">
-              Scan this URL in Google Authenticator, Authy, or 1Password:
+              Scan this QR code with Google Authenticator, Authy, or 1Password:
             </p>
-            <code className="block break-all rounded bg-white p-2 text-xs text-gray-800">{setup.otpauthUrl}</code>
-            <p className="text-xs text-gray-500">Manual key: {setup.secret}</p>
+            <img
+              src={setup.qrDataUrl}
+              alt="QR code for your authenticator app"
+              width={180}
+              height={180}
+              className="rounded-lg border border-gray-200 bg-white p-2"
+            />
+            <p className="text-sm text-gray-700">
+              On this phone?{' '}
+              <a href={setup.otpauthUrl} className="font-medium text-primary-700 underline">
+                Open in your authenticator app
+              </a>
+            </p>
+            <p className="text-xs text-gray-500">
+              Or enter this key manually:{' '}
+              <span className="select-all break-all font-mono text-gray-800">{setup.secret}</span>
+            </p>
             <div>
               <label className="block text-sm font-medium text-gray-700">Verification code</label>
               <input

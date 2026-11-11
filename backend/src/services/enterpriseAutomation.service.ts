@@ -2,7 +2,7 @@ import { FarmPlan, Prisma, ReportEmailCadence } from '@prisma/client';
 import prisma from '../config/database';
 import { onHandPigsWhere } from '../lib/pigStock';
 import { fetchFinancialsSummary, formatFinancialsPeriodLabel } from './financials-summary.service';
-import { FEED_TYPES, getStockKgByType } from './feed.service';
+import { getStockSnapshot, lowStockFromSnapshot } from './feed.service';
 import { notifyFarmLeads } from './farmNotify.service';
 import { sendFarmAlertSms } from './sms.service';
 
@@ -154,8 +154,7 @@ async function buildLowStockAlertMessage(
   farm: { id: string; name: string; feedLowStockThresholdKg: Prisma.Decimal | null },
 ): Promise<string | null> {
   const threshold = farm.feedLowStockThresholdKg ?? new Prisma.Decimal(50);
-  const stock = await getStockKgByType(farm.id);
-  const low = FEED_TYPES.filter((t) => stock[t].lte(threshold));
+  const low = lowStockFromSnapshot(await getStockSnapshot(farm.id), threshold);
   if (!low.length) return null;
 
   const labels = low

@@ -38,7 +38,8 @@ export const securityService = {
 };
 
 export const mfaService = {
-  setup: () => api.post<{ secret: string; otpauthUrl: string }>('/auth/mfa/setup').then((r) => r.data),
+  setup: () =>
+    api.post<{ secret: string; otpauthUrl: string; qrDataUrl: string }>('/auth/mfa/setup').then((r) => r.data),
   enable: (secret: string, code: string) =>
     api.post('/auth/mfa/enable', { secret, code }).then((r) => r.data),
   disable: (code: string) => api.post('/auth/mfa/disable', { code }).then((r) => r.data),

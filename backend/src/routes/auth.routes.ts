@@ -54,6 +54,14 @@ const resetPasswordLimiter = rateLimit({
   message: { status: 'error', message: 'Too many password reset attempts. Try again later.' },
 });
 
+const changePasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { status: 'error', message: 'Too many password change attempts. Try again later.' },
+});
+
 const mfaVerifyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -73,6 +81,7 @@ router.post('/reset-password', resetPasswordLimiter, AuthController.resetPasswor
 router.get('/me', authenticate, AuthController.me);
 router.patch('/profile', authenticate, AuthController.updateProfile);
 router.delete('/account', authenticate, AuthController.deleteAccount);
+router.post('/change-password', authenticate, changePasswordLimiter, AuthController.changePassword);
 router.post('/mfa/setup', authenticate, AuthController.mfaSetup);
 router.post('/mfa/enable', authenticate, AuthController.mfaEnable);
 router.post('/mfa/disable', authenticate, AuthController.mfaDisable);

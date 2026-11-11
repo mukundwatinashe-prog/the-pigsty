@@ -2,6 +2,7 @@ import { FeedType, Prisma } from '@prisma/client';
 import prisma from '../config/database';
 import { AppError } from '../middleware/error.middleware';
 import { bucketsToKg } from '../lib/feedConversion';
+import { lowStockFeedTypes } from '../lib/feedLowStock';
 import { ObjectStorageService } from './objectStorage.service';
 
 export const FEED_TYPES: FeedType[] = [
@@ -124,13 +125,30 @@ async function sumUsedKgByType(farmId: string, excludeUsageId?: string): Promise
 
 /** Stock kg per feed type (purchases minus all daily usage). */
 export async function getStockKgByType(farmId: string): Promise<Record<FeedType, Prisma.Decimal>> {
+  return (await getStockSnapshot(farmId)).stock;
+}
+
+/** Current stock plus lifetime purchased kg per feed type (for low-stock checks). */
+export async function getStockSnapshot(
+  farmId: string,
+): Promise<{ stock: Record<FeedType, Prisma.Decimal>; purchased: Record<FeedType, Prisma.Decimal> }> {
   const purchased = await sumPurchasedKgByType(farmId);
   const used = await sumUsedKgByType(farmId);
   const stock = {} as Record<FeedType, Prisma.Decimal>;
   for (const t of FEED_TYPES) {
     stock[t] = purchased[t].sub(used[t]);
   }
-  return stock;
+  return { stock, purchased };
+}
+
+/** Low-stock feed types for a farm, ignoring types it has never purchased. */
+export function lowStockFromSnapshot(
+  snapshot: { stock: Record<FeedType, Prisma.Decimal>; purchased: Record<FeedType, Prisma.Decimal> },
+  threshold: Prisma.Decimal,
+): FeedType[] {
+  const toNum = (r: Record<FeedType, Prisma.Decimal>) =>
+    Object.fromEntries(FEED_TYPES.map((t) => [t, r[t].toNumber()])) as Record<FeedType, number>;
+  return lowStockFeedTypes(FEED_TYPES, toNum(snapshot.purchased), toNum(snapshot.stock), threshold.toNumber());
 }
 
 async function getStockKgByTypeExcludingUsage(farmId: string, excludeUsageId: string): Promise<Record<FeedType, Prisma.Decimal>> {
