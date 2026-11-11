@@ -544,9 +544,8 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-safe sm:flex-row">
           <div className="flex flex-col items-center gap-3 sm:items-start">
             <HomeBrandLink size="sm" />
-            <p className="text-sm text-gray-500">© {new Date().getFullYear()} The Pigsty · Farmer-focused herd software</p>
-            <p className="text-sm text-gray-500">
-              Designed by{' '}
+            <p className="text-center text-sm text-gray-500 sm:text-left">
+              © {new Date().getFullYear()} The Pigsty · Farmer-focused herd software · Website designed by{' '}
               <a
                 href="https://www.tmmdesigns.uk/"
                 target="_blank"
