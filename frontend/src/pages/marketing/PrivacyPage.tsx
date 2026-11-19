@@ -2,6 +2,13 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { siteConfig } from '../../lib/siteConfig';
 
+/**
+ * Date this policy last changed in substance. Hard-coded on purpose: rendering
+ * `new Date()` here would silently re-date the document every single day, which
+ * is misleading for a legal page. Bump it by hand when the wording changes.
+ */
+const LAST_UPDATED = '19 November 2026';
+
 export default function PrivacyPage() {
   return (
     <div className="min-h-dvh bg-gray-50 px-safe pb-safe pt-safe">
@@ -14,7 +21,7 @@ export default function PrivacyPage() {
         </Link>
         <article className="prose prose-gray mt-6 max-w-none rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:mt-8 sm:p-8">
           <h1 className="text-2xl font-bold text-gray-900">Privacy policy</h1>
-          <p className="mt-2 text-sm text-gray-500">Last updated: {new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p className="mt-2 text-sm text-gray-500">Last updated: {LAST_UPDATED}</p>
           <p className="mt-6 text-gray-700">
             The Pigsty (“we”, “us”) respects your privacy. This policy describes how we handle information when you use our farm management software.
           </p>

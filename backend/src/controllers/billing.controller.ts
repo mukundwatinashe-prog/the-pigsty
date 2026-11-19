@@ -8,6 +8,7 @@ import { AppError } from '../middleware/error.middleware';
 import { FarmPlan } from '@prisma/client';
 import { GROWER_TIER_MAX_MEMBERS, GROWER_TRIAL_DAYS, pigLimitForPlan, allowsFinancialsExport, allowsEnterpriseAutomation } from '../config/planLimits';
 import { onHandPigsWhere } from '../lib/pigStock';
+import { AuditService } from '../services/audit.service';
 import { sendUserEmail } from '../services/email/emailSender';
 import { upgradeEmail } from '../services/email/templates';
 
@@ -95,6 +96,10 @@ async function resolveCheckoutPriceId(
   return defaultPriceId;
 }
 
+function subscriptionPeriodEnd(sub: Stripe.Subscription): string | null {
+  return sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+}
+
 export class BillingController {
   static async summary(req: FarmRequest, res: Response, next: NextFunction) {
     try {
@@ -112,6 +117,22 @@ export class BillingController {
       const growerTrialUsed = Boolean(user?.growerTrialUsedAt);
       const canStartGrowerTrial = farm.plan === FarmPlan.FREE && !growerTrialUsed;
 
+      let cancelAtPeriodEnd = false;
+      let currentPeriodEnd: string | null = null;
+      if (farm.stripeSubscriptionId && stripeConfigured) {
+        const stripe = stripeClient();
+        if (stripe) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(farm.stripeSubscriptionId);
+            cancelAtPeriodEnd = sub.cancel_at_period_end;
+            currentPeriodEnd = subscriptionPeriodEnd(sub);
+          } catch (err) {
+            // Billing summary must still load if Stripe is briefly unreachable.
+            console.error('[billing] could not read subscription state:', err);
+          }
+        }
+      }
+
       res.json({
         myRole: req.memberRole,
         plan: farm.plan,
@@ -128,6 +149,9 @@ export class BillingController {
         memberLimit: farm.plan === FarmPlan.FREE ? 1 : farm.plan === FarmPlan.GROWER ? GROWER_TIER_MAX_MEMBERS : null,
         stripeConfigured,
         hasStripeCustomer: Boolean(farm.stripeCustomerId),
+        hasSubscription: Boolean(farm.stripeSubscriptionId),
+        cancelAtPeriodEnd,
+        currentPeriodEnd,
         growerTrialUsed,
         canStartGrowerTrial,
       });
@@ -230,6 +254,87 @@ export class BillingController {
       });
 
       res.json({ url: session.url });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Cancels the farm's subscription at the end of the current billing period.
+   * Paid features stay active until then; the deletion webhook downgrades the
+   * farm to FREE when the subscription actually ends.
+   */
+  static async cancelSubscription(req: FarmRequest, res: Response, next: NextFunction) {
+    try {
+      if (!stripeConfigured) {
+        return next(new AppError('Online billing is not configured. Contact support to cancel.', 503));
+      }
+      const stripe = stripeClient();
+      if (!stripe) return next(new AppError('Stripe not configured', 503));
+
+      const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
+      if (!farm || farm.isDeleted) return next(new AppError('Farm not found', 404));
+      if (!farm.stripeSubscriptionId) {
+        return next(new AppError('This farm has no active subscription to cancel.', 400));
+      }
+
+      const sub = await stripe.subscriptions.retrieve(farm.stripeSubscriptionId);
+      if (sub.status === 'canceled') {
+        // Subscription already ended but the deletion webhook hasn't landed; sync now.
+        await prisma.farm.updateMany({
+          where: { id: farm.id, stripeSubscriptionId: sub.id },
+          data: { plan: FarmPlan.FREE, stripeSubscriptionId: null },
+        });
+        return res.json({ cancelAtPeriodEnd: false, currentPeriodEnd: null });
+      }
+
+      const updated = sub.cancel_at_period_end
+        ? sub
+        : await stripe.subscriptions.update(farm.stripeSubscriptionId, { cancel_at_period_end: true });
+
+      await AuditService.log({
+        userId: req.userId!, farmId: req.farmId!,
+        action: 'CANCEL', entity: 'Subscription', entityId: farm.stripeSubscriptionId,
+        details: JSON.stringify({ plan: farm.plan, cancelAtPeriodEnd: true }),
+      });
+
+      res.json({ cancelAtPeriodEnd: true, currentPeriodEnd: subscriptionPeriodEnd(updated) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** Undoes a pending cancellation before the billing period ends. */
+  static async resumeSubscription(req: FarmRequest, res: Response, next: NextFunction) {
+    try {
+      if (!stripeConfigured) {
+        return next(new AppError('Online billing is not configured. Contact support.', 503));
+      }
+      const stripe = stripeClient();
+      if (!stripe) return next(new AppError('Stripe not configured', 503));
+
+      const farm = await prisma.farm.findUnique({ where: { id: req.farmId! } });
+      if (!farm || farm.isDeleted) return next(new AppError('Farm not found', 404));
+      if (!farm.stripeSubscriptionId) {
+        return next(new AppError('This farm has no subscription to resume.', 400));
+      }
+
+      const sub = await stripe.subscriptions.retrieve(farm.stripeSubscriptionId);
+      if (sub.status === 'canceled') {
+        return next(new AppError('This subscription has already ended. Subscribe again to restore your plan.', 400));
+      }
+
+      const updated = sub.cancel_at_period_end
+        ? await stripe.subscriptions.update(farm.stripeSubscriptionId, { cancel_at_period_end: false })
+        : sub;
+
+      await AuditService.log({
+        userId: req.userId!, farmId: req.farmId!,
+        action: 'RESUME', entity: 'Subscription', entityId: farm.stripeSubscriptionId,
+        details: JSON.stringify({ plan: farm.plan, cancelAtPeriodEnd: false }),
+      });
+
+      res.json({ cancelAtPeriodEnd: false, currentPeriodEnd: subscriptionPeriodEnd(updated) });
     } catch (error) {
       next(error);
     }

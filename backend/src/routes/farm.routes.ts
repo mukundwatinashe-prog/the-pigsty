@@ -15,6 +15,8 @@ router.get('/', FarmController.list);
 router.get('/:farmId/billing', requireFarmAccess('pigs:read'), BillingController.summary);
 router.post('/:farmId/billing/checkout', requireFarmAccess('farm:settings'), BillingController.createCheckoutSession);
 router.post('/:farmId/billing/portal', requireFarmAccess('farm:settings'), BillingController.createPortalSession);
+router.post('/:farmId/billing/cancel', requireFarmAccess('farm:settings'), BillingController.cancelSubscription);
+router.post('/:farmId/billing/resume', requireFarmAccess('farm:settings'), BillingController.resumeSubscription);
 router.get('/:farmId/financials', requireFarmAccess('reports:read'), FinancialController.summary);
 router.get('/:farmId', requireFarmAccess('pigs:read'), FarmController.getById);
 router.patch('/:farmId', requireFarmAccess('farm:settings'), FarmController.update);
