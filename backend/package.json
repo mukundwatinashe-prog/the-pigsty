@@ -52,5 +52,10 @@
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.2",
     "vitest": "^2.1.9"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "^8.0.2"
+    }
   }
 }
