@@ -42,6 +42,13 @@ android {
             // so their reflective plugin classes are kept automatically.
             minifyEnabled true
             shrinkResources true
+            // Play asks for native debug symbols whenever a bundle carries .so
+            // files. Ours come from CameraX (via @capacitor/camera), not from
+            // our own code, and ship stripped — SYMBOL_TABLE still extracts the
+            // dynamic symbol table so native crash frames get function names.
+            ndk {
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (keystorePropertiesFile.exists()) {
                 signingConfig signingConfigs.release
