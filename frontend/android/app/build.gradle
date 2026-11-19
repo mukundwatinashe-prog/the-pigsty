@@ -25,8 +25,8 @@ android {
         applicationId "org.thepigsty.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.0.5"
+        versionCode 10
+        versionName "1.0.9"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -36,8 +36,20 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // R8 shrinking/obfuscation. Play flags apps whose DEX optimisation is
+            // under 25%; with minifyEnabled false nothing is obfuscated at all.
+            // Capacitor and the social-login plugin both ship consumerProguardFiles,
+            // so their reflective plugin classes are kept automatically.
+            minifyEnabled true
+            shrinkResources true
+            // Play asks for native debug symbols whenever a bundle carries .so
+            // files. Ours come from CameraX (via @capacitor/camera), not from
+            // our own code, and ship stripped — SYMBOL_TABLE still extracts the
+            // dynamic symbol table so native crash frames get function names.
+            ndk {
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (keystorePropertiesFile.exists()) {
                 signingConfig signingConfigs.release
             }
