@@ -1,4 +1,5 @@
 import api from './api';
+import { saveBlob } from '../lib/download';
 
 export type FarmPlan = 'FREE' | 'GROWER' | 'ENTERPRISE';
 
@@ -154,14 +155,6 @@ export const adminService = {
     if (params.search) qs.set('search', params.search);
     const q = qs.toString();
     const response = await api.get(`/admin/users/export${q ? `?${q}` : ''}`, { responseType: 'blob' });
-    const blob = response.data as Blob;
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `pigsty-users-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    await saveBlob(response.data as Blob, `pigsty-users-${new Date().toISOString().slice(0, 10)}.csv`);
   },
 };

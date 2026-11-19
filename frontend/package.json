@@ -20,8 +20,11 @@
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",
+    "@capacitor/camera": "^8.2.2",
     "@capacitor/core": "^8.4.1",
+    "@capacitor/filesystem": "^8.1.2",
     "@capacitor/preferences": "^8.0.1",
+    "@capacitor/share": "^8.0.1",
     "@capgo/capacitor-social-login": "^8.3.39",
     "@hookform/resolvers": "^5.2.2",
     "@sentry/react": "^10.68.0",
