@@ -135,6 +135,9 @@ export default function App() {
             containerStyle={{
               top: 'max(0.75rem, env(safe-area-inset-top, 0px))',
             }}
+            // On phones the fixed menu button sits in the top-left corner; start toasts
+            // below it so wide notices (e.g. low feed stock) never cover navigation.
+            containerClassName="max-md:!top-[calc(max(0.75rem,env(safe-area-inset-top))+3.5rem)]"
             toastOptions={{ className: '!text-sm sm:!text-base' }}
           />
         </FarmProvider>

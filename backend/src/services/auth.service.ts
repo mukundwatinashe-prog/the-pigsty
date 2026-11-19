@@ -431,6 +431,48 @@ export class AuthService {
     ]);
   }
 
+  /**
+   * Change a signed-in user's password. Revokes every session (like a reset) and returns
+   * fresh tokens so the device that made the change stays signed in.
+   */
+  static async changePassword(userId: string, currentPassword: string, newPassword: string, ip?: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, passwordHash: true },
+    });
+    if (!user) throw new AppError('User not found', 404);
+    if (!user.passwordHash) {
+      throw new AppError(
+        'Your account signs in with Google and has no password yet. Use "Forgot password" on the sign-in page to set one.',
+        400,
+      );
+    }
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      await SecurityService.log({
+        type: 'FAILED_LOGIN',
+        severity: 'MEDIUM',
+        userId: user.id,
+        email: user.email,
+        ip,
+        details: 'Wrong current password on password change',
+      });
+      throw new AppError('Current password is incorrect', 400);
+    }
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      throw new AppError('Choose a password that is different from your current one', 400);
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash, tokenVersion: { increment: 1 } },
+      }),
+      prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+    ]);
+    return this.generateTokens(user.id);
+  }
+
   private static async generateTokens(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },

@@ -12,6 +12,7 @@ import {
 } from '../services/financials-summary.service';
 import { compareAdgToTarget, targetAdgKgPerDay } from '../lib/weightTargets';
 import { allowsFinancialsExport } from '../config/planLimits';
+import { averageDailyGain } from '../lib/averageDailyGain';
 
 function imageExtFromDataUrl(dataUrl?: string | null): 'png' | 'jpeg' | null {
   if (!dataUrl) return null;
@@ -495,17 +496,13 @@ export class ReportController {
 
       const report = pigs.map((pig) => {
         const logs = pig.weightLogs;
-        let adg = 0;
-        if (logs.length >= 2) {
-          const first = logs[0];
-          const last = logs[logs.length - 1];
-          const days = (last.date.getTime() - first.date.getTime()) / (1000 * 60 * 60 * 24);
-          if (days > 0) adg = (Number(last.weight) - Number(first.weight)) / days;
-        }
-        const adgRounded = Math.round(adg * 100) / 100;
+        const adg = averageDailyGain(
+          { date: pig.acquisitionDate, weight: Number(pig.entryWeight) },
+          logs.map((l) => ({ date: l.date, weight: Number(l.weight) })),
+        );
+        const adgRounded = adg == null ? null : Math.round(adg * 100) / 100;
         const targetAdg = targetAdgKgPerDay(pig.stage);
-        const vsTarget =
-          logs.length < 2 ? 'n_a' : compareAdgToTarget(adg, pig.stage);
+        const vsTarget = adg == null ? 'n_a' : compareAdgToTarget(adg, pig.stage);
         return {
           tagNumber: pig.tagNumber,
           stage: pig.stage,
@@ -527,7 +524,7 @@ export class ReportController {
           'Entry Weight': r.entryWeight,
           'Current Weight': r.currentWeight,
           'Total Gain': r.totalGain,
-          'Avg Daily Gain': r.adg,
+          'Avg Daily Gain': r.adg ?? '—',
           'Target ADG': r.targetAdg,
           'Vs target': r.vsTarget === 'on_track' ? 'On target' : r.vsTarget === 'below' ? 'Below target' : 'N/A',
           Measurements: r.measurements,
@@ -567,7 +564,7 @@ export class ReportController {
           String(r.entryWeight),
           String(r.currentWeight),
           String(r.totalGain),
-          String(r.adg),
+          r.adg == null ? '—' : String(r.adg),
           String(r.targetAdg),
           r.vsTarget === 'on_track' ? 'OK' : r.vsTarget === 'below' ? 'Low' : '—',
           String(r.measurements),

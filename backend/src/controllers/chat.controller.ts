@@ -3,8 +3,21 @@ import { z } from 'zod';
 import type { AuthRequest } from '../middleware/auth.middleware';
 import { AppError } from '../middleware/error.middleware';
 import { ChatService } from '../services/chat.service';
-import { aiService } from '../services/ai.service';
+import { AiUnavailableError, aiService } from '../services/ai.service';
 import { getAiSystemPrompt } from '../utils/aiPrompts';
+import prisma from '../config/database';
+import { isPlatformAdminEmail } from '../services/security.service';
+
+/** Farmers see the generic message; platform admins also get the operator detail. */
+async function aiErrorForUser(userId: string | undefined, error: AiUnavailableError): Promise<AppError> {
+  const user = userId
+    ? await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+    : null;
+  if (user && isPlatformAdminEmail(user.email)) {
+    return new AppError(`${error.message} (Admin detail: ${error.operatorDetail})`, error.statusCode);
+  }
+  return error;
+}
 
 const createConversationSchema = z.object({
   title: z.string().trim().min(1).max(255).optional(),
@@ -125,7 +138,7 @@ export class ChatController {
           : '';
       const aiResponse = await aiService.generateResponse(aiMessages, `${getAiSystemPrompt()}${contextNote}`);
       if (!aiResponse.content.trim()) {
-        throw new AppError('AI provider returned an empty response', 502);
+        throw new AiUnavailableError('AI provider returned an empty response', 502);
       }
       const storedAssistantMessage = await ChatService.addMessage(
         body.conversationId,
@@ -143,6 +156,7 @@ export class ChatController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) return next(new AppError(error.errors[0].message, 400));
+      if (error instanceof AiUnavailableError) return next(await aiErrorForUser(req.userId, error));
       next(error);
     }
   }

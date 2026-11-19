@@ -94,7 +94,7 @@ type WeightGainReportRow = {
   entryWeight: number;
   currentWeight: number;
   totalGain: number;
-  adg: number;
+  adg: number | null;
   targetAdg: number;
   vsTarget: 'on_track' | 'below' | 'n_a';
   measurements: number;
@@ -156,7 +156,7 @@ function WeightGainReportTable({
                 </div>
                 <div>
                   <dt className="text-xs text-gray-400">ADG / Target</dt>
-                  <dd className="tabular-nums text-gray-800">{row.adg} / {row.targetAdg}</dd>
+                  <dd className="tabular-nums text-gray-800">{row.adg ?? '—'} / {row.targetAdg}</dd>
                 </div>
               </dl>
               <p className="mt-2 text-xs text-gray-500">{row.measurements} measurement{row.measurements === 1 ? '' : 's'}</p>
@@ -197,7 +197,7 @@ function WeightGainReportTable({
               <td className="px-3 py-2 tabular-nums text-gray-800">{row.entryWeight}</td>
               <td className="px-3 py-2 tabular-nums text-gray-800">{row.currentWeight}</td>
               <td className="px-3 py-2 tabular-nums text-gray-800">{row.totalGain}</td>
-              <td className="px-3 py-2 tabular-nums text-gray-800">{row.adg}</td>
+              <td className="px-3 py-2 tabular-nums text-gray-800">{row.adg ?? '—'}</td>
               <td className="px-3 py-2 tabular-nums text-gray-600">{row.targetAdg}</td>
               <td
                 className={`px-3 py-2 font-medium tabular-nums ${

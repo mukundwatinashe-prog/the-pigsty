@@ -23,6 +23,7 @@ import { farmService } from '../../services/farm.service';
 import { pigService } from '../../services/pig.service';
 import type { AuditLog, PigObservation, PigStatus } from '../../types';
 import { pigObservationLabel } from '../../lib/pigObservations';
+import { describeActivity } from '../../lib/activityLabels';
 
 type StatusAggRow = { status: string; _count: number };
 type StatusChartRow = { name: string; value: number };
@@ -428,8 +429,7 @@ export default function DashboardPage() {
                   <div className="min-w-0">
                     <p className="text-sm text-gray-800">
                       <span className="font-medium">{activity.user?.name}</span>{' '}
-                      <span className="text-gray-500">{activity.action.toLowerCase()}</span>{' '}
-                      <span className="font-medium">{activity.entity}</span>
+                      <span className="text-gray-600">{describeActivity(activity.action, activity.entity)}</span>
                     </p>
                     {activity.details && (
                       <p className="text-xs text-gray-400 truncate">{activity.details}</p>

@@ -4,6 +4,7 @@ import { ScrollText, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFarm } from '../../context/FarmContext';
 import { reportService } from '../../services/report.service';
 import type { AuditLog } from '../../types';
+import { actionLabel, entityLabel } from '../../lib/activityLabels';
 
 type ActivityResponse = {
   data: AuditLog[];
@@ -24,12 +25,12 @@ function AuditLogMobileCard({ row }: { row: AuditLog }) {
           })}
         </p>
         <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
-          {row.action}
+          {actionLabel(row.action)}
         </span>
       </div>
       <p className="mt-2 font-medium text-gray-900">{row.user?.name ?? '—'}</p>
       <p className="mt-1 text-sm text-gray-800">
-        <span className="font-medium">{row.entity}</span>
+        <span className="font-medium">{entityLabel(row.entity)}</span>
         <span className="ml-2 font-mono text-xs text-gray-400">{row.entityId.slice(0, 8)}…</span>
       </p>
       {row.details ? (
@@ -53,11 +54,11 @@ function AuditLogTableRow({ row }: { row: AuditLog }) {
       <td className="px-4 py-3 font-medium text-gray-900">{row.user?.name ?? '—'}</td>
       <td className="px-4 py-3">
         <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
-          {row.action}
+          {actionLabel(row.action)}
         </span>
       </td>
       <td className="px-4 py-3 text-gray-800">
-        <span className="font-medium">{row.entity}</span>
+        <span className="font-medium">{entityLabel(row.entity)}</span>
         <span className="ml-2 font-mono text-xs text-gray-400">{row.entityId.slice(0, 8)}…</span>
       </td>
       <td className="max-w-md px-4 py-3 text-gray-600">
