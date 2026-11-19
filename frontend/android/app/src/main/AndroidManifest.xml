@@ -33,6 +33,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Downloads are saved to Documents (lib/download.ts). Android 10 and older need
+         storage permission for that; newer versions don't, so cap at API 29. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 
     <!-- This app shows no ads and does not use the advertising ID. Strip the
          ad-related permissions that Google Play Services dependencies (pulled in

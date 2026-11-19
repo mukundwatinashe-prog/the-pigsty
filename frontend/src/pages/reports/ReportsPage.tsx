@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -283,6 +283,7 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [jsonResult, setJsonResult] = useState<unknown>(null);
+  const optionsRef = useRef<HTMLDivElement>(null);
 
   const params: Record<string, string> = {};
   if (selected.dateFilter) {
@@ -340,6 +341,14 @@ export default function ReportsPage() {
       setFormat(def.formats[0]);
     }
     setJsonResult(null);
+    // On phones the report cards stack tall and the Options/Generate panel sits
+    // below the fold, so a tap changes the selection with no visible change and
+    // reads as "nothing happened". Bring the options into view on small screens.
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      requestAnimationFrame(() => {
+        optionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   };
 
   const downloadMutation = useMutation({
@@ -549,8 +558,9 @@ export default function ReportsPage() {
         })}
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div ref={optionsRef} className="scroll-mt-20 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Options</h3>
+        <p className="mt-1 text-base font-semibold text-gray-900">{selected.title}</p>
 
         {selected.dateFilter && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2">

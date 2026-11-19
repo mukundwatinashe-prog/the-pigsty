@@ -1,14 +1,9 @@
 import type { AxiosResponse } from 'axios';
 import api from './api';
+import { saveBlob } from '../lib/download';
 
-const downloadFile = (response: AxiosResponse<Blob>, filename: string) => {
-  const url = window.URL.createObjectURL(new Blob([response.data]));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  window.URL.revokeObjectURL(url);
-};
+const downloadFile = (response: AxiosResponse<Blob>, filename: string) =>
+  saveBlob(new Blob([response.data]), filename);
 
 export const reportService = {
   herdInventory: (farmId: string, format: string, params?: Record<string, string>) => {
